@@ -1,6 +1,0 @@
-(define x (u8vector 65 67 118 10))
-;; (define x "ACD\n")
-;; (display (string-append (substring x 0 2) "\n"))
-;; (u8vector-set! x 2 70)
-(display (u8vector-ref x 2))
-;; (+ (substring x 0 0) (substring x 3 3))

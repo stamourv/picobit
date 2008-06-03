@@ -231,7 +231,10 @@
           (make-var '#%string? #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%string->list #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%list->string #t '() '() '() #f (make-primitive 1 #f #f))
-	  (make-var '#%cast-int #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
+
+	  (make-var '#%set-fst! #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
+	  (make-var '#%set-snd! #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
+	  (make-var '#%set-trd! #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
 
           (make-var '#%print #t '() '() '() #f (make-primitive 1 #f #t))
           (make-var '#%clock #t '() '() '() #f (make-primitive 0 #f #f))
@@ -240,6 +243,12 @@
           (make-var '#%getchar-wait #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%putchar #t '() '() '() #f (make-primitive 1 #f #t))
           (make-var '#%light #t '() '() '() #f (make-primitive 0 #f #f))
+	  
+	  (make-var '#%triplet? #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
+	  (make-var '#%triplet #t '() '() '() #f (make-primitive 3 #f #f)) ;; ADDED
+	  (make-var '#%fst #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
+	  (make-var '#%snd #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
+	  (make-var '#%trd #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
 
           (make-var '#%readyq #t '() '() '() #f #f)
 	  
@@ -345,6 +354,7 @@
     (parse-top-list body
                     (env-extend-renamings env renamings))))
 
+;; (define (repeat n v) (if (= n 0) '() (cons v (repeat (- n 1) v)))) ;; ADDED
 (define parse
   (lambda (use expr env)
     (cond ((self-eval? expr)
@@ -354,10 +364,25 @@
                   (r (make-ref #f '() var)))
              (var-refs-set! var (cons r (var-refs var)))
              r))
-	  ((and (pair? expr) ;; ADDED
-		(eq? (car expr) 'u8vector))
-	   (parse use ; call string
-		  (list->string (map integer->char (cdr expr)))
+;;; 	  ((and (pair? expr) ;; ADDED, doesn't work if we have vars in the call, we'll need a true macroexpander, or at least put htis as a primitive, not a special form
+;;; 		(eq? (car expr) 'u8vector))
+;;; 	   (parse use ; call string
+;;; 		  (list->string (map integer->char (cdr expr)))
+;;; 		  env))
+;;; 	  ((and (pair? expr) ;; ADDED, when we have a macroexpander, remove
+;;; 		(eq? (car expr) 'make-u8vector))
+;;; 	   (parse use
+;;; 		  `(u8vector ,@(repeat (eval (cadr expr)) (caddr expr)))
+;;; 		  ;; TODO the eval is a BIG hack to compensate for the lack of macros, once, we have an addition as first arg, but its result is still known at compile time
+;;; 		  env))
+	  ((and (pair? expr) ;; ADDED, when we have a true macroexpander, get rid
+		(eq? (car expr) 'cond))
+	   (parse use
+		  `(if ,(caadr expr)
+		       (begin ,@(cdadr expr))
+		       ,(if (null? (cddr expr))
+			    #f
+			    `(cond ,@(cddr expr))))
 		  env))
           ((and (pair? expr)
                 (eq? (car expr) 'set!))
@@ -368,7 +393,9 @@
                    (node-parent-set! val r)
                    (var-sets-set! var (cons r (var-sets var)))
                    r)
-                 (compiler-error "set! is only permitted on global variables"))))
+		 (begin ;; ADDED, only had the compiler error
+		   (print var)
+		   (compiler-error "set! is only permitted on global variables")))))
           ((and (pair? expr)
                 (eq? (car expr) 'quote))
            (make-cst #f '() (cadr expr)))
@@ -1725,13 +1752,22 @@
       (let ((bbs (remove-useless-bbs! bbs)))
         (reorder! bbs)))))
 
+(define expand-loads ;; ADDED, doesn't work with loads in a loaded file
+  (lambda (exprs)
+    (map (lambda (e)
+	   (if (eq? (car e) 'load)
+	       (cons 'begin
+		     (expand-loads (with-input-from-file (cadr e) read-all)))
+	       e))
+	 exprs)))
+
 (define parse-file
   (lambda (filename)
     (let* ((library
             (with-input-from-file "library.scm" read-all))
            (toplevel-exprs
-            (append library
-                    (with-input-from-file filename read-all)))
+            (expand-loads (append library ;; ADDED (didn't have expand-loads)
+				  (with-input-from-file filename read-all))))
            (global-env
             (make-global-env))
            (parsed-prog
@@ -1883,15 +1919,6 @@
       (if (< i len)
         (begin
           (asm-8 (char->integer (string-ref str i)))
-          (loop (+ i 1)))
-        (asm-8 0)))))
-
-(define (asm-u8vector u8) ;; ADDED, pretty much the same as strings
-  (let ((len (u8vector-length u8)))
-    (let loop ((i 0))
-      (if (< i len)
-        (begin
-          (asm-8 (u8vector-ref u8 i))
           (loop (+ i 1)))
         (asm-8 0)))))
 
@@ -2647,7 +2674,9 @@
             (define (prim.string?)        (prim 26))
             (define (prim.string->list)   (prim 27))
             (define (prim.list->string)   (prim 28))
-	    (define (prim.cast-int)        (prim 29)) ;; ADDED
+	    (define (prim.set-fst!)       (prim 29)) ;; ADDED
+	    (define (prim.set-snd!)       (prim 30)) ;; ADDED
+	    (define (prim.set-trd!)       (prim 31)) ;; ADDED
 
             (define (prim.print)          (prim 32))
             (define (prim.clock)          (prim 33))
@@ -2656,6 +2685,12 @@
             (define (prim.getchar-wait)   (prim 36))
             (define (prim.putchar)        (prim 37))
             (define (prim.light)          (prim 38))
+
+	    (define (prim.triplet?)       (prim 39)) ;; ADDED
+	    (define (prim.triplet)        (prim 40)) ;; ADDED
+	    (define (prim.fst)            (prim 41)) ;; ADDED
+	    (define (prim.snd)            (prim 42)) ;; ADDED
+	    (define (prim.trd)            (prim 43)) ;; ADDED
 
             (define (prim.shift)          (prim 45))
             (define (prim.pop)            (prim 46))
@@ -2790,7 +2825,9 @@
                              ((#%string?)        (prim.string?))
                              ((#%string->list)   (prim.string->list))
                              ((#%list->string)   (prim.list->string))
-			     ((#%cast-int)       (prim.cast-int)) ;; ADDED
+			     ((#%set-fst!)       (prim.set-fst!)) ;; ADDED
+			     ((#%set-snd!)       (prim.set-snd!)) ;; ADDED
+			     ((#%set-trd!)       (prim.set-trd!)) ;; ADDED
 
                              ((#%print)          (prim.print))
                              ((#%clock)          (prim.clock))
@@ -2799,6 +2836,12 @@
                              ((#%getchar-wait)   (prim.getchar-wait))
                              ((#%putchar)        (prim.putchar))
                              ((#%light)          (prim.light))
+
+			     ((#%triplet?)       (prim.triplet?)) ;; ADDED
+			     ((#%triplet)        (prim.triplet)) ;; ADDED
+			     ((#%fst)            (prim.fst)) ;; ADDED
+			     ((#%snd)            (prim.snd)) ;; ADDED
+			     ((#%trd)            (prim.trd)) ;; ADDED
                              (else
                               (compiler-error "unknown primitive" (cadr instr)))))
 
@@ -2872,8 +2915,8 @@
       (let ((ctx (comp-none node (make-init-context))))
         (let ((prog (linearize (optimize-code (context-code ctx)))))
 ;         (pp (list code: prog env: (context-env ctx)))
-         (assemble prog hex-filename)
-         (execute hex-filename))))))
+	  (assemble prog hex-filename)
+	  (execute hex-filename))))))
 
 
 (define main

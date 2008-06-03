@@ -256,29 +256,29 @@ uint8 rom_get (rom_addr a)
 #define ROM_BYTES 8192
 
 uint8 rom_mem[ROM_BYTES] =
-{
+  {
 #define RED_GREEN
 #define PUTCHAR_LIGHT_not
 
 #ifdef RED_GREEN
-  0xFB, 0xD7, 0x03, 0x00, 0x00, 0x00, 0x00, 0x32
-, 0x03, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00
-, 0x08, 0x50, 0x80, 0x16, 0xFE, 0xE8, 0x00, 0xFC
-, 0x32, 0x80, 0x2D, 0xFE, 0xFC, 0x31, 0x80, 0x43
-, 0xFE, 0xFC, 0x33, 0x80, 0x2D, 0xFE, 0xFC, 0x31
-, 0x80, 0x43, 0xFE, 0x90, 0x16, 0x01, 0x20, 0xFC
-, 0x32, 0xE3, 0xB0, 0x37, 0x09, 0xF3, 0xFF, 0x20
-, 0xFC, 0x33, 0xE3, 0xB0, 0x40, 0x0A, 0xF3, 0xFF
-, 0x08, 0xF3, 0xFF, 0x01, 0x40, 0x21, 0xD1, 0x00
-, 0x02, 0xC0, 0x4C, 0x71, 0x01, 0x20, 0x50, 0x90
-, 0x51, 0x00, 0xF1, 0x40, 0xD8, 0xB0, 0x59, 0x90
-, 0x51, 0x00, 0xFF
+    0xFB, 0xD7, 0x03, 0x00, 0x00, 0x00, 0x00, 0x32
+    , 0x03, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00
+    , 0x08, 0x50, 0x80, 0x16, 0xFE, 0xE8, 0x00, 0xFC
+    , 0x32, 0x80, 0x2D, 0xFE, 0xFC, 0x31, 0x80, 0x43
+    , 0xFE, 0xFC, 0x33, 0x80, 0x2D, 0xFE, 0xFC, 0x31
+    , 0x80, 0x43, 0xFE, 0x90, 0x16, 0x01, 0x20, 0xFC
+    , 0x32, 0xE3, 0xB0, 0x37, 0x09, 0xF3, 0xFF, 0x20
+    , 0xFC, 0x33, 0xE3, 0xB0, 0x40, 0x0A, 0xF3, 0xFF
+    , 0x08, 0xF3, 0xFF, 0x01, 0x40, 0x21, 0xD1, 0x00
+    , 0x02, 0xC0, 0x4C, 0x71, 0x01, 0x20, 0x50, 0x90
+    , 0x51, 0x00, 0xF1, 0x40, 0xD8, 0xB0, 0x59, 0x90
+    , 0x51, 0x00, 0xFF
 #endif
 #ifdef PUTCHAR_LIGHT
-  0xFB, 0xD7, 0x00, 0x00, 0x80, 0x08, 0xFE, 0xE8
-, 0x00, 0xF6, 0xF5, 0x90, 0x08
+    0xFB, 0xD7, 0x00, 0x00, 0x80, 0x08, 0xFE, 0xE8
+    , 0x00, 0xF6, 0xF5, 0x90, 0x08
 #endif
-};
+  };
 
 uint8 rom_get (rom_addr a)
 {
@@ -294,45 +294,45 @@ obj globals[GLOVARS];
 /*
   OBJECT ENCODING:
 
-    #f           0
-    #t           1
-    ()           2
-    fixnum n     MIN_FIXNUM -> 3 ... MAX_FIXNUM -> 3 + (MAX_FIXNUM-MIN_FIXNUM)
-    rom object   4 + (MAX_FIXNUM-MIN_FIXNUM) ... MIN_RAM_ENCODING-1
-    ram object   MIN_RAM_ENCODING ... 255
+  #f           0
+  #t           1
+  ()           2
+  fixnum n     MIN_FIXNUM -> 3 ... MAX_FIXNUM -> 3 + (MAX_FIXNUM-MIN_FIXNUM)
+  rom object   4 + (MAX_FIXNUM-MIN_FIXNUM) ... MIN_RAM_ENCODING-1
+  ram object   MIN_RAM_ENCODING ... 255
 
-    layout of memory allocated objects:
+  layout of memory allocated objects:
 
-      bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
+  bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
 
-      triplet      00000001 *first** *second* *third**
+  triplet      00000001 *first** *second* *third**
 
-      pair         00000010 **car*** **cdr*** 00000000
+  pair         00000010 **car*** **cdr*** 00000000
 
-      symbol       00000011 00000000 00000000 00000000
+  symbol       00000011 00000000 00000000 00000000
 
-      string       00000100 *chars** 00000000 00000000
+  string       00000100 *chars** 00000000 00000000
 
-      vector       00000101 *elems** 00000000 00000000
+  vector       00000101 *elems** 00000000 00000000
 
-      closure      00aaaaaa xxxxxxxx yyyyyyyy aaaaaaaa  0x5ff<a<0x4000 is entry
-                                                        x is environment
-                                                        y is #f (unused)
+  closure      00aaaaaa xxxxxxxx yyyyyyyy aaaaaaaa  0x5ff<a<0x4000 is entry
+  x is environment
+  y is #f (unused)
 
-      continuation 00aaaaaa xxxxxxxx yyyyyyyy aaaaaaaa  0x5ff<a<0x4000 is pc
-                                                        x is environment
-                                                        y is parent cont
+  continuation 00aaaaaa xxxxxxxx yyyyyyyy aaaaaaaa  0x5ff<a<0x4000 is pc
+  x is environment
+  y is parent cont
 
-    An environment is a list of objects built out of pairs.  On entry to
-    a procedure the environment is the list of parameters to which is
-    added the environment of the closure being called.
+  An environment is a list of objects built out of pairs.  On entry to
+  a procedure the environment is the list of parameters to which is
+  added the environment of the closure being called.
 
-    The first byte at the entry point of a procedure gives the arity of
-    the procedure:
+  The first byte at the entry point of a procedure gives the arity of
+  the procedure:
 
-        n = 0 to 127    -> procedure has n parameters (no rest parameter)
-        n = -128 to -1  -> procedure has -n parameters, the last is
-                           a rest parameter
+  n = 0 to 127    -> procedure has n parameters (no rest parameter)
+  n = -128 to -1  -> procedure has -n parameters, the last is
+  a rest parameter
 */
 
 #define OBJ_FALSE 0
@@ -387,8 +387,8 @@ obj globals[GLOVARS];
 #define ROM_GET_FIELD0_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,0))
 
 #define RAM_GET_GC_TAGS_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0xc0)
-#define RAM_SET_GC_TAGS_MACRO(o,tags) \
-RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x3f) | (tags))
+#define RAM_SET_GC_TAGS_MACRO(o,tags)                                   \
+  RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x3f) | (tags))
 
 #if WORD_BITS == 8
 #define RAM_GET_FIELD1_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,1))
@@ -403,33 +403,33 @@ RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x3f) | (tags))
 #endif
 
 #if WORD_BITS == 10
-#define RAM_GET_FIELD1_MACRO(o) \
-(ram_get (OBJ_TO_RAM_ADDR(o,1)) + ((RAM_GET_FIELD0_MACRO(o) & 0x03)<<8))
-#define RAM_GET_FIELD2_MACRO(o) \
-(ram_get (OBJ_TO_RAM_ADDR(o,2)) + ((RAM_GET_FIELD0_MACRO(o) & 0x0c)<<6))
-#define RAM_GET_FIELD3_MACRO(o) \
-(ram_get (OBJ_TO_RAM_ADDR(o,3)) + ((RAM_GET_FIELD0_MACRO(o) & 0x30)<<4))
-#define RAM_SET_FIELD1_MACRO(o,val) \
-do { \
-  ram_set (OBJ_TO_RAM_ADDR(o,1), (val) & 0xff); \
-  RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xfc) + (((val) >> 8) & 0x03)); \
-   } while (0)
-#define RAM_SET_FIELD2_MACRO(o,val) \
-do { \
-  ram_set (OBJ_TO_RAM_ADDR(o,2), (val) & 0xff); \
-  RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xf3) + (((val) >> 6) & 0x0c)); \
-   } while (0)
-#define RAM_SET_FIELD3_MACRO(o,val) \
-do { \
-  ram_set (OBJ_TO_RAM_ADDR(o,3), (val) & 0xff); \
-  RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xcf) + (((val) >> 4) & 0x30)); \
-   } while (0)
-#define ROM_GET_FIELD1_MACRO(o) \
-(rom_get (OBJ_TO_ROM_ADDR(o,1)) + ((ROM_GET_FIELD0_MACRO(o) & 0x03)<<8))
-#define ROM_GET_FIELD2_MACRO(o) \
-(rom_get (OBJ_TO_ROM_ADDR(o,2)) + ((ROM_GET_FIELD0_MACRO(o) & 0x0c)<<6))
-#define ROM_GET_FIELD3_MACRO(o) \
-(rom_get (OBJ_TO_ROM_ADDR(o,3)) + ((ROM_GET_FIELD0_MACRO(o) & 0x30)<<4))
+#define RAM_GET_FIELD1_MACRO(o)                                         \
+  (ram_get (OBJ_TO_RAM_ADDR(o,1)) + ((RAM_GET_FIELD0_MACRO(o) & 0x03)<<8))
+#define RAM_GET_FIELD2_MACRO(o)                                         \
+  (ram_get (OBJ_TO_RAM_ADDR(o,2)) + ((RAM_GET_FIELD0_MACRO(o) & 0x0c)<<6))
+#define RAM_GET_FIELD3_MACRO(o)                                         \
+  (ram_get (OBJ_TO_RAM_ADDR(o,3)) + ((RAM_GET_FIELD0_MACRO(o) & 0x30)<<4))
+#define RAM_SET_FIELD1_MACRO(o,val)                                     \
+  do {                                                                  \
+    ram_set (OBJ_TO_RAM_ADDR(o,1), (val) & 0xff);                       \
+    RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xfc) + (((val) >> 8) & 0x03)); \
+  } while (0)
+#define RAM_SET_FIELD2_MACRO(o,val)                                     \
+  do {                                                                  \
+    ram_set (OBJ_TO_RAM_ADDR(o,2), (val) & 0xff);                       \
+    RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xf3) + (((val) >> 6) & 0x0c)); \
+  } while (0)
+#define RAM_SET_FIELD3_MACRO(o,val)                                     \
+  do {                                                                  \
+    ram_set (OBJ_TO_RAM_ADDR(o,3), (val) & 0xff);                       \
+    RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xcf) + (((val) >> 4) & 0x30)); \
+  } while (0)
+#define ROM_GET_FIELD1_MACRO(o)                                         \
+  (rom_get (OBJ_TO_ROM_ADDR(o,1)) + ((ROM_GET_FIELD0_MACRO(o) & 0x03)<<8))
+#define ROM_GET_FIELD2_MACRO(o)                                         \
+  (rom_get (OBJ_TO_ROM_ADDR(o,2)) + ((ROM_GET_FIELD0_MACRO(o) & 0x0c)<<6))
+#define ROM_GET_FIELD3_MACRO(o)                                         \
+  (rom_get (OBJ_TO_ROM_ADDR(o,3)) + ((ROM_GET_FIELD0_MACRO(o) & 0x30)<<4))
 #endif
 
 uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
@@ -708,17 +708,17 @@ void sweep (void)
   while (visit >= MIN_RAM_ENCODING)
     {
       if (ram_get_gc_tags (visit) == GC_TAG_UNMARKED) /* unmarked? */
-	{
-	  ram_set_field1 (visit, free_list);
-	  free_list = visit;
-	}
+        {
+          ram_set_field1 (visit, free_list);
+          free_list = visit;
+        }
       else
-	{
-	  ram_set_gc_tags (visit, GC_TAG_UNMARKED);
+        {
+          ram_set_gc_tags (visit, GC_TAG_UNMARKED);
 #ifdef DEBUG_GC
-	  n++;
+          n++;
 #endif
-	}
+        }
       visit--;
     }
 
@@ -934,9 +934,9 @@ void show (obj o)
             parent_cont = rom_get_field2 (o);
 
           if (IN_RAM(o))
-	    pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (o);
+            pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (o);
           else
-	    pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + rom_get_field3 (o);
+            pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + rom_get_field3 (o);
 
           printf ("{0x%04x ", pc);
           show (env);
@@ -982,9 +982,9 @@ void prim_numberp (void)
   else
     {
       if (IN_RAM(arg1))
-	arg1 = encode_bool (RAM_BIGNUM(arg1));
+        arg1 = encode_bool (RAM_BIGNUM(arg1));
       else if (IN_ROM(arg1))
-	arg1 = encode_bool (ROM_BIGNUM(arg1));
+        arg1 = encode_bool (ROM_BIGNUM(arg1));
       else
         arg1 = OBJ_FALSE;
     }
@@ -1236,9 +1236,124 @@ void prim_list2string (void)
   arg1 = alloc_ram_cell_init (STRING_FIELD0, arg1, 0, 0);
 }
 
-void prim_cast_int (void) /* ADDED */
+void prim_tripletp (void) // ADDED
 {
-  arg1 = encode_int (arg1);
+  if (IN_RAM(arg1))
+    arg1 = encode_bool (RAM_TRIPLET(arg1)); // we only have byte vectors
+  else if (IN_ROM(arg1))
+    arg1 = encode_bool (ROM_TRIPLET(arg1));
+  else
+    arg1 = OBJ_FALSE;
+}
+
+void prim_triplet (void) // ADDED
+{
+  arg1 = alloc_ram_cell_init (TRIPLET_FIELD0, arg1, arg2, arg3);
+}
+
+void prim_fst (void) // ADDED, are 3 primitives too much ? maybe, since we don't have that much available primitives, but since we're going to end up doing a LOT of these, might as well have them as fast and small as possible
+{
+  if (IN_RAM(arg1))
+    {
+      if (!RAM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      arg1 = ram_get_field1 (arg1);
+    }
+  else if (IN_ROM(arg1))
+    {
+      if (!ROM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      arg1 = rom_get_field1 (arg1);
+    }
+  else
+    TYPE_ERROR("triplet");
+}
+
+void prim_snd (void) // ADDED
+{
+  if (IN_RAM(arg1))
+    {
+      if (!RAM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      arg1 = ram_get_field2 (arg1);
+    }
+  else if (IN_ROM(arg1))
+    {
+      if (!ROM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      arg1 = rom_get_field2 (arg1);
+    }
+  else
+    TYPE_ERROR("triplet");
+}
+
+void prim_trd (void) // ADDED
+{
+  if (IN_RAM(arg1))
+    {
+      if (!RAM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      arg1 = ram_get_field3 (arg1);
+    }
+  else if (IN_ROM(arg1))
+    {
+      if (!ROM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      arg1 = rom_get_field3 (arg1);
+    }
+  else
+    TYPE_ERROR("triplet");
+}
+
+void prim_set_fst (void) // ADDED
+{
+  if (IN_RAM(arg1))
+    {
+      if (!RAM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      ram_set_field1 (arg1, arg2);
+      arg1 = OBJ_FALSE;
+      arg2 = OBJ_FALSE;
+    }
+  else
+    TYPE_ERROR("triplet");
+}
+
+void prim_set_snd (void) // ADDED
+{
+  if (IN_RAM(arg1))
+    {
+      if (!RAM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+
+      ram_set_field2 (arg1, arg2);
+      arg1 = OBJ_FALSE;
+      arg2 = OBJ_FALSE;
+    }
+  else
+    TYPE_ERROR("triplet");
+}
+
+void prim_set_trd (void) // ADDED
+{
+  if (IN_RAM(arg1))
+    {
+      if (!RAM_TRIPLET(arg1))
+        TYPE_ERROR("triplet");
+      
+      ram_set_field3 (arg1, arg2);
+      arg1 = OBJ_FALSE;
+      arg2 = OBJ_FALSE;
+    }
+  else
+    TYPE_ERROR("triplet");
 }
 
 
@@ -1355,8 +1470,8 @@ void prim_led (void)
 
 #ifdef __18CXX
 
-  LATBbits.LATB5 = (a1 == 1); 
-  LATBbits.LATB4 = (a1 == 2); 
+  LATBbits.LATB5 = (a1 == 1);
+  LATBbits.LATB4 = (a1 == 2);
 
 #endif
 
@@ -1394,10 +1509,10 @@ void prim_getchar_wait (void)
       fw_ir_rx_stdio_char ();
 
       if (seq_num != STDIO_RX_SEQ_NUM)
-	{
-	  arg1 = encode_int (FW_VALUE_LO);
-	  break;
-	}
+        {
+          arg1 = encode_int (FW_VALUE_LO);
+          break;
+        }
     } while (read_clock () < a1);
 
 #endif
@@ -1411,10 +1526,10 @@ void prim_getchar_wait (void)
   do
     {
       if (_kbhit ())
-	{
-	  arg1 = encode_int (_getch ());
-	  break;
-	}
+        {
+          arg1 = encode_int (_getch ());
+          break;
+        }
     } while (read_clock () < a1);
 
 
@@ -1555,8 +1670,8 @@ int read_hex_file (char *filename)
     {
       while ((c = fgetc (f)) != EOF)
         {
-	  if ((c == '\r') || (c == '\n'))
-	    continue;
+          if ((c == '\r') || (c == '\n'))
+            continue;
 
           if (c != ':' ||
               (len = read_hex_byte (f)) < 0 ||
@@ -1623,7 +1738,7 @@ int read_hex_file (char *filename)
               break;
             }
 
-	  c = fgetc (f);
+          c = fgetc (f);
 
           if ((c != '\r') && (c != '\n'))
             break;
@@ -1650,12 +1765,12 @@ int read_hex_file (char *filename)
 
 #define FETCH_NEXT_BYTECODE() bytecode = rom_get (pc++)
 
-#define BEGIN_DISPATCH() \
-dispatch: \
-  IF_TRACE(show_state (pc)); \
-  FETCH_NEXT_BYTECODE(); \
-  bytecode_hi4 = bytecode & 0xf0; \
-  bytecode_lo4 = bytecode & 0x0f; \
+#define BEGIN_DISPATCH()                        \
+  dispatch:                                     \
+  IF_TRACE(show_state (pc));                    \
+  FETCH_NEXT_BYTECODE();                        \
+  bytecode_hi4 = bytecode & 0xf0;               \
+  bytecode_lo4 = bytecode & 0x0f;               \
   switch (bytecode_hi4 >> 4) {
 
 #define END_DISPATCH() }
@@ -1691,56 +1806,56 @@ dispatch: \
 #ifdef WORKSTATION
 
 char *prim_name[48] =
-{
-  "prim #%number?",
-  "prim #%+",
-  "prim #%-",
-  "prim #%*",
-  "prim #%quotient",
-  "prim #%remainder",
-  "prim #%neg",
-  "prim #%=",
-  "prim #%<",
-  "prim #%<=",
-  "prim #%>",
-  "prim #%>=",
-  "prim #%pair?",
-  "prim #%cons",
-  "prim #%car",
-  "prim #%cdr",
-  "prim #%set-car!",
-  "prim #%set-cdr!",
-  "prim #%null?",
-  "prim #%eq?",
-  "prim #%not",
-  "prim #%get-cont",
-  "prim #%graft-to-cont",
-  "prim #%return-to-cont",
-  "prim #%halt",
-  "prim #%symbol?",
-  "prim #%string?",
-  "prim #%string->list",
-  "prim #%list->string",
-  "prim #%cast-int", /* ADDED, was "prim #%prim29", */
-  "prim #%prim30",
-  "prim #%prim31",
-  "prim #%print",
-  "prim #%clock",
-  "prim #%motor",
-  "prim #%led",
-  "prim #%getchar-wait",
-  "prim #%putchar",
-  "prim #%light",
-  "prim #%prim39",
-  "prim #%prim40",
-  "prim #%prim41",
-  "prim #%prim42",
-  "prim #%prim43",
-  "push-constant [long]",
-  "shift",
-  "pop",
-  "return",
-};
+  {
+    "prim #%number?",
+    "prim #%+",
+    "prim #%-",
+    "prim #%*",
+    "prim #%quotient",
+    "prim #%remainder",
+    "prim #%neg",
+    "prim #%=",
+    "prim #%<",
+    "prim #%<=", // TODO get rid of this and >= for the or and xor primitives ?
+    "prim #%>",
+    "prim #%>=",
+    "prim #%pair?",
+    "prim #%cons",
+    "prim #%car",
+    "prim #%cdr",
+    "prim #%set-car!",
+    "prim #%set-cdr!",
+    "prim #%null?",
+    "prim #%eq?",
+    "prim #%not",
+    "prim #%get-cont",
+    "prim #%graft-to-cont",
+    "prim #%return-to-cont",
+    "prim #%halt",
+    "prim #%symbol?",
+    "prim #%string?",
+    "prim #%string->list",
+    "prim #%list->string",
+    "prim #%set-fst!", // ADDED
+    "prim #%set-snd!", // ADDED
+    "prim #%set-trd!", // ADDED
+    "prim #%print",
+    "prim #%clock",
+    "prim #%motor",
+    "prim #%led",
+    "prim #%getchar-wait",
+    "prim #%putchar",
+    "prim #%light",
+    "prim #%triplet?", // ADDED
+    "prim #%triplet", // ADDED
+    "prim #%fst", // ADDED
+    "prim #%snd", // ADDED
+    "prim #%trd", // ADDED
+    "push-constant [long]",
+    "shift",
+    "pop",
+    "return",
+  };
 
 #endif
 
@@ -1810,7 +1925,7 @@ void handle_arity_and_rest_param (void)
         {
           arg4 = POP();
 
-	  arg3 = cons (arg4, arg3);
+          arg3 = cons (arg4, arg3);
           arg4 = OBJ_FALSE;
 
           na--;
@@ -1838,9 +1953,9 @@ void build_env (void)
 void save_cont (void)
 {
   cont = alloc_ram_cell_init ((uint8)(pc >> 8) - ((CODE_START>>8)-PROCEDURE_FIELD0),
-			      env,
-			      cont,
-			      (uint8)pc);
+                              env,
+                              cont,
+                              (uint8)pc);
 }
 
 void interpreter (void)
@@ -1887,7 +2002,7 @@ void interpreter (void)
     }
 
   arg1 = ram_get_field1 (arg1);
-  
+
   PUSH_ARG1();
 
   DISPATCH();
@@ -1908,7 +2023,7 @@ void interpreter (void)
     }
 
   arg1 = ram_get_field1 (arg1);
-  
+
   PUSH_ARG1();
 
   DISPATCH();
@@ -2049,9 +2164,9 @@ void interpreter (void)
   entry = ((rom_addr)bytecode_lo4 << 8) + bytecode;
 
   arg1 = alloc_ram_cell_init ((uint8)(entry >> 8) + PROCEDURE_FIELD0,
-			      arg3,
-			      arg2,
-			      (uint8)entry);
+                              arg3,
+                              arg2,
+                              (uint8)entry);
 
   PUSH_ARG1();
 
@@ -2068,7 +2183,7 @@ void interpreter (void)
   switch (bytecode_lo4)
     {
     case 0:
-                     arg1 = POP();  prim_numberp ();  PUSH_ARG1();  break;
+      arg1 = POP();  prim_numberp ();  PUSH_ARG1();  break;
     case 1:
       arg2 = POP();  arg1 = POP();  prim_add ();      PUSH_ARG1();  break;
     case 2:
@@ -2080,7 +2195,7 @@ void interpreter (void)
     case 5:
       arg2 = POP();  arg1 = POP();  prim_rem ();      PUSH_ARG1();  break;
     case 6:
-                     arg1 = POP();  prim_neg ();      PUSH_ARG1();  break;
+      arg1 = POP();  prim_neg ();      PUSH_ARG1();  break;
     case 7:
       arg2 = POP();  arg1 = POP();  prim_eq ();       PUSH_ARG1();  break;
     case 8:
@@ -2092,13 +2207,13 @@ void interpreter (void)
     case 11:
       arg2 = POP();  arg1 = POP();  prim_ge ();       PUSH_ARG1();  break;
     case 12:
-                     arg1 = POP();  prim_pairp ();    PUSH_ARG1();  break;
+      arg1 = POP();  prim_pairp ();    PUSH_ARG1();  break;
     case 13:
       arg2 = POP();  arg1 = POP();  prim_cons ();     PUSH_ARG1();  break;
     case 14:
-                     arg1 = POP();  prim_car ();      PUSH_ARG1();  break;
+      arg1 = POP();  prim_car ();      PUSH_ARG1();  break;
     case 15:
-                     arg1 = POP();  prim_cdr ();      PUSH_ARG1();  break;
+      arg1 = POP();  prim_cdr ();      PUSH_ARG1();  break;
     }
 
   DISPATCH();
@@ -2115,11 +2230,11 @@ void interpreter (void)
     case 1:
       arg2 = POP();  arg1 = POP();  prim_set_cdr ();                break;
     case 2:
-                     arg1 = POP();  prim_nullp ();    PUSH_ARG1();  break;
+      arg1 = POP();  prim_nullp ();    PUSH_ARG1();  break;
     case 3:
       arg2 = POP();  arg1 = POP();  prim_eqp ();      PUSH_ARG1();  break;
     case 4:
-                     arg1 = POP();  prim_not ();      PUSH_ARG1();  break;
+      arg1 = POP();  prim_not ();      PUSH_ARG1();  break;
     case 5:
       /* prim #%get-cont */
       arg1 = cont;
@@ -2163,28 +2278,30 @@ void interpreter (void)
       return;
     case 9:
       /* prim #%symbol? */
-                     arg1 = POP();  prim_symbolp ();  PUSH_ARG1();  break;
+      arg1 = POP();  prim_symbolp ();  PUSH_ARG1();  break;
     case 10:
       /* prim #%string? */
-                     arg1 = POP();  prim_stringp ();  PUSH_ARG1();  break;
+      arg1 = POP();  prim_stringp ();  PUSH_ARG1();  break;
     case 11:
       /* prim #%string->list */
-                     arg1 = POP();  prim_string2list ();  PUSH_ARG1();  break;
+      arg1 = POP();  prim_string2list ();  PUSH_ARG1();  break;
     case 12:
       /* prim #%list->string */
-                     arg1 = POP();  prim_list2string ();  PUSH_ARG1();  break;
+      arg1 = POP();  prim_list2string ();  PUSH_ARG1();  break;
+      //#if 0
     case 13:
-      /* prim #%cast-int ADDED */
-      arg1 = POP(); prim_cast_int (); PUSH_ARG1(); break;
+      /* prim #%set-fst! */ // ADDED
+      arg2 = POP(); arg1 = POP(); prim_set_fst (); PUSH_ARG1();
       break;
-#if 0
     case 14:
-      /* prim #%prim30 */
+      /* prim #%set-snd! */ // ADDED
+      arg2 = POP(); arg1 = POP(); prim_set_snd (); PUSH_ARG1();
       break;
     case 15:
-      /* prim #%prim31 */
+      /* prim #%set-trd! */ // ADDED
+      arg2 = POP(); arg1 = POP(); prim_set_trd (); PUSH_ARG1();
       break;
-#endif
+      // #endif
     }
 
   DISPATCH();
@@ -2219,18 +2336,28 @@ void interpreter (void)
     case 6:
       /* prim #%light */
       prim_light ();  PUSH_ARG1();  break;
-#if 0
-    case 7:
+      //#if 0
+    case 7: // ADDED
+      /* prim #%triplet? */
+      arg1 = POP(); prim_tripletp (); PUSH_ARG1();
       break;
-    case 8:
+    case 8: // ADDED
+      /* prim #%triplet */
+      arg3 = POP(); arg2 = POP(); arg1 = POP(); prim_triplet (); PUSH_ARG1();
       break;
-    case 9:
+    case 9: // ADDED
+      /* prim #%fst */
+      arg1 = POP(); prim_fst (); PUSH_ARG1();
       break;
-    case 10:
+    case 10: // ADDED
+      /* prim #%snd */
+      arg1 = POP(); prim_snd (); PUSH_ARG1();
       break;
-    case 11:
+    case 11: // ADDED
+      /* prim #%trd */
+      arg1 = POP(); prim_trd (); PUSH_ARG1();
       break;
-#endif
+      //#endif
     case 12:
       /* push-constant [long] */
       FETCH_NEXT_BYTECODE();
@@ -2313,22 +2440,22 @@ int main (int argc, char *argv[])
       int i;
 
       if (rom_get (CODE_START+0) != 0xfb ||
-	  rom_get (CODE_START+1) != 0xd7)
-	printf ("*** The hex file was not compiled with PICOBIT\n");
+          rom_get (CODE_START+1) != 0xd7)
+        printf ("*** The hex file was not compiled with PICOBIT\n");
       else
-	{
+        {
 #if 0
-	  for (i=0; i<8192; i++)
-	    if (rom_get (i) != 0xff)
-	      printf ("rom_mem[0x%04x] = 0x%02x\n", i, rom_get (i));
+          for (i=0; i<8192; i++)
+            if (rom_get (i) != 0xff)
+              printf ("rom_mem[0x%04x] = 0x%02x\n", i, rom_get (i));
 #endif
 
-	  interpreter ();
+          interpreter ();
 
 #ifdef DEBUG_GC
-	  printf ("**************** memory needed = %d\n", max_live+1);
+          printf ("**************** memory needed = %d\n", max_live+1);
 #endif
-	}
+        }
     }
 
   return errcode;
@@ -2366,9 +2493,9 @@ extern near char FPFLAGS;
 void
 _entry (void)
 {
-_asm goto _startup _endasm
+  _asm goto _startup _endasm
 
-}
+    }
 #pragma code _startup_scn
 #endif
 
@@ -2379,8 +2506,8 @@ _startup (void)
     // Initialize the stack pointer
     lfsr 1, _stack lfsr 2, _stack clrf TBLPTRU, 0 // 1st silicon doesn't do this on POR
     bcf FPFLAGS,RND,0 // Initialize rounding flag for floating point libs
-    
-    _endasm 
+
+    _endasm
     _do_cinit ();
 
   // Call the user's main routine
@@ -2400,9 +2527,9 @@ extern far rom struct
     unsigned long to;
     unsigned long size;
   }
-  entries[];
+    entries[];
 }
-_cinit;
+  _cinit;
 
 #pragma code _cinit_scn
 void
@@ -2426,107 +2553,107 @@ _do_cinit (void)
     tblrdpostinc
     movf TABLAT, 0, 0
     movwf curr_entry+1, 1
-  _endasm
+    _endasm
     //while (curr_entry)
     //{
     test:
-    _asm
-     bnz 3
+  _asm
+    bnz 3
     tstfsz curr_entry, 1
     bra 1
     _endasm
     goto done;
-      /* Count down so we only have to look up the data in _cinit
-       * once.
-       *
-       * At this point we know that TBLPTR points to the top of the current
-       * entry in _cinit, so we can just start reading the from, to, and
-       * size values.
-       */
-      _asm
-	/* read the source address */
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf prom, 1
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf prom+1, 1
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf prom+2, 1
-	/* skip a byte since it's stored as a 32bit int */
-	tblrdpostinc
-	/* read the destination address directly into FSR0 */
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf FSR0L, 0
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf FSR0H, 0
-	/* skip two bytes since it's stored as a 32bit int */
-	tblrdpostinc
-	tblrdpostinc
-	/* read the destination address directly into FSR0 */
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf curr_byte, 1
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf curr_byte+1, 1
-	/* skip two bytes since it's stored as a 32bit int */
-	tblrdpostinc
-	tblrdpostinc
-      _endasm  
-      //prom = data_ptr->from;
-      //FSR0 = data_ptr->to;
-      //curr_byte = (unsigned short) data_ptr->size;
-      /* the table pointer now points to the next entry. Save it
-       * off since we'll be using the table pointer to do the copying
-       * for the entry.
-       */
-      data_ptr = TBLPTR;
-      
-      /* now assign the source address to the table pointer */
-      TBLPTR = prom;
+  /* Count down so we only have to look up the data in _cinit
+   * once.
+   *
+   * At this point we know that TBLPTR points to the top of the current
+   * entry in _cinit, so we can just start reading the from, to, and
+   * size values.
+   */
+  _asm
+    /* read the source address */
+    tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf prom, 1
+    tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf prom+1, 1
+    tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf prom+2, 1
+    /* skip a byte since it's stored as a 32bit int */
+    tblrdpostinc
+    /* read the destination address directly into FSR0 */
+    tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf FSR0L, 0
+    tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf FSR0H, 0
+    /* skip two bytes since it's stored as a 32bit int */
+    tblrdpostinc
+    tblrdpostinc
+    /* read the destination address directly into FSR0 */
+    tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf curr_byte, 1
+    tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf curr_byte+1, 1
+    /* skip two bytes since it's stored as a 32bit int */
+    tblrdpostinc
+    tblrdpostinc
+    _endasm
+    //prom = data_ptr->from;
+    //FSR0 = data_ptr->to;
+    //curr_byte = (unsigned short) data_ptr->size;
+    /* the table pointer now points to the next entry. Save it
+     * off since we'll be using the table pointer to do the copying
+     * for the entry.
+     */
+    data_ptr = TBLPTR;
 
-      /* do the copy loop */
-      _asm
-        // determine if we have any more bytes to copy
-	movlb curr_byte
-	movf curr_byte, 1, 1
-copy_loop:
-	bnz 2 // copy_one_byte
-	movf curr_byte + 1, 1, 1
-	bz 7 // done_copying
+  /* now assign the source address to the table pointer */
+  TBLPTR = prom;
 
-copy_one_byte:
-	tblrdpostinc
-	movf TABLAT, 0, 0
-	movwf POSTINC0, 0
+  /* do the copy loop */
+  _asm
+    // determine if we have any more bytes to copy
+    movlb curr_byte
+    movf curr_byte, 1, 1
+    copy_loop:
+  bnz 2 // copy_one_byte
+    movf curr_byte + 1, 1, 1
+    bz 7 // done_copying
 
-	// decrement byte counter
-	decf curr_byte, 1, 1
-	bc -8 // copy_loop
-        decf curr_byte + 1, 1, 1
-	bra -7 // copy_one_byte
+    copy_one_byte:
+  tblrdpostinc
+    movf TABLAT, 0, 0
+    movwf POSTINC0, 0
 
-done_copying:
+    // decrement byte counter
+    decf curr_byte, 1, 1
+    bc -8 // copy_loop
+    decf curr_byte + 1, 1, 1
+    bra -7 // copy_one_byte
 
-      _endasm
-      /* restore the table pointer for the next entry */
-      TBLPTR = data_ptr;
-      /* next entry... */
-      curr_entry--;
-      goto test;
-done:
-;
+    done_copying:
+
+  _endasm
+    /* restore the table pointer for the next entry */
+    TBLPTR = data_ptr;
+  /* next entry... */
+  curr_entry--;
+  goto test;
+ done:
+  ;
 }
 
 #pragma code picobit_boot=0x001ffa
 void _picobit_boot (void)
 {
-_asm goto _startup _endasm
-}
+  _asm goto _startup _endasm
+    }
 
 #endif
 
