@@ -150,6 +150,7 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 #define CODE_START 0x2000
 
 #define GLOVARS 16
+// TODO raise ?
 
 #ifdef DEBUG
 #define IF_TRACE(x) x
@@ -204,7 +205,6 @@ typedef uint16 rom_addr;
 typedef word obj;
 
 /*---------------------------------------------------------------------------*/
-
 
 #define MIN_RAM_ENCODING 128
 #define MAX_RAM_ENCODING 255
@@ -1055,12 +1055,12 @@ void prim_lt (void)
   arg2 = OBJ_FALSE;
 }
 
-void prim_le (void)
-{
-  decode_2_int_args ();
-  arg1 = encode_bool (a1 <= a2);
-  arg2 = OBJ_FALSE;
-}
+/* void prim_le (void) // ADDED, is not a primitive anymore */
+/* { */
+/*   decode_2_int_args (); */
+/*   arg1 = encode_bool (a1 <= a2); */
+/*   arg2 = OBJ_FALSE; */
+/* } */
 
 void prim_gt (void)
 {
@@ -1069,12 +1069,12 @@ void prim_gt (void)
   arg2 = OBJ_FALSE;
 }
 
-void prim_ge (void)
-{
-  decode_2_int_args ();
-  arg1 = encode_bool (a1 >= a2);
-  arg2 = OBJ_FALSE;
-}
+/* void prim_ge (void) // ADDED, is not a primitive anymore */
+/* { */
+/*   decode_2_int_args (); */
+/*   arg1 = encode_bool (a1 >= a2); */
+/*   arg2 = OBJ_FALSE; */
+/* } */
 
 /*---------------------------------------------------------------------------*/
 
@@ -1354,6 +1354,22 @@ void prim_set_trd (void) // ADDED
     }
   else
     TYPE_ERROR("triplet");
+}
+
+void prim_ior (void) // ADDED
+{
+  a1 = decode_int (arg1);
+  a2 = decode_int (arg2);
+  arg1 = encode_int (a1 | a2);
+  arg2 = OBJ_FALSE;
+}
+
+void prim_xor (void) // ADDED
+{
+  a1 = decode_int (arg1);
+  a2 = decode_int (arg2);
+  arg1 = encode_int (a1 ^ a2);
+  arg2 = OBJ_FALSE;
 }
 
 
@@ -1816,9 +1832,9 @@ char *prim_name[48] =
     "prim #%neg",
     "prim #%=",
     "prim #%<",
-    "prim #%<=", // TODO get rid of this and >= for the or and xor primitives ?
+    "prim #%ior", // ADDED, was "prim #%<=",
     "prim #%>",
-    "prim #%>=",
+    "prim #%xor", // ADDED, was "prim #%>=",
     "prim #%pair?",
     "prim #%cons",
     "prim #%car",
@@ -2201,11 +2217,13 @@ void interpreter (void)
     case 8:
       arg2 = POP();  arg1 = POP();  prim_lt ();       PUSH_ARG1();  break;
     case 9:
-      arg2 = POP();  arg1 = POP();  prim_le ();       PUSH_ARG1();  break;
+      /* arg2 = POP();  arg1 = POP();  prim_le ();       PUSH_ARG1();  break; */
+      arg2 = POP(); arg1 = POP(); prim_ior (); PUSH_ARG1(); break; // ADDED
     case 10:
       arg2 = POP();  arg1 = POP();  prim_gt ();       PUSH_ARG1();  break;
     case 11:
-      arg2 = POP();  arg1 = POP();  prim_ge ();       PUSH_ARG1();  break;
+      /* arg2 = POP();  arg1 = POP();  prim_ge ();       PUSH_ARG1();  break; */
+      arg2 = POP(); arg1 = POP(); prim_xor (); PUSH_ARG1(); break; // ADDED
     case 12:
       arg1 = POP();  prim_pairp ();    PUSH_ARG1();  break;
     case 13:

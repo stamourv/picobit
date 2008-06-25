@@ -211,9 +211,11 @@
           (make-var '#%neg #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%= #t '() '() '() #f (make-primitive 2 #f #f))
           (make-var '#%< #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%<= #t '() '() '() #f (make-primitive 2 #f #f))
+          ;; (make-var '#%<= #t '() '() '() #f (make-primitive 2 #f #f))
+	  (make-var '#%ior #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
           (make-var '#%> #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%>= #t '() '() '() #f (make-primitive 2 #f #f))
+          ;; (make-var '#%>= #t '() '() '() #f (make-primitive 2 #f #f))
+	  (make-var '#%xor #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
           (make-var '#%pair? #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%cons #t '() '() '() #f (make-primitive 2 #f #f))
           (make-var '#%car #t '() '() '() #f (make-primitive 1 #f #f))
@@ -354,7 +356,6 @@
     (parse-top-list body
                     (env-extend-renamings env renamings))))
 
-;; (define (repeat n v) (if (= n 0) '() (cons v (repeat (- n 1) v)))) ;; ADDED
 (define parse
   (lambda (use expr env)
     (cond ((self-eval? expr)
@@ -364,17 +365,6 @@
                   (r (make-ref #f '() var)))
              (var-refs-set! var (cons r (var-refs var)))
              r))
-;;; 	  ((and (pair? expr) ;; ADDED, doesn't work if we have vars in the call, we'll need a true macroexpander, or at least put htis as a primitive, not a special form
-;;; 		(eq? (car expr) 'u8vector))
-;;; 	   (parse use ; call string
-;;; 		  (list->string (map integer->char (cdr expr)))
-;;; 		  env))
-;;; 	  ((and (pair? expr) ;; ADDED, when we have a macroexpander, remove
-;;; 		(eq? (car expr) 'make-u8vector))
-;;; 	   (parse use
-;;; 		  `(u8vector ,@(repeat (eval (cadr expr)) (caddr expr)))
-;;; 		  ;; TODO the eval is a BIG hack to compensate for the lack of macros, once, we have an addition as first arg, but its result is still known at compile time
-;;; 		  env))
 	  ((and (pair? expr) ;; ADDED, when we have a true macroexpander, get rid
 		(eq? (car expr) 'cond))
 	   (parse use
@@ -393,9 +383,7 @@
                    (node-parent-set! val r)
                    (var-sets-set! var (cons r (var-sets var)))
                    r)
-		 (begin ;; ADDED, only had the compiler error
-		   (print var)
-		   (compiler-error "set! is only permitted on global variables")))))
+		 (compiler-error "set! is only permitted on global variables"))))
           ((and (pair? expr)
                 (eq? (car expr) 'quote))
            (make-cst #f '() (cadr expr)))
@@ -1752,7 +1740,7 @@
       (let ((bbs (remove-useless-bbs! bbs)))
         (reorder! bbs)))))
 
-(define expand-loads ;; ADDED, doesn't work with loads in a loaded file
+(define expand-loads ;; ADDED
   (lambda (exprs)
     (map (lambda (e)
 	   (if (eq? (car e) 'load)
@@ -2425,7 +2413,7 @@
 (define min-fixnum -5)
 (define max-fixnum 40)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
-(define min-ram-encoding 128)
+(define min-ram-encoding 128) ;; TODO not enough registers for all our globals, have one structure in the compiler to store all of them, or change the code to have structures inside ? right now, the stack would need 1245
 (define max-ram-encoding 255)
 
 (define code-start #x2000)
@@ -2537,10 +2525,11 @@
                          (vector-ref (cdr y) 2))))))
     (let loop ((i min-rom-encoding)
                (lst csts))
-      (if (null? lst)
-          (if (> i min-ram-encoding)
-              (compiler-error "too many constants")
-              csts)
+      (if (null? lst) ;; ADDED debug
+	  (begin (print i " constants\n") csts)
+          ;; (if (> i min-ram-encoding)
+;; 	      (compiler-error "too many constants")
+;; 	      csts)
           (begin
             (vector-set! (cdr (car lst)) 0 i)
             (loop (+ i 1)
@@ -2608,19 +2597,26 @@
                   (asm-8 (+ #x20 n))))
 
             (define (push-global n)
-              (if (> n 15)
-                  (compiler-error "too many global variables")
-                  (asm-8 (+ #x40 n))))
+	      (print n " globals\n") ;; TODO this won't print the number but rather the number of the global that is pushed
+	      (asm-8 (+ #x40 n)) ;; TODO have this number (15) as a constant somewhere instead as a magic number, since the next function uses it too
+              ;; (if (> n 15) ;; ADDED prevented the stack from compiling
+	      ;;     (compiler-error "too many global variables")
+	      ;;     (asm-8 (+ #x40 n)))
+	      )
 
             (define (set-global n)
-              (if (> n 15)
-                  (compiler-error "too many global variables")
-                  (asm-8 (+ #x50 n))))
+	      (asm-8 (+ #x50 n))
+              ;; (if (> n 15) ;; ADDED prevented the stack from compiling
+	      ;;     (compiler-error "too many global variables")
+	      ;;     (asm-8 (+ #x50 n)))
+	      )
 
             (define (call n)
-              (if (> n 15)
-                  (compiler-error "call has too many arguments")
-                  (asm-8 (+ #x60 n))))
+	      (asm-8 (+ #x60 n))
+              ;; (if (> n 15) ;; ADDED, caused problems with forged packets, which are long calls to u8vector, won't happen in practice, I think, not with u8vector at least
+	      ;;     (compiler-error "call has too many arguments")
+	      ;;     (asm-8 (+ #x60 n)))
+	      )
 
             (define (jump n)
               (if (> n 15)
@@ -2654,9 +2650,11 @@
             (define (prim.neg)            (prim 6))
             (define (prim.=)              (prim 7))
             (define (prim.<)              (prim 8))
-            (define (prim.<=)             (prim 9))
+            ;; (define (prim.<=)             (prim 9))
+	    (define (prim.ior)            (prim 9)) ;; ADDED
             (define (prim.>)              (prim 10))
-            (define (prim.>=)             (prim 11))
+            ;; (define (prim.>=)             (prim 11))
+	    (define (prim.xor)            (prim 11)) ;; ADDED
             (define (prim.pair?)          (prim 12))
             (define (prim.cons)           (prim 13))
             (define (prim.car)            (prim 14))
@@ -2805,9 +2803,11 @@
                              ((#%neg)            (prim.neg))
                              ((#%=)              (prim.=))
                              ((#%<)              (prim.<))
-                             ((#%<=)             (prim.<=))
+                             ;; ((#%<=)             (prim.<=))
+			     ((#%ior)            (prim.ior)) ;; ADDED
                              ((#%>)              (prim.>))
-                             ((#%>=)             (prim.>=))
+                             ;; ((#%>=)             (prim.>=))
+			     ((#%xor)            (prim.xor)) ;; ADDED
                              ((#%pair?)          (prim.pair?))
                              ((#%cons)           (prim.cons))
                              ((#%car)            (prim.car))

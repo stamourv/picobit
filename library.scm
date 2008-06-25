@@ -58,7 +58,8 @@
 
 (define <=
   (lambda (x y)
-    (#%<= x y)))
+    ;; (#%<= x y) ;; ADDED not a primitive anymore
+    (or (< x y) (= x y))))
 
 (define >
   (lambda (x y)
@@ -66,7 +67,8 @@
 
 (define >=
   (lambda (x y)
-    (#%>= x y)))
+    ;; (#%>= x y) ;; ADDED, not a primitive anymore
+    (or (> x y) (= x y))))
 
 (define pair?
   (lambda (x)
@@ -182,13 +184,13 @@
 
 (define #%substring-aux1
   (lambda (lst n)
-    (if (#%>= n 1) ;; TODO had an off-by-one
+    (if (>= n 1) ;; TODO had an off-by-one
         (#%substring-aux1 (#%cdr lst) (#%- n 1))
         lst)))
 
 (define #%substring-aux2
   (lambda (lst n)
-    (if (#%>= n 1) ;; TODO had an off-by-one
+    (if (>= n 1) ;; TODO had an off-by-one
         (#%cons (#%car lst) (#%substring-aux2 (#%cdr lst) (#%- n 1)))
         '())))
 
@@ -375,7 +377,11 @@
 	(if (and (pair? x) (pair? y))
 	    (and (equal? (car x) (car y))
 		 (equal? (cdr x) (cdr y)))
-	    #f)))) ;; TODO implement for other types too, including vectors
+	    (if (and (triplet? x) (triplet? y))
+		(and (equal? (fst x) (fst y))
+		     (equal? (snd x) (snd y))
+		     (equal? (trd x) (trd y)))
+		#f))))) ;; TODO could this have a problem ?
 
 (define assoc
   (lambda (t l) ;; TODO rewrite once we have cond
@@ -385,6 +391,11 @@
 	    (car l)
 	    (assoc t (cdr l))))))
 
+;; TODO ordinary vectors are never more that 6 elements long in the stack, so implementing them as lists is acceptable
+(define vector list)
+(define vector-ref list-ref)
+(define vector-set! list-set!)
+
 (define triplet? (lambda (t) (#%triplet? t)))
 (define triplet (lambda (x y z) (#%triplet x y z)))
 (define fst (lambda (t) (#%fst t)))
@@ -393,98 +404,37 @@
 (define set-fst! (lambda (t v) (#%set-fst! t v)))
 (define set-snd! (lambda (t v) (#%set-snd! t v)))
 (define set-trd! (lambda (t v) (#%set-trd! t v)))
+;; TODO for tests on gambit
+;; (define (triplet x y z) (vector x y z))
+;; (define (fst t) (vector-ref t 0))
+;; (define (snd t) (vector-ref t 1))
+;; (define (trd t) (vector-ref t 2))
+;; (define (set-fst! t v) (vector-set! t 0 v))
+;; (define (set-snd! t v) (vector-set! t 1 v))
+;; (define (set-trd! t v) (vector-set! t 2 v))
 
 
-;; binary trees, represented by a triplet of the number of elements, the
-;; maximum number of nodes of a tree of this depth (necessary for the search)
-;; and the tree itself built from triplets : (root left right)
-(define b-list ;; TODO name ?
-  (lambda x
-    (let* ((s (length x))
-	   (t (tree-size s)))
-      (triplet s t (b-list-aux s t x)))))
-(define tree-size ; finds the nearest power of 2, going up
-  ;; simple dumb binary search
-  (lambda (n)
-      (if (< n 4096)
-	  (if (< n 128)
-	      (if (< n 16)
-		  (if (< n 4)
-		      (if (< n 2) 1 3)
-		      (if (< n 8) 7 15))
-		  (if (< n 64)
-		      (if (< n 32) 31 63)
-		      127))
-	      (if (< n 1024)
-		  (if (< n 512)
-		      (if (< n 256) 255 511)
-		      1023)
-		  (if (< n 2048) 2047 4095)))
-	  (if (< n 262144)
-	      (if (< n 65536)
-		  (if (< n 32768)
-		      (if (< n 16384) 16383 32767)
-		      65535)
-		  (if (< n 131072) 131071 262143))
-	      (if (< n 2097152)
-		  (if (< n 1048576) 1048575 2097151)
-		  (if (< n 8388608)
-		      (if (< n 4194304) 4194303 8388607)
-		      16777215))))))
-(define b-list-aux
-  (lambda (s t l)
-    (if (null? l)
+(define bitwise-ior (lambda (x y) (#%ior x y)))
+(define bitwise-xor (lambda (x y) (#%xor x y)))
+;; TODO add bitwise-and ? bitwise-not ?
+
+(define current-time (lambda () (clock)))
+(define time->seconds (lambda (t) (quotient t 100))) ;; TODO no floats, is that a problem ?
+
+(define else #t) ; for cond, among others
+
+;; vectors are implemented using r-a-lists
+;; TODO takes only marginally more code space than lists made from triplets, maybe 150 bytes more in the stack (the total is in the order of 10.5k)
+(define u8vector (lambda x (list->u8vector x)))
+(define list->u8vector (lambda (x) (list->r-a-list x)))
+(define u8vector-length (lambda (x) (r-a-length x)))
+(define u8vector-ref (lambda (x y) (r-a-ref x y)))
+(define u8vector-set! (lambda (x y z) (r-a-set! x y z)))
+(define make-u8vector
+  (lambda (n x)
+    (if (= n 0)
 	'()
-	(let* ((left (quotient (- t 1) 2))
-	       (right (- s 1 left))
-	       (parts (partition left (cdr l) '())))
-	  (triplet (car l)
-		   (b-list-aux left left (car parts))
-		   (b-list-aux right (tree-size right) (cdr parts)))))))
-(define partition
-  (lambda (s l acc)
-    (if (= s 0)
-	(cons acc l) ; return both parts
-	(partition (- s 1) (cdr l) (if (null? acc)
-				       (list (car l))
-				       (append acc (list (car l))))))))
-;; TODO for tests
-(define r (b-list 2 4 6 8 10 12 14 16))
-(define (triplet x y z) (vector x y z))
-(define (fst t) (vector-ref t 0))
-(define (snd t) (vector-ref t 1))
-(define (trd t) (vector-ref t 2))
-(define (set-fst! t v) (vector-set! t 0 v))
-(define (set-snd! t v) (vector-set! t 1 v))
-(define (set-trd! t v) (vector-set! t 2 v))
-
-(define b-list-ref
-  (lambda (l i)
-    (if (> i (- (fst l) 1))
-	#f ; out of bounds
-	(b-list-ref-aux (fst l) (snd l) (trd l) i))))
-(define b-list-ref-aux
-  (lambda (s t l i)
-    (if (= i 0)
-	(fst l)
-	(let ((t2 (quotient (- t 1) 2)))
-	  (if (<= i t2)
-	      (b-list-ref-aux t2 t2 (snd l) (- i 1))
-	      (b-list-ref-aux (- s t2 1) t2 (trd l) (- i 1 t2)))))))
-
-(define b-list-set!
-  (lambda (l i v)
-    (if (> i (- (fst l) 1))
-	#f ; out of bounds
-	(b-list-set!-aux (fst l) (snd l) (trd l) i v))))
-(define b-list-set!-aux
-  (lambda (s t l i v)
-    (if (= i 0)
-	(set-fst! l v)
-	(let ((t2 (quotient (- t 1) 2)))
-	  (if (<= i t2)
-	      (b-list-set!-aux t2 t2 (snd l) (- i 1) v)
-	      (b-list-set!-aux (- s t2 1) t2 (trd l) (- i 1 t2) v))))))
+	(r-a-cons x (make-u8vector (- n 1) x)))))
 
 
 ;; implementation of Chris Okasaki's random access lists
@@ -494,14 +444,9 @@
 ;; however, unlike Okasaki, our lists are not purely functional, since we do
 ;; the changes in-place
 
-(define r-a-list
-  (lambda x
-    (list->r-a-list x)))
+(define r-a-list (lambda x (list->r-a-list x)))
 (define list->r-a-list
-  (lambda (l)
-    (if (null? l)
-	'()
-	(r-a-cons (car l) (list->r-a-list (cdr l))))))
+  (lambda (l) (if (null? l) '() (r-a-cons (car l) (list->r-a-list (cdr l))))))
 
 (define r-a-cons
   (lambda (x y)
@@ -515,6 +460,9 @@
 	;; the first 2 trees are not of the same size, insert in front
 	(cons (cons 1 (triplet x '() '()))
 	      y))))
+
+(define r-a-length
+  (lambda (l) (if (null? l) 0 (+ (caar l) (r-a-length (cdr l))))))
 
 (define r-a-ref
   (lambda (r i)
@@ -556,64 +504,6 @@
 	      (r-a-tree-set! s2 (snd r) (- i 1) v)
 	      (r-a-tree-set! s2 (trd r) (- i 1 s2) v))))))
 
-
-;; crude implementation of vectors : a pair containing the length and a list
-;; made from triplets
-;; 2 of the triplet's elements are vector elements, the other points to the
-;; rest. There might be one more element in the vector, since we always fill
-;; up the first 2 elements, but since we store the length, that's not a
-;; problem
-
-(define u8vector-length car)
-
-(define u8vector-ref
-  (lambda (v i)
-    (if (> i (car v))
-	#f ; out of bounds
-	(triplet-list-ref (cdr v) i))))
-(define triplet-list-ref
-  (lambda (t i)
-    (if (= i 0)
-	(fst t)
-	(if (= i 1)
-	    (snd t)
-	    (triplet-list-ref (trd t) (- i 2))))))
-
-(define u8vector-set!
-  (lambda (u i v)
-    (if (> i (car u))
-	#f ; out of bounds
-	(triplet-list-set! (cdr u) i v))))
-(define triplet-list-set!
-  (lambda (t i v)
-    (if (= i 0)
-	(set-fst! t v)
-	(if (= i 1)
-	    (set-snd! t v)
-	    (triplet-list-set! (trd t) (- i 2) v)))))
-
-;; TODO u8vector-rom should be a macro, otherwise, we can't optimise at compile time. actually, maybe we should just do a check to see if all the contents are known, and then put in rom if so, like I think it's done for lists (actually, only if they are quoted)
-
-(define u8vector ;; TODO loops endlessly
-  (lambda x
-    (list->u8vector x)))
-
-(define list->u8vector
-  (lambda (l)
-    (let ((len (length l)))
-      (cons len (list->u8vector-aux len l)))))
-(define list->u8vector-aux
-  (lambda (n l)
-    (triplet (car l)
-	     (if (> n 1) (cadr l) 0)
-	     (if (> n 2) (list->u8vector-aux (- n 2) (cddr l)) 0))))
-
-(define make-u8vector
-  (lambda (n v)
-    (cons n (make-u8vector-aux n v))))
-(define make-u8vector-aux
-  (lambda (n v)
-    (triplet v v (if (> n 2) (make-u8vector-aux (- n 2) v) 0))))
 
 ;; ROM VECTORS
 ;; (define u8vector ;; TODO use chris okasaki's random access lists for mutable vectors, and in-rom vectors (strings) for the rest, these functions are for the in-rom vectors
