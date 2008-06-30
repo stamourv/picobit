@@ -211,10 +211,8 @@
           (make-var '#%neg #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%= #t '() '() '() #f (make-primitive 2 #f #f))
           (make-var '#%< #t '() '() '() #f (make-primitive 2 #f #f))
-          ;; (make-var '#%<= #t '() '() '() #f (make-primitive 2 #f #f))
 	  (make-var '#%ior #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
           (make-var '#%> #t '() '() '() #f (make-primitive 2 #f #f))
-          ;; (make-var '#%>= #t '() '() '() #f (make-primitive 2 #f #f))
 	  (make-var '#%xor #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
           (make-var '#%pair? #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%cons #t '() '() '() #f (make-primitive 2 #f #f))
@@ -675,7 +673,7 @@
                    (append (map var-id params) '())))
      (let ((vars (varset->list (non-global-fv prc))))
 ;       (pp (map var-id vars))
-       (map var-id vars)))));;;;;;;;;;;;;
+       (map var-id vars)))))
 
 ;-----------------------------------------------------------------------------
 
@@ -886,7 +884,7 @@
                (def? node)
                (set? node)
                (prc? node)
-;               (call? node);;;;;;;;;;;;;;;;
+;               (call? node)
                )
            (gen-return (comp-push node ctx)))
 
@@ -950,7 +948,7 @@
                  (if (null? (var-defs var))
                      (compiler-error "undefined variable:" (var-id var))
                      (gen-push-global (var-id var) ctx))
-                 (gen-push-local-var (var-id var) ctx))));;;;;;;;;;;;;
+                 (gen-push-local-var (var-id var) ctx))))
 
           ((or (def? node)
                (set? node))
@@ -1038,9 +1036,12 @@
 
   (if (null? vars)
       (gen-closure label-entry
-                   (gen-push-constant '()
-                                      (gen-push-constant #f ctx)))
-      (gen-closure label-entry
+                   ;; (gen-push-constant '() ;; TODO FOOBAR this is probably where we have to change the size of the pointer to 12 bits, instead of '() #f (#x0200), it should be (#x0020), but is #x20 a constant ? if not, it should be gen push something, actually, looks like it's a fixnum, 24 to be exact
+;;                                       (gen-push-constant #f ctx))
+		   (gen-push-constant #f (gen-push-constant 24 ctx))
+		   ;; TODO ugly hack, probably doesn't even work FOOBAR
+		   )
+      (gen-closure label-entry ;; TODO can a similar hack be done to extend pointer size ? similar to above, that is, or is it even necessary since build calls cons ? maybe for the original empty list ?
                    (build (cdr vars)
                           (gen-push-local-var (car vars) ctx)))))
 
@@ -1200,7 +1201,7 @@
                   (var-refs var))
            prc))))
 
-(define mutable-var?
+(define mutable-var? ;; TODO use it to put immutable globals in rom
   (lambda (var)
     (not (null? (var-sets var)))))
 
@@ -2413,16 +2414,14 @@
 (define min-fixnum -5)
 (define max-fixnum 40)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
-(define min-ram-encoding 128) ;; TODO not enough registers for all our globals, have one structure in the compiler to store all of them, or change the code to have structures inside ? right now, the stack would need 1245
-(define max-ram-encoding 255)
+(define min-ram-encoding 128)
+(define max-ram-encoding 4095)
 
 (define code-start #x2000)
 
-(define (predef-constants)
-  (list))
+(define (predef-constants) (list))
 
-(define (predef-globals)
-  (list))
+(define (predef-globals) (list))
 
 (define (encode-direct obj)
   (cond ((eq? obj #f)
@@ -2444,7 +2443,7 @@
       (char->integer obj)
       obj))
 
-(define (encode-constant obj constants)
+(define (encode-constant obj constants) ;; TODO FOOBAR, this should return a 12 bit value
   (let ((o (translate-constant obj)))
     (let ((e (encode-direct o)))
       (if e
@@ -2525,11 +2524,10 @@
                          (vector-ref (cdr y) 2))))))
     (let loop ((i min-rom-encoding)
                (lst csts))
-      (if (null? lst) ;; ADDED debug
-	  (begin (print i " constants\n") csts)
-          ;; (if (> i min-ram-encoding)
-;; 	      (compiler-error "too many constants")
-;; 	      csts)
+      (if (null? lst)
+          (if (> i min-ram-encoding)
+	      (compiler-error "too many constants")
+	      csts) ;; TODO do some constant propagation, actually, more for globals ?
           (begin
             (vector-set! (cdr (car lst)) 0 i)
             (loop (+ i 1)
@@ -2597,12 +2595,11 @@
                   (asm-8 (+ #x20 n))))
 
             (define (push-global n)
-	      (print n " globals\n") ;; TODO this won't print the number but rather the number of the global that is pushed
-	      (asm-8 (+ #x40 n)) ;; TODO have this number (15) as a constant somewhere instead as a magic number, since the next function uses it too
+	      (asm-8 (+ #x40 n)) ;; TODO we are actually limited to 16 constants, since we only have 4 bits to represent them
               ;; (if (> n 15) ;; ADDED prevented the stack from compiling
 	      ;;     (compiler-error "too many global variables")
 	      ;;     (asm-8 (+ #x40 n)))
-	      )
+	      ) ;; TODO actually inline most, or put as csts
 
             (define (set-global n)
 	      (asm-8 (+ #x50 n))
@@ -2612,11 +2609,9 @@
 	      )
 
             (define (call n)
-	      (asm-8 (+ #x60 n))
-              ;; (if (> n 15) ;; ADDED, caused problems with forged packets, which are long calls to u8vector, won't happen in practice, I think, not with u8vector at least
-	      ;;     (compiler-error "call has too many arguments")
-	      ;;     (asm-8 (+ #x60 n)))
-	      )
+              (if (> n 15)
+	          (compiler-error "call has too many arguments")
+	          (asm-8 (+ #x60 n))))
 
             (define (jump n)
               (if (> n 15)
@@ -2650,10 +2645,8 @@
             (define (prim.neg)            (prim 6))
             (define (prim.=)              (prim 7))
             (define (prim.<)              (prim 8))
-            ;; (define (prim.<=)             (prim 9))
 	    (define (prim.ior)            (prim 9)) ;; ADDED
             (define (prim.>)              (prim 10))
-            ;; (define (prim.>=)             (prim 11))
 	    (define (prim.xor)            (prim 11)) ;; ADDED
             (define (prim.pair?)          (prim 12))
             (define (prim.cons)           (prim 13))
@@ -2700,10 +2693,10 @@
 
             (asm-8 #xfb)
             (asm-8 #xd7)
-            (asm-8 (length constants))
+            (asm-8 (length constants)) ;; TODO maybe more constants ? that would mean more rom adress space, and less for ram, for now we are ok
             (asm-8 0)
 
-;            (pp (list constants: constants globals: globals))
+            (pp (list constants: constants globals: globals)) ;; TODO debug
 
             (for-each
              (lambda (x)
@@ -2716,26 +2709,46 @@
                         (asm-8 (bitwise-and (arithmetic-shift obj -16) 255))
                         (asm-8 (bitwise-and (arithmetic-shift obj -8) 255))
                         (asm-8 (bitwise-and obj 255)))
-                       ((pair? obj)
-                        (asm-8 2)
-                        (asm-8 (encode-constant (car obj) constants))
-                        (asm-8 (encode-constant (cdr obj) constants))
-                        (asm-8 0))
+                       ((pair? obj) ;; TODO this is ok no matter how many csts we have
+			(let ((obj-car (encode-constant (car obj) constants))
+			      (obj-cdr (encode-constant (cdr obj) constants)))
+			  ;; car and cdr are both represented in 12 bits, the
+			  ;; center byte being shared between the 2
+			  ;; TODO changed
+			  (asm-8 2)
+			  (asm-8
+			   (arithmetic-shift (bitwise-and obj-car #xff0) -4))
+			  (asm-8
+			   (bitwise-ior (arithmetic-shift
+					 (bitwise-and obj-car #xf)
+					 4)
+					(arithmetic-shift
+					 (bitwise-and obj-cdr #xf00)
+					 -8)))
+			  (asm-8 (bitwise-and obj-cdr #xff))))
                        ((symbol? obj)
                         (asm-8 3)
                         (asm-8 0)
                         (asm-8 0)
                         (asm-8 0))
                        ((string? obj)
-                        (asm-8 4)
-                        (asm-8 (encode-constant (vector-ref descr 3) constants))
-                        (asm-8 0)
-                        (asm-8 0))
+			(let ((obj-enc (encode-constant (vector-ref descr 3)
+							constants)))
+			  (asm-8 4) ;; TODO changed
+			  (asm-8 (arithmetic-shift (bitwise-and obj-enc #xff0)
+						   -4))
+			  (asm-8 (arithmetic-shift (bitwise-and obj-enc #xf)
+						   4))
+			  (asm-8 0)))
                        ((vector? obj)
-                        (asm-8 5)
-                        (asm-8 (encode-constant (vector-ref descr 3) constants))
-                        (asm-8 0)
-                        (asm-8 0))
+			(let ((obj-enc (encode-constant (vector-ref descr 3)
+							constants)))
+			  (asm-8 5) ;; TODO changed, and factor code
+			  (asm-8 (arithmetic-shift (bitwise-and obj-enc #xff0)
+						   -4))
+			  (asm-8 (arithmetic-shift (bitwise-and obj-enc #xf)
+						   4))
+			  (asm-8 0)))
                        (else
                         (compiler-error "unknown object type" obj)))))
              constants)
@@ -2753,7 +2766,7 @@
                                  (rest? (caddr instr)))
                              (asm-8 (if rest? (- np) np))))
 
-                          ((eq? (car instr) 'push-constant)
+                          ((eq? (car instr) 'push-constant) ;; TODO FOOBAR 12 bits for constants now
                            (let ((n (encode-constant (cadr instr) constants)))
                              (push-constant n)))
 
@@ -2803,10 +2816,8 @@
                              ((#%neg)            (prim.neg))
                              ((#%=)              (prim.=))
                              ((#%<)              (prim.<))
-                             ;; ((#%<=)             (prim.<=))
 			     ((#%ior)            (prim.ior)) ;; ADDED
                              ((#%>)              (prim.>))
-                             ;; ((#%>=)             (prim.>=))
 			     ((#%xor)            (prim.xor)) ;; ADDED
                              ((#%pair?)          (prim.pair?))
                              ((#%cons)           (prim.cons))

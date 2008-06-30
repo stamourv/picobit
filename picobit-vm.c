@@ -202,18 +202,19 @@ typedef uint16 word;
 typedef uint16 ram_addr;
 typedef uint16 rom_addr;
 
-typedef word obj;
+typedef uint16 obj;
 
 /*---------------------------------------------------------------------------*/
 
 #define MIN_RAM_ENCODING 128
-#define MAX_RAM_ENCODING 255
+#define MAX_RAM_ENCODING 4095
 
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
 
 
+// TODO was 8 for ram, maybe change for rom too if we get bigger ?
 #if WORD_BITS == 8
-#define OBJ_TO_RAM_ADDR(o,f) (((ram_addr)((uint8)(o) - MIN_RAM_ENCODING) << 2) + (f))
+#define OBJ_TO_RAM_ADDR(o,f) (((ram_addr)((uint16)(o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_ROM_ADDR(o,f) (((rom_addr)((uint8)(o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
 #endif
 
@@ -298,30 +299,42 @@ obj globals[GLOVARS];
   #t           1
   ()           2
   fixnum n     MIN_FIXNUM -> 3 ... MAX_FIXNUM -> 3 + (MAX_FIXNUM-MIN_FIXNUM)
+  TODO do we want 0..127 as fixnums ? would reduce number of ram objects
   rom object   4 + (MAX_FIXNUM-MIN_FIXNUM) ... MIN_RAM_ENCODING-1
-  ram object   MIN_RAM_ENCODING ... 255
+  ram object   MIN_RAM_ENCODING ... 4095 TODO was 255, now we have 12 bits
+  TODO divide more evenly between RAM and ROM ?
 
   layout of memory allocated objects:
 
   bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
 
-  triplet      00000001 *first** *second* *third**
+  TODO free space here
 
-  pair         00000010 **car*** **cdr*** 00000000
+  pair         00000010 aaaaaaaa aaaadddd dddddddd
+  a is car
+  d is cdr
+  gives an address space of 2^12 * 4 = 16k
 
   symbol       00000011 00000000 00000000 00000000
 
-  string       00000100 *chars** 00000000 00000000
+  string       00000100 *chars** ****0000 00000000
 
-  vector       00000101 *elems** 00000000 00000000
+  vector       00000101 *elems** ****0000 00000000  TODO not used yet
 
-  closure      00aaaaaa xxxxxxxx yyyyyyyy aaaaaaaa  0x5ff<a<0x4000 is entry
+  closure      00aaaaaa xxxxxxxx xxxxyyyy aaaaaaaa
+  0x5ff<a<0x4000 is entry
+  x is pointer to environment
+  y is unused
+  TODO we can use this y for a
+
+  continuation 00aaaaaa xxxxxxxx xxxxyyyy aaaaaaaa  0x5ff<a<0x4000 is pc
+  x is pointer to the second half
+  y is unused TODO ok, ugly hack, closures are in only one object, but continuations (since they seem to only be created by the runtime) are stored in 2, the compiler doesn't need to be changed much, not for closures at least, we'll just have to see if the similar representation is used somewhere in the vm
+
+  second half  00000010 xxxxxxxx xxxxyyyy yyyyyyyy
+  of continuations, actually a simple pair
   x is environment
-  y is #f (unused)
-
-  continuation 00aaaaaa xxxxxxxx yyyyyyyy aaaaaaaa  0x5ff<a<0x4000 is pc
-  x is environment
-  y is parent cont
+  y is parent continuation
 
   An environment is a list of objects built out of pairs.  On entry to
   a procedure the environment is the list of parameters to which is
@@ -356,9 +369,9 @@ obj globals[GLOVARS];
 #define RAM_BIGNUM(o) (ram_get_field0 (o) == BIGNUM_FIELD0)
 #define ROM_BIGNUM(o) (rom_get_field0 (o) == BIGNUM_FIELD0)
 
-#define TRIPLET_FIELD0 1
-#define RAM_TRIPLET(o) (ram_get_field0 (o) == TRIPLET_FIELD0)
-#define ROM_TRIPLET(o) (rom_get_field0 (o) == TRIPLET_FIELD0)
+#define CONTINUATION2_FIELD0 1
+#define RAM_CONTINUATION2(o) (ram_get_field0 (o) == CONTINUATION2_FIELD0)
+#define ROM_CONTINUATION2(o) (rom_get_field0 (o) == CONTINUATION2_FIELD0)
 
 #define PAIR_FIELD0 2
 #define RAM_PAIR(o) (ram_get_field0 (o) == PAIR_FIELD0)
@@ -402,6 +415,7 @@ obj globals[GLOVARS];
 #define ROM_GET_FIELD3_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,3))
 #endif
 
+// TODO this might be of use
 #if WORD_BITS == 10
 #define RAM_GET_FIELD1_MACRO(o)                                         \
   (ram_get (OBJ_TO_RAM_ADDR(o,1)) + ((RAM_GET_FIELD0_MACRO(o) & 0x03)<<8))
@@ -435,19 +449,39 @@ obj globals[GLOVARS];
 uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
 void ram_set_gc_tags (obj o, uint8 tags) { RAM_SET_GC_TAGS_MACRO(o,tags); }
 uint8 ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
-obj ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); }
-obj ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
-obj ram_get_field3 (obj o) { return RAM_GET_FIELD3_MACRO(o); }
+word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); } // TODO used to return obj, which used to be the same as words
+word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
+word ram_get_field3 (obj o) { return RAM_GET_FIELD3_MACRO(o); }
 void ram_set_field0 (obj o, uint8 val) { RAM_SET_FIELD0_MACRO(o,val); }
 void ram_set_field1 (obj o, word val) { RAM_SET_FIELD1_MACRO(o,val); }
 void ram_set_field2 (obj o, word val) { RAM_SET_FIELD2_MACRO(o,val); }
 void ram_set_field3 (obj o, word val) { RAM_SET_FIELD3_MACRO(o,val); }
 uint8 rom_get_field0 (obj o) { return ROM_GET_FIELD0_MACRO(o); }
-obj rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
-obj rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
-obj rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
+word rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
+word rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
+word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
 
-obj get_global (uint8 i)
+// TODO change code to use them when necessary
+obj ram_get_car (obj o)
+{ return (ram_get_field1 (o) << 4) | ((ram_get_field2 (o) & 0xf0) >> 4); }
+obj rom_get_car (obj o)
+{ return (rom_get_field1 (o) << 4) | ((rom_get_field2 (o) & 0xf0) >> 4); }
+obj ram_get_cdr (obj o)
+{ return ((ram_get_field2 (o) & 0xf) << 8) | (ram_get_field3 (o)); }
+obj rom_get_cdr (obj o)
+{ return ((rom_get_field2 (o) & 0xf) << 8) | (rom_get_field3 (o)); }
+void ram_set_car (obj o, obj val)
+{
+  ram_set_field1 (o, (val & 0xff0) >> 4);
+  ram_set_field2 (o, ((val & 0xf) << 4) | (ram_get_field2 (o) & 0xf));
+}
+void ram_set_cdr (obj o, obj val)
+{
+  ram_set_field2 (o, (ram_get_field2 (o) & 0xf0) | ((val & 0xf00) >> 8));
+  ram_set_field3 (o, val & 0xff);
+}
+
+obj get_global (uint8 i) // TODO 8 ? do we want more than 256 globals ?
 {
   return globals[i];
 }
@@ -470,9 +504,12 @@ void set_global (uint8 i, obj o)
 
 /* Number of object fields of objects in ram */
 
-#define HAS_3_OBJECT_FIELDS(field0) ((field0) == TRIPLET_FIELD0)
-#define HAS_2_OBJECT_FIELDS(field0) ((field0) > TRIPLET_FIELD0)
+#define HAS_3_OBJECT_FIELDS(field0) ((field0) <= PAIR_FIELD0)
+// TODO was ((field0) <= PAIR_FIELD0), but now no one has 3 fields
+// TODO FOOBAR should be 0, but if it is, red-green breaks
+#define HAS_2_OBJECT_FIELDS(field0) ((field0) >  PAIR_FIELD0)
 #define HAS_1_OBJECT_FIELD(field0)  0
+// TODO change these
 
 #define NIL OBJ_FALSE
 
@@ -488,8 +525,9 @@ obj arg3;
 obj arg4;
 obj cont;
 obj env;
+obj second_half; /* the second half of continuations */
 
-uint8 na; /* interpreter variables */
+uint8 na; /* interpreter variables */ // TODO what's that ?
 rom_addr pc;
 rom_addr entry;
 uint8 bytecode;
@@ -502,7 +540,7 @@ int32 a3;
 
 void init_ram_heap (void)
 {
-  uint8 i;
+  uint8 i; // TODO should it be 16 ? for now we have 16 globals, might want more than 256
   obj o = MAX_RAM_ENCODING;
 
   free_list = 0;
@@ -524,6 +562,7 @@ void init_ram_heap (void)
   arg4 = OBJ_FALSE;
   cont = OBJ_FALSE;
   env  = OBJ_NULL;
+  second_half = OBJ_FALSE;
 }
 
 void mark (obj temp)
@@ -581,7 +620,7 @@ void mark (obj temp)
         {
           field0 = ram_get_field0 (visit);
 
-          if (HAS_3_OBJECT_FIELDS(field0))
+          if (HAS_3_OBJECT_FIELDS(field0)) // TODO now pairs are considered to have 3 fields, but don't really. looks like the gc will have to be rewritten
             {
               IF_GC_TRACE(printf ("case 2\n"));
 
@@ -863,23 +902,24 @@ void show (obj o)
 
       if (field0 == BIGNUM_FIELD0)
         printf ("%d", decode_int (o));
-      else if (field0 == TRIPLET_FIELD0)
+      else if (field0 == CONTINUATION2_FIELD0)
         printf ("#<triplet>");
       else if (field0 == PAIR_FIELD0)
         {
           obj car;
-          obj cdr;
+	  obj cdr;
 
-          if (IN_RAM(o))
-            car = ram_get_field1 (o);
-          else
-            car = rom_get_field1 (o);
-
-          if (IN_RAM(o))
-            cdr = ram_get_field2 (o);
-          else
-            cdr = rom_get_field2 (o);
-
+	  if (IN_RAM(o))
+	    {
+	      car = ram_get_car (o);
+	      cdr = ram_get_cdr (o);
+	    }
+	  else
+	    {
+	      car = rom_get_car (o);
+	      cdr = rom_get_cdr (o);
+	    }
+	  
           printf ("(");
 
         loop:
@@ -891,15 +931,16 @@ void show (obj o)
           else if ((IN_RAM(cdr) ? ram_get_field0 (cdr) : rom_get_field0 (cdr))
                    == PAIR_FIELD0)
             {
-              if (IN_RAM(cdr))
-                car = ram_get_field1 (cdr);
-              else
-                car = rom_get_field1 (cdr);
-
-              if (IN_RAM(cdr))
-                cdr = ram_get_field2 (cdr);
-              else
-                cdr = rom_get_field2 (cdr);
+	      if (IN_RAM(cdr))
+		{
+		  car = ram_get_car (cdr);
+		  cdr = ram_get_cdr (cdr);
+		}
+	      else
+		{
+		  car = rom_get_car (cdr);
+		  cdr = rom_get_cdr (cdr);
+		}
 
               printf (" ");
               goto loop;
@@ -919,30 +960,31 @@ void show (obj o)
         printf ("#<vector>");
       else
         {
-          obj env;
-          obj parent_cont;
-          rom_addr pc;
+          /* obj env; */
+          /* obj parent_cont; */
+          /* rom_addr pc; */
 
-          if (IN_RAM(o))
-            env = ram_get_field1 (o);
-          else
-            env = rom_get_field1 (o);
+          /* if (IN_RAM(o)) */
+          /*   env = ram_get_field1 (o); */
+          /* else */
+          /*   env = rom_get_field1 (o); */
 
-          if (IN_RAM(o))
-            parent_cont = ram_get_field2 (o);
-          else
-            parent_cont = rom_get_field2 (o);
+          /* if (IN_RAM(o)) */
+          /*   parent_cont = ram_get_field2 (o); */
+          /* else */
+          /*   parent_cont = rom_get_field2 (o); */
 
-          if (IN_RAM(o))
-            pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (o);
-          else
-            pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + rom_get_field3 (o);
+          /* if (IN_RAM(o)) */
+          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (o); */
+          /* else */
+          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + rom_get_field3 (o); */
 
-          printf ("{0x%04x ", pc);
-          show (env);
-          printf (" ");
-          show (parent_cont);
-          printf ("}");
+          /* printf ("{0x%04x ", pc); */
+          /* show (env); */
+          /* printf (" "); */
+          /* show (parent_cont); */
+          /* printf ("}"); */ // TODO the representation of procedures changed
+	  printf ("#<procedure>");
         }
     }
 
@@ -1055,26 +1097,12 @@ void prim_lt (void)
   arg2 = OBJ_FALSE;
 }
 
-/* void prim_le (void) // ADDED, is not a primitive anymore */
-/* { */
-/*   decode_2_int_args (); */
-/*   arg1 = encode_bool (a1 <= a2); */
-/*   arg2 = OBJ_FALSE; */
-/* } */
-
 void prim_gt (void)
 {
   decode_2_int_args ();
   arg1 = encode_bool (a1 > a2);
   arg2 = OBJ_FALSE;
 }
-
-/* void prim_ge (void) // ADDED, is not a primitive anymore */
-/* { */
-/*   decode_2_int_args (); */
-/*   arg1 = encode_bool (a1 >= a2); */
-/*   arg2 = OBJ_FALSE; */
-/* } */
 
 /*---------------------------------------------------------------------------*/
 
@@ -1092,7 +1120,10 @@ void prim_pairp (void)
 
 obj cons (obj car, obj cdr)
 {
-  return alloc_ram_cell_init (PAIR_FIELD0, car, cdr, 0);
+  return alloc_ram_cell_init (PAIR_FIELD0,
+			      (car & 0xff0) >> 4,
+			      ((car & 0xf) << 4) | ((cdr & 0xf00) >> 8),
+			      cdr & 0xff);
 }
 
 void prim_cons (void)
@@ -1107,15 +1138,13 @@ void prim_car (void)
     {
       if (!RAM_PAIR(arg1))
         TYPE_ERROR("pair");
-
-      arg1 = ram_get_field1 (arg1);
+      arg1 = ram_get_car (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_PAIR(arg1))
         TYPE_ERROR("pair");
-
-      arg1 = rom_get_field1 (arg1);
+      arg1 = rom_get_car (arg1);
     }
   else
     TYPE_ERROR("pair");
@@ -1127,15 +1156,13 @@ void prim_cdr (void)
     {
       if (!RAM_PAIR(arg1))
         TYPE_ERROR("pair");
-
-      arg1 = ram_get_field2 (arg1);
+      arg1 = ram_get_cdr (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_PAIR(arg1))
         TYPE_ERROR("pair");
-
-      arg1 = rom_get_field2 (arg1);
+      arg1 = rom_get_cdr (arg1);
     }
   else
     TYPE_ERROR("pair");
@@ -1148,7 +1175,7 @@ void prim_set_car (void)
       if (!RAM_PAIR(arg1))
         TYPE_ERROR("pair");
 
-      ram_set_field1 (arg1, arg2);
+      ram_set_car (arg1, arg2);
       arg1 = OBJ_FALSE;
       arg2 = OBJ_FALSE;
     }
@@ -1163,7 +1190,7 @@ void prim_set_cdr (void)
       if (!RAM_PAIR(arg1))
         TYPE_ERROR("pair");
 
-      ram_set_field2 (arg1, arg2);
+      ram_set_cdr (arg1, arg2);
       arg1 = OBJ_FALSE;
       arg2 = OBJ_FALSE;
     }
@@ -1218,142 +1245,25 @@ void prim_string2list (void)
       if (!RAM_STRING(arg1))
         TYPE_ERROR("string");
 
-      arg1 = ram_get_field1 (arg1);
+      arg1 = ram_get_car (arg1); // TODO was field1, but pointer size changed
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_STRING(arg1))
         TYPE_ERROR("string");
 
-      arg1 = rom_get_field1 (arg1);
+      arg1 = rom_get_car (arg1); // TODO was field1, but pointer size changed
     }
   else
     TYPE_ERROR("string");
 }
 
-void prim_list2string (void)
+ void prim_list2string (void)
 {
-  arg1 = alloc_ram_cell_init (STRING_FIELD0, arg1, 0, 0);
-}
-
-void prim_tripletp (void) // ADDED
-{
-  if (IN_RAM(arg1))
-    arg1 = encode_bool (RAM_TRIPLET(arg1)); // we only have byte vectors
-  else if (IN_ROM(arg1))
-    arg1 = encode_bool (ROM_TRIPLET(arg1));
-  else
-    arg1 = OBJ_FALSE;
-}
-
-void prim_triplet (void) // ADDED
-{
-  arg1 = alloc_ram_cell_init (TRIPLET_FIELD0, arg1, arg2, arg3);
-}
-
-void prim_fst (void) // ADDED, are 3 primitives too much ? maybe, since we don't have that much available primitives, but since we're going to end up doing a LOT of these, might as well have them as fast and small as possible
-{
-  if (IN_RAM(arg1))
-    {
-      if (!RAM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      arg1 = ram_get_field1 (arg1);
-    }
-  else if (IN_ROM(arg1))
-    {
-      if (!ROM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      arg1 = rom_get_field1 (arg1);
-    }
-  else
-    TYPE_ERROR("triplet");
-}
-
-void prim_snd (void) // ADDED
-{
-  if (IN_RAM(arg1))
-    {
-      if (!RAM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      arg1 = ram_get_field2 (arg1);
-    }
-  else if (IN_ROM(arg1))
-    {
-      if (!ROM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      arg1 = rom_get_field2 (arg1);
-    }
-  else
-    TYPE_ERROR("triplet");
-}
-
-void prim_trd (void) // ADDED
-{
-  if (IN_RAM(arg1))
-    {
-      if (!RAM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      arg1 = ram_get_field3 (arg1);
-    }
-  else if (IN_ROM(arg1))
-    {
-      if (!ROM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      arg1 = rom_get_field3 (arg1);
-    }
-  else
-    TYPE_ERROR("triplet");
-}
-
-void prim_set_fst (void) // ADDED
-{
-  if (IN_RAM(arg1))
-    {
-      if (!RAM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      ram_set_field1 (arg1, arg2);
-      arg1 = OBJ_FALSE;
-      arg2 = OBJ_FALSE;
-    }
-  else
-    TYPE_ERROR("triplet");
-}
-
-void prim_set_snd (void) // ADDED
-{
-  if (IN_RAM(arg1))
-    {
-      if (!RAM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-
-      ram_set_field2 (arg1, arg2);
-      arg1 = OBJ_FALSE;
-      arg2 = OBJ_FALSE;
-    }
-  else
-    TYPE_ERROR("triplet");
-}
-
-void prim_set_trd (void) // ADDED
-{
-  if (IN_RAM(arg1))
-    {
-      if (!RAM_TRIPLET(arg1))
-        TYPE_ERROR("triplet");
-      
-      ram_set_field3 (arg1, arg2);
-      arg1 = OBJ_FALSE;
-      arg2 = OBJ_FALSE;
-    }
-  else
-    TYPE_ERROR("triplet");
+  arg1 = alloc_ram_cell_init (STRING_FIELD0,
+			      (arg1 & 0xff0) >> 4, // TODO pointer size changed
+			      (arg1 & 0xf) << 4,
+			      0);
 }
 
 void prim_ior (void) // ADDED
@@ -1481,8 +1391,10 @@ void prim_led (void)
 {
   a1 = decode_int (arg1);
 
-  if (a1 < 0 || a1 > 2)
+  if (a1 < 0 || a1 > 2){
+    printf("%d", a1); // TODO debug
     ERROR("argument out of range to procedure \"led\"");
+  }
 
 #ifdef __18CXX
 
@@ -1852,7 +1764,7 @@ char *prim_name[48] =
     "prim #%string?",
     "prim #%string->list",
     "prim #%list->string",
-    "prim #%set-fst!", // ADDED
+    "prim #%set-fst!", // ADDED TODO obsolete, but kept to have the right size
     "prim #%set-snd!", // ADDED
     "prim #%set-trd!", // ADDED
     "prim #%print",
@@ -1886,21 +1798,20 @@ void push_arg1 (void)
 
 obj pop (void)
 {
-  obj o = ram_get_field1 (env);
-  env = ram_get_field2 (env);
+  obj o = ram_get_car (env); // TODO changed type
+  env = ram_get_cdr (env);
   return o;
 }
 
-void pop_procedure (void)
-{
+void pop_procedure (void) // TODO where do we get the env of the procedure ?
+{ // TODO can continuations end up ond the stack ? if so, they act differently than procedures
   arg1 = POP();
-
   if (IN_RAM(arg1))
     {
       field0 = ram_get_field0 (arg1);
 
       if (field0 < PROCEDURE_FIELD0)
-        TYPE_ERROR("procedure");
+	TYPE_ERROR("procedure");
 
       entry = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (arg1);
     }
@@ -1921,7 +1832,7 @@ void handle_arity_and_rest_param (void)
 {
   uint8 np;
 
-  np = rom_get (entry++);
+  np = rom_get (entry++); // TODO does that mean we can't have procedures in ram ?
 
   if ((np & 0x80) == 0)
     {
@@ -1968,9 +1879,10 @@ void build_env (void)
 
 void save_cont (void)
 {
+  second_half = cons (env, cont);
   cont = alloc_ram_cell_init ((uint8)(pc >> 8) - ((CODE_START>>8)-PROCEDURE_FIELD0),
-                              env,
-                              cont,
+                              (second_half & 0xff0) >> 4,
+                              (second_half & 0xf)   << 4,
                               (uint8)pc);
 }
 
@@ -2013,11 +1925,11 @@ void interpreter (void)
 
   while (bytecode_lo4 != 0)
     {
-      arg1 = ram_get_field2 (arg1);
+      arg1 = ram_get_cdr (arg1); // TODO was field2
       bytecode_lo4--;
     }
 
-  arg1 = ram_get_field1 (arg1);
+  arg1 = ram_get_car (arg1); // TODO was field1
 
   PUSH_ARG1();
 
@@ -2026,7 +1938,7 @@ void interpreter (void)
   /***************************************************************************/
   CASE(PUSH_STACK2);
 
-  IF_TRACE(printf("  (push-stack %d)\n", bytecode_lo4+16));
+  IF_TRACE(printf("  (push-stack %d)\n", bytecode_lo4+16)); // TODO do we ever need to go this far in the stack ? since the stack is the env, maybe, if not, we have one free instruction
 
   bytecode_lo4 += 16;
 
@@ -2034,11 +1946,11 @@ void interpreter (void)
 
   while (bytecode_lo4 != 0)
     {
-      arg1 = ram_get_field2 (arg1);
+      arg1 = ram_get_cdr (arg1); // TODO was field2
       bytecode_lo4--;
     }
 
-  arg1 = ram_get_field1 (arg1);
+  arg1 = ram_get_car (arg1); // TODO was field1
 
   PUSH_ARG1();
 
@@ -2174,14 +2086,17 @@ void interpreter (void)
 
   IF_TRACE(printf("  (closure 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
 
-  arg2 = POP();
-  arg3 = POP();
+  arg2 = POP(); // #f TODO should be, at least, and not used anymore
+  arg3 = POP(); // env
 
   entry = ((rom_addr)bytecode_lo4 << 8) + bytecode;
 
+  /* second_half = cons (arg3, arg2); */ // TODO not anymore
   arg1 = alloc_ram_cell_init ((uint8)(entry >> 8) + PROCEDURE_FIELD0,
-                              arg3,
-                              arg2,
+                              /* (second_half & 0xff0) >> 4, */ // TODO not anymore
+                              /* (second_half & 0xf)   << 4, */
+			      (arg3 & 0xff0) >> 4,
+                              (arg3 & 0xf)   << 4,
                               (uint8)entry);
 
   PUSH_ARG1();
@@ -2217,13 +2132,11 @@ void interpreter (void)
     case 8:
       arg2 = POP();  arg1 = POP();  prim_lt ();       PUSH_ARG1();  break;
     case 9:
-      /* arg2 = POP();  arg1 = POP();  prim_le ();       PUSH_ARG1();  break; */
-      arg2 = POP(); arg1 = POP(); prim_ior (); PUSH_ARG1(); break; // ADDED
+      arg2 = POP(); arg1 = POP(); prim_ior (); PUSH_ARG1(); break;
     case 10:
       arg2 = POP();  arg1 = POP();  prim_gt ();       PUSH_ARG1();  break;
     case 11:
-      /* arg2 = POP();  arg1 = POP();  prim_ge ();       PUSH_ARG1();  break; */
-      arg2 = POP(); arg1 = POP(); prim_xor (); PUSH_ARG1(); break; // ADDED
+      arg2 = POP(); arg1 = POP(); prim_xor (); PUSH_ARG1(); break;
     case 12:
       arg1 = POP();  prim_pairp ();    PUSH_ARG1();  break;
     case 13:
@@ -2285,8 +2198,8 @@ void interpreter (void)
       cont = POP(); /* continuation */
 
       pc = ((rom_addr)(ram_get_field0 (cont) + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (cont);
-      env = ram_get_field1 (cont);
-      cont = ram_get_field2 (cont);
+      env = ram_get_car (ram_get_car (cont)); // TODO were field1 and 2 of cont
+      cont = ram_get_cdr (ram_get_car (cont));
 
       PUSH_ARG1();
 
@@ -2306,20 +2219,14 @@ void interpreter (void)
     case 12:
       /* prim #%list->string */
       arg1 = POP();  prim_list2string ();  PUSH_ARG1();  break;
-      //#if 0
+#if 0
     case 13:
-      /* prim #%set-fst! */ // ADDED
-      arg2 = POP(); arg1 = POP(); prim_set_fst (); PUSH_ARG1();
       break;
     case 14:
-      /* prim #%set-snd! */ // ADDED
-      arg2 = POP(); arg1 = POP(); prim_set_snd (); PUSH_ARG1();
       break;
     case 15:
-      /* prim #%set-trd! */ // ADDED
-      arg2 = POP(); arg1 = POP(); prim_set_trd (); PUSH_ARG1();
       break;
-      // #endif
+#endif
     }
 
   DISPATCH();
@@ -2354,30 +2261,20 @@ void interpreter (void)
     case 6:
       /* prim #%light */
       prim_light ();  PUSH_ARG1();  break;
-      //#if 0
-    case 7: // ADDED
-      /* prim #%triplet? */
-      arg1 = POP(); prim_tripletp (); PUSH_ARG1();
+#if 0
+    case 7: // TODO since not all of them will be used for vectors, maybe some could be used to have more globals ? or something else ?
       break;
-    case 8: // ADDED
-      /* prim #%triplet */
-      arg3 = POP(); arg2 = POP(); arg1 = POP(); prim_triplet (); PUSH_ARG1();
+    case 8:
       break;
-    case 9: // ADDED
-      /* prim #%fst */
-      arg1 = POP(); prim_fst (); PUSH_ARG1();
+    case 9:
       break;
-    case 10: // ADDED
-      /* prim #%snd */
-      arg1 = POP(); prim_snd (); PUSH_ARG1();
+    case 10:
       break;
-    case 11: // ADDED
-      /* prim #%trd */
-      arg1 = POP(); prim_trd (); PUSH_ARG1();
+    case 11:
       break;
-      //#endif
+#endif
     case 12:
-      /* push-constant [long] */
+      /* push-constant [long] */ // TODO must find a way to get 12bit objects, use 2 bytes ? FOOBAR
       FETCH_NEXT_BYTECODE();
       arg1 = bytecode;
       PUSH_ARG1();
@@ -2396,8 +2293,8 @@ void interpreter (void)
       /* return */
       arg1 = POP();
       pc = ((rom_addr)(ram_get_field0 (cont) + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (cont);
-      env = ram_get_field1 (cont);
-      cont = ram_get_field2 (cont);
+      env = ram_get_car (ram_get_car (cont)); // TODO were field1 and 2 of cont
+      cont = ram_get_cdr (ram_get_car (cont));
       PUSH_ARG1();
       break;
     }
