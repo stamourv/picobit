@@ -150,7 +150,6 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 #define CODE_START 0x2000
 
 #define GLOVARS 16
-// TODO raise ?
 
 #ifdef DEBUG
 #define IF_TRACE(x) x
@@ -207,12 +206,11 @@ typedef uint16 obj;
 /*---------------------------------------------------------------------------*/
 
 #define MIN_RAM_ENCODING 128
-#define MAX_RAM_ENCODING 4095
-
+#define MAX_RAM_ENCODING 8192
+// TODO some space in rom is not used, use for fixnums ?
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
 
-
-// TODO was 8 for ram, maybe change for rom too if we get bigger ?
+// TODO change if we change the proportion of rom and ram addresses
 #if WORD_BITS == 8
 #define OBJ_TO_RAM_ADDR(o,f) (((ram_addr)((uint16)(o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_ROM_ADDR(o,f) (((rom_addr)((uint8)(o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
@@ -299,39 +297,39 @@ obj globals[GLOVARS];
   #t           1
   ()           2
   fixnum n     MIN_FIXNUM -> 3 ... MAX_FIXNUM -> 3 + (MAX_FIXNUM-MIN_FIXNUM)
-  TODO do we want 0..127 as fixnums ? would reduce number of ram objects
+  TODO do we want 0..127 as fixnums ? would reduce number of ra/om objects
   rom object   4 + (MAX_FIXNUM-MIN_FIXNUM) ... MIN_RAM_ENCODING-1
   ram object   MIN_RAM_ENCODING ... 4095 TODO was 255, now we have 12 bits
-  TODO divide more evenly between RAM and ROM ?
 
   layout of memory allocated objects:
 
-  bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
+  G's represent mark bits used by the gc TODO change GC, and does not use the same bits
 
-  TODO free space here
-
-  pair         00000010 aaaaaaaa aaaadddd dddddddd
+  bignum n     00G00000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
+  TODO we could have 29-bit integers
+  
+  pair         1GGaaaaa aaaaaaaa 000ddddd dddddddd
+  TODO was 00000010 aaaaaaaa aaaadddd dddddddd
   a is car
   d is cdr
-  gives an address space of 2^12 * 4 = 16k
+  gives an address space of 2^13 * 4 = 32k (not all of it is for RAM, though)
 
-  symbol       00000011 00000000 00000000 00000000
+  symbol       1GG00000 00000000 00100000 00000000  TODO not used ? seems symbols are not even really supported, but the led user functions do use them, strange
 
-  string       00000100 *chars** ****0000 00000000
+  string       1GG***** *chars** 01000000 00000000
 
-  vector       00000101 *elems** ****0000 00000000  TODO not used yet
+  vector       1GG***** *elems** 01100000 00000000  TODO not used yet
 
-  closure      00aaaaaa xxxxxxxx xxxxyyyy aaaaaaaa
-  0x5ff<a<0x4000 is entry
+  closure      01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa
+  0x5ff<a<0x4000 is entry TODO we now have more 16 bits for the entry, 16 whole, how to use it ?
   x is pointer to environment
-  y is unused
-  TODO we can use this y for a
 
-  continuation 00aaaaaa xxxxxxxx xxxxyyyy aaaaaaaa  0x5ff<a<0x4000 is pc
+  continuation 01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa  0x5ff<a<0x4000 is pc
+  TODO actually, 16 bits for the code
   x is pointer to the second half
-  y is unused TODO ok, ugly hack, closures are in only one object, but continuations (since they seem to only be created by the runtime) are stored in 2, the compiler doesn't need to be changed much, not for closures at least, we'll just have to see if the similar representation is used somewhere in the vm
+  TODO ok, ugly hack, closures are in only one object, but continuations (since they seem to only be created by the runtime) are stored in 2, the compiler doesn't need to be changed much, not for closures at least, we'll just have to see if the similar representation is used somewhere in the vm
 
-  second half  00000010 xxxxxxxx xxxxyyyy yyyyyyyy
+  second half  1GGxxxxx xxxxxxxx 000yyyyy yyyyyyyy
   of continuations, actually a simple pair
   x is environment
   y is parent continuation
@@ -365,34 +363,40 @@ obj globals[GLOVARS];
 #define IN_ROM(o) ((int8)(o) >= MIN_ROM_ENCODING)
 #endif
 
+// bignum first byte : 00G00000
 #define BIGNUM_FIELD0 0
-#define RAM_BIGNUM(o) (ram_get_field0 (o) == BIGNUM_FIELD0)
-#define ROM_BIGNUM(o) (rom_get_field0 (o) == BIGNUM_FIELD0)
+#define RAM_BIGNUM(o) ((ram_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
+#define ROM_BIGNUM(o) ((rom_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
 
-// TODO this is not in use
-#define TRIPLET_FIELD0 1
-#define RAM_TRIPLET(o) (ram_get_field0 (o) == TRIPLET_FIELD0)
-#define ROM_TRIPLET(o) (rom_get_field0 (o) == TRIPLET_FIELD0)
+// composite first byte : 1GGxxxxx
+#define COMPOSITE_FIELD0 0x80
+#define RAM_COMPOSITE(o) ((ram_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
+#define ROM_COMPOSITE(o) ((rom_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
 
-#define PAIR_FIELD0 2
-#define RAM_PAIR(o) (ram_get_field0 (o) == PAIR_FIELD0)
-#define ROM_PAIR(o) (rom_get_field0 (o) == PAIR_FIELD0)
+// pair third byte : 000xxxxx
+#define PAIR_FIELD2 0
+#define RAM_PAIR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == PAIR_FIELD2))
+#define ROM_PAIR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == PAIR_FIELD2))
 
-#define SYMBOL_FIELD0 3
-#define RAM_SYMBOL(o) (ram_get_field0 (o) == SYMBOL_FIELD0)
-#define ROM_SYMBOL(o) (rom_get_field0 (o) == SYMBOL_FIELD0)
+// symbol third byte : 001xxxxx
+#define SYMBOL_FIELD2 0x20
+#define RAM_SYMBOL(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
+#define ROM_SYMBOL(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
 
-#define STRING_FIELD0 4
-#define RAM_STRING(o) (ram_get_field0 (o) == STRING_FIELD0)
-#define ROM_STRING(o) (rom_get_field0 (o) == STRING_FIELD0)
+// string third byte : 010xxxxx
+#define STRING_FIELD2 0x40
+#define RAM_STRING(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == STRING_FIELD2))
+#define ROM_STRING(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2))
 
-#define VECTOR_FIELD0 5
-#define RAM_VECTOR(o) (ram_get_field0 (o) == VECTOR_FIELD0)
-#define ROM_VECTOR(o) (rom_get_field0 (o) == VECTOR_FIELD0)
+// vector third byte : 011xxxxx
+#define VECTOR_FIELD2 0x60
+#define RAM_VECTOR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
+#define ROM_VECTOR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
 
-#define PROCEDURE_FIELD0 6
-#define RAM_PROCEDURE(o) (ram_get_field0 (o) >= PROCEDURE_FIELD0)
-#define ROM_PROCEDURE(o) (rom_get_field0 (o) >= PROCEDURE_FIELD0)
+// procedure / continuation first byte : 01Gxxxxx
+#define PROCEDURE_FIELD0 0x40
+#define RAM_PROCEDURE(o) ((ram_get_field0 (o) & 0xc0) == PROCEDURE_FIELD0)
+#define ROM_PROCEDURE(o) ((rom_get_field0 (o) & 0xc0) == PROCEDURE_FIELD0)
 
 /*---------------------------------------------------------------------------*/
 
@@ -400,9 +404,13 @@ obj globals[GLOVARS];
 #define RAM_SET_FIELD0_MACRO(o,val) ram_set (OBJ_TO_RAM_ADDR(o,0), val)
 #define ROM_GET_FIELD0_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,0))
 
-#define RAM_GET_GC_TAGS_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0xc0)
-#define RAM_SET_GC_TAGS_MACRO(o,tags)                                   \
-  RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x3f) | (tags))
+// TODO changed, now gc bits are 0x60, were 0xc0, but the 1st is not always used
+#define RAM_GET_GC_TAGS_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x60)
+#define RAM_SET_GC_TAG0_MACRO(o,tag)                                    \
+  RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xdf) | (tag))
+#define RAM_SET_GC_TAG1_MACRO(o,tag)                                    \
+  RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xbf) | (tag))
+// TODO we can't set them both at once now, since some objects only have 1
 
 #if WORD_BITS == 8
 #define RAM_GET_FIELD1_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,1))
@@ -416,7 +424,7 @@ obj globals[GLOVARS];
 #define ROM_GET_FIELD3_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,3))
 #endif
 
-// TODO this might be of use
+// TODO this might be of use, but doesn't look like it is for now
 #if WORD_BITS == 10
 #define RAM_GET_FIELD1_MACRO(o)                                         \
   (ram_get (OBJ_TO_RAM_ADDR(o,1)) + ((RAM_GET_FIELD0_MACRO(o) & 0x03)<<8))
@@ -448,7 +456,9 @@ obj globals[GLOVARS];
 #endif
 
 uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
-void ram_set_gc_tags (obj o, uint8 tags) { RAM_SET_GC_TAGS_MACRO(o,tags); }
+void ram_set_gc_tag0 (obj o, uint8 tag) { RAM_SET_GC_TAG0_MACRO(o,tag); }
+void ram_set_gc_tag1 (obj o, uint8 tag) { RAM_SET_GC_TAG1_MACRO(o,tag); }
+// TODO we can't set them both at once anymore, some object only use 1
 uint8 ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
 word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); } // TODO used to return obj, which used to be the same as words
 word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
@@ -462,23 +472,22 @@ word rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
 word rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
 word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
 
-// TODO change code to use them when necessary
 obj ram_get_car (obj o)
-{ return (ram_get_field1 (o) << 4) | ((ram_get_field2 (o) & 0xf0) >> 4); }
+{ return ((ram_get_field0 (o) & 0x1f) << 8) | ram_get_field1 (o); }
 obj rom_get_car (obj o)
-{ return (rom_get_field1 (o) << 4) | ((rom_get_field2 (o) & 0xf0) >> 4); }
+{ return ((rom_get_field0 (o) & 0x1f) << 8) | rom_get_field1 (o); }
 obj ram_get_cdr (obj o)
-{ return ((ram_get_field2 (o) & 0xf) << 8) | (ram_get_field3 (o)); }
+{ return ((ram_get_field2 (o) & 0x1f) << 8) | ram_get_field3 (o); }
 obj rom_get_cdr (obj o)
-{ return ((rom_get_field2 (o) & 0xf) << 8) | (rom_get_field3 (o)); }
+{ return ((rom_get_field2 (o) & 0x1f) << 8) | rom_get_field3 (o); }
 void ram_set_car (obj o, obj val)
 {
-  ram_set_field1 (o, (val & 0xff0) >> 4);
-  ram_set_field2 (o, ((val & 0xf) << 4) | (ram_get_field2 (o) & 0xf));
+  ram_set_field0 (o, ((val & 0x1f00) >> 8) | (ram_get_field0 (o) & 0xc0));
+  ram_set_field1 (o, val & 0xff);
 }
 void ram_set_cdr (obj o, obj val)
 {
-  ram_set_field2 (o, (ram_get_field2 (o) & 0xf0) | ((val & 0xf00) >> 8));
+  ram_set_field2 (o, ((val & 0x1f00) >> 8) | (ram_get_field2 (o) & 0xc0));
   ram_set_field3 (o, val & 0xff);
 }
 
@@ -497,19 +506,16 @@ void set_global (uint8 i, obj o)
 /* Interface to GC */
 
 /* GC tags are in the top 2 bits of field 0 */
-
+// TODO change GC with new representation
 #define GC_TAG_0_LEFT   (3<<6)
 #define GC_TAG_1_LEFT   (2<<6)
-#define GC_TAG_2_LEFT   (1<<6)
 #define GC_TAG_UNMARKED (0<<6)  /* must be 0 */
 
 /* Number of object fields of objects in ram */
-
-#define HAS_3_OBJECT_FIELDS(field0) 0
+// TODO change
 #define HAS_2_OBJECT_FIELDS(field0) ((field0) ==  PAIR_FIELD0)
 #define HAS_1_OBJECT_FIELD(field0)  ((field0) >= PROCEDURE_FIELD0)
 // procedures and continuations have both 1 pointer
-// TODO change when we add true vectors
 
 #define NIL OBJ_FALSE
 
@@ -533,7 +539,7 @@ rom_addr entry;
 uint8 bytecode;
 uint8 bytecode_hi4;
 uint8 bytecode_lo4;
-uint8 field0;
+uint8 field0; // TODO is it used anymore
 int32 a1;
 int32 a2;
 int32 a3;
@@ -862,71 +868,78 @@ void show (obj o)
     printf ("%d", DECODE_FIXNUM(o));
   else
     {
-      uint8 field0;
+      uint8 in_ram;
 
       if (IN_RAM(o))
-        field0 = ram_get_field0 (o);
+        in_ram = 1;
       else
-        field0 = rom_get_field0 (o);
+        in_ram = 0;
 
-      if (field0 == BIGNUM_FIELD0)
+      if ((in_ram && RAM_BIGNUM(o)) || ROM_BIGNUM(o))
         printf ("%d", decode_int (o));
-      else if (field0 == TRIPLET_FIELD0) // TODO not in use
-        printf ("#<triplet>");
-      else if (field0 == PAIR_FIELD0)
+      else if ((in_ram && RAM_COMPOSITE(o)) || ROM_COMPOSITE(o))
         {
-          obj car;
+	  obj car;
 	  obj cdr;
 
-	  if (IN_RAM(o))
+	  if (in_ram && RAM_PAIR(o))
 	    {
 	      car = ram_get_car (o);
 	      cdr = ram_get_cdr (o);
-	    }
-	  else
-	    {
-	      car = rom_get_car (o);
-	      cdr = rom_get_cdr (o);
-	    }
-	  
-          printf ("(");
+	      printf ("(");
 
-        loop:
+	    loop_ram:
+	      show (car);
 
-          show (car);
-
-          if (cdr == OBJ_NULL)
-            printf (")");
-          else if ((IN_RAM(cdr) ? ram_get_field0 (cdr) : rom_get_field0 (cdr))
-                   == PAIR_FIELD0)
-            {
-	      if (IN_RAM(cdr))
+	      if (cdr == OBJ_NULL)
+		printf (")");
+	      else if (RAM_PAIR(ram_get_field0 (cdr)))
 		{
 		  car = ram_get_car (cdr);
 		  cdr = ram_get_cdr (cdr);
+
+		  printf (" ");
+		  goto loop_ram;
 		}
 	      else
 		{
+		  printf (" . ");
+		  show (cdr);
+		  printf (")");
+		}
+	    }
+	  else if (ROM_PAIR(o))
+	    {
+	      car = rom_get_car (o);
+	      cdr = rom_get_cdr (o);
+	      printf ("(");
+	    loop_rom:
+	      show (car);
+
+	      if (cdr == OBJ_NULL)
+		printf (")");
+	      else if (ROM_PAIR(rom_get_field0 (cdr)))
+		{
 		  car = rom_get_car (cdr);
 		  cdr = rom_get_cdr (cdr);
-		}
 
-              printf (" ");
-              goto loop;
-            }
-          else
-            {
-              printf (" . ");
-              show (cdr);
-              printf (")");
-            }
+		  printf (" ");
+		  goto loop_rom;
+		}
+	      else // TODO lots of repetition
+		{
+		  printf (" . ");
+		  show (cdr);
+		  printf (")");
+		}
+	    }
+	  else if ((in_ram && RAM_SYMBOL(o)) || ROM_SYMBOL(o))
+	    printf ("#<symbol>");
+	  else if ((in_ram && RAM_STRING(o)) || ROM_STRING(o))
+	    printf ("#<string>");
+	  else if ((in_ram && RAM_VECTOR(o)) || ROM_VECTOR(o))
+	    printf ("#<vector>");
         }
-      else if (field0 == SYMBOL_FIELD0)
-        printf ("#<symbol>");
-      else if (field0 == STRING_FIELD0)
-        printf ("#<string>");
-      else if (field0 == VECTOR_FIELD0)
-        printf ("#<vector>");
       else
         {
           /* obj env; */
@@ -1089,9 +1102,9 @@ void prim_pairp (void)
 
 obj cons (obj car, obj cdr)
 {
-  return alloc_ram_cell_init (PAIR_FIELD0,
-			      (car & 0xff0) >> 4,
-			      ((car & 0xf) << 4) | ((cdr & 0xf00) >> 8),
+  return alloc_ram_cell_init (COMPOSITE_FIELD0 | ((car & 0x1f00) >> 8),
+			      car & 0xff,
+			      PAIR_FIELD2 | ((cdr & 0x1f00) >> 8),
 			      cdr & 0xff);
 }
 
@@ -1214,14 +1227,14 @@ void prim_string2list (void)
       if (!RAM_STRING(arg1))
         TYPE_ERROR("string");
 
-      arg1 = ram_get_car (arg1); // TODO was field1, but pointer size changed
+      arg1 = ram_get_car (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_STRING(arg1))
         TYPE_ERROR("string");
 
-      arg1 = rom_get_car (arg1); // TODO was field1, but pointer size changed
+      arg1 = rom_get_car (arg1);
     }
   else
     TYPE_ERROR("string");
@@ -1229,13 +1242,13 @@ void prim_string2list (void)
 
  void prim_list2string (void)
 {
-  arg1 = alloc_ram_cell_init (STRING_FIELD0,
-			      (arg1 & 0xff0) >> 4, // TODO pointer size changed
-			      (arg1 & 0xf) << 4,
+  arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | ((arg1 & 0x1f00) >> 8),
+			      arg1 & 0xff,
+			      STRING_FIELD2,
 			      0);
 }
 
-void prim_ior (void) // ADDED
+void prim_ior (void)
 {
   a1 = decode_int (arg1);
   a2 = decode_int (arg2);
@@ -1243,7 +1256,7 @@ void prim_ior (void) // ADDED
   arg2 = OBJ_FALSE;
 }
 
-void prim_xor (void) // ADDED
+void prim_xor (void)
 {
   a1 = decode_int (arg1);
   a2 = decode_int (arg2);
@@ -1713,9 +1726,9 @@ char *prim_name[48] =
     "prim #%neg",
     "prim #%=",
     "prim #%<",
-    "prim #%ior", // ADDED, was "prim #%<=",
+    "prim #%ior",
     "prim #%>",
-    "prim #%xor", // ADDED, was "prim #%>=",
+    "prim #%xor",
     "prim #%pair?",
     "prim #%cons",
     "prim #%car",
@@ -1767,7 +1780,7 @@ void push_arg1 (void)
 
 obj pop (void)
 {
-  obj o = ram_get_car (env); // TODO changed type
+  obj o = ram_get_car (env);
   env = ram_get_cdr (env);
   return o;
 }
@@ -1777,21 +1790,19 @@ void pop_procedure (void) // TODO where do we get the env of the procedure ?
   arg1 = POP();
   if (IN_RAM(arg1))
     {
-      field0 = ram_get_field0 (arg1);
-
-      if (field0 < PROCEDURE_FIELD0)
+      if (RAM_PROCEDURE(arg1)) 
 	TYPE_ERROR("procedure");
-
-      entry = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (arg1);
+      
+      entry = ((ram_get_field2 (arg1) << 8) | ram_get_field3 (arg1))
+	+ CODE_START;
     }
   else if (IN_ROM(arg1))
     {
-      field0 = rom_get_field0 (arg1);
-
-      if (field0 < PROCEDURE_FIELD0)
+      if (ROM_PROCEDURE(arg1))
         TYPE_ERROR("procedure");
 
-      entry = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + rom_get_field3 (arg1);
+      entry = ((rom_get_field2 (arg1) << 8) | rom_get_field3 (arg1))
+	+ CODE_START;
     }
   else
     TYPE_ERROR("procedure");
@@ -1827,7 +1838,7 @@ void handle_arity_and_rest_param (void)
           na--;
         }
 
-      arg1 = cons (arg3, arg1);
+      arg1 = cons (arg3, arg1); // TODO what shpuld be the value of arg1 at this point ? the popped procedure ? the old env ? looks like the popped procedure
       arg3 = OBJ_FALSE;
     }
 }
@@ -1849,10 +1860,10 @@ void build_env (void)
 void save_cont (void)
 {
   second_half = cons (env, cont);
-  cont = alloc_ram_cell_init ((uint8)(pc >> 8) - ((CODE_START>>8)-PROCEDURE_FIELD0),
-                              (second_half & 0xff0) >> 4,
-                              (second_half & 0xf)   << 4,
-                              (uint8)pc);
+  cont = alloc_ram_cell_init (PROCEDURE_FIELD0 | ((second_half &0x1f00) >> 8),
+                              second_half & 0xff,
+                              (pc & 0xff00) >> 8,
+                              pc & 0xff);
 }
 
 void interpreter (void)
@@ -1878,7 +1889,7 @@ void interpreter (void)
   CASE(PUSH_CONSTANT2);
 
   IF_TRACE(printf("  (push-constant "); show (bytecode_lo4+16); printf (")\n"));
-
+  // TODO for bigger fixnums and co, we have to use push long ? fix push long
   arg1 = bytecode_lo4+16;
 
   PUSH_ARG1();
@@ -1894,11 +1905,11 @@ void interpreter (void)
 
   while (bytecode_lo4 != 0)
     {
-      arg1 = ram_get_cdr (arg1); // TODO was field2
+      arg1 = ram_get_cdr (arg1);
       bytecode_lo4--;
     }
 
-  arg1 = ram_get_car (arg1); // TODO was field1
+  arg1 = ram_get_car (arg1);
 
   PUSH_ARG1();
 
@@ -1915,11 +1926,11 @@ void interpreter (void)
 
   while (bytecode_lo4 != 0)
     {
-      arg1 = ram_get_cdr (arg1); // TODO was field2
+      arg1 = ram_get_cdr (arg1);
       bytecode_lo4--;
     }
 
-  arg1 = ram_get_car (arg1); // TODO was field1
+  arg1 = ram_get_car (arg1);
 
   PUSH_ARG1();
 
@@ -1985,11 +1996,14 @@ void interpreter (void)
   /***************************************************************************/
   CASE(CALL_TOPLEVEL);
 
+  FETCH_NEXT_BYTECODE();  
+  second_half = bytecode; // TODO make sure second_half is not already in use
+  
   FETCH_NEXT_BYTECODE();
 
-  IF_TRACE(printf("  (call-toplevel 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
+  IF_TRACE(printf("  (call-toplevel 0x%04x)\n", ((second_half << 8) | bytecode) + CODE_START));
 
-  entry = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode;
+  entry = ((second_half << 8) | bytecode) + CODE_START; // TODO FOOBAR we'd have to change the compiler to use 2 bytes after the opcode instead of one, and now we have the last 4 bits of the opcode free, to do pretty much anything
   arg1 = OBJ_NULL;
 
   na = rom_get (entry++);
@@ -2007,11 +2021,14 @@ void interpreter (void)
   /***************************************************************************/
   CASE(JUMP_TOPLEVEL);
 
+  FETCH_NEXT_BYTECODE();  
+  second_half = bytecode; // TODO make sure second_half is not already in use
+  
   FETCH_NEXT_BYTECODE();
 
-  IF_TRACE(printf("  (jump-toplevel 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
+  IF_TRACE(printf("  (jump-toplevel 0x%04x)\n", ((second_half << 8) | bytecode) + CODE_START));
 
-  entry = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode;
+  entry = ((second_half << 8) | bytecode) + CODE_START;
   arg1 = OBJ_NULL;
 
   na = rom_get (entry++);
@@ -2029,7 +2046,7 @@ void interpreter (void)
   CASE(GOTO);
 
   FETCH_NEXT_BYTECODE();
-
+  // TODO goto's use 12-bit addresses, unlike calls and jumps, which use 16, is it ok ?
   IF_TRACE(printf("  (goto 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
 
   pc = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode;
@@ -2052,21 +2069,22 @@ void interpreter (void)
   CASE(CLOSURE);
 
   FETCH_NEXT_BYTECODE();
+  second_half = bytecode;
+  
+  FETCH_NEXT_BYTECODE();
 
-  IF_TRACE(printf("  (closure 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
+  IF_TRACE(printf("  (closure 0x%04x)\n", (second_half << 8) | bytecode));
+  // TODO original had CODE_START, while the real code below didn't
 
   arg2 = POP(); // #f TODO should be, at least, and not used anymore
   arg3 = POP(); // env
 
-  entry = ((rom_addr)bytecode_lo4 << 8) + bytecode;
+  entry = (second_half << 8) | bytecode; // TODO original had no CODE_START, why ?
 
-  /* second_half = cons (arg3, arg2); */ // TODO not anymore
-  arg1 = alloc_ram_cell_init ((uint8)(entry >> 8) + PROCEDURE_FIELD0,
-                              /* (second_half & 0xff0) >> 4, */ // TODO not anymore
-                              /* (second_half & 0xf)   << 4, */
-			      (arg3 & 0xff0) >> 4,
-                              (arg3 & 0xf)   << 4,
-                              (uint8)entry);
+  arg1 = alloc_ram_cell_init (PROCEDURE_FIELD0 | ((arg3 & 0x1f00) >> 8),
+			      arg3 & 0xff,
+                              second_half,
+                              bytecode);
 
   PUSH_ARG1();
 
@@ -2166,9 +2184,10 @@ void interpreter (void)
       arg1 = POP(); /* value to return */
       cont = POP(); /* continuation */
 
-      pc = ((rom_addr)(ram_get_field0 (cont) + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (cont);
-      env = ram_get_car (ram_get_car (cont)); // TODO were field1 and 2 of cont
-      cont = ram_get_cdr (ram_get_car (cont));
+      pc = ((ram_get_field2 (cont) << 8) | ram_get_field3 (cont)) + CODE_START;
+      second_half = ram_get_car (cont);
+      env = ram_get_car (second_half);
+      cont = ram_get_cdr (second_half);
 
       PUSH_ARG1();
 
@@ -2243,9 +2262,11 @@ void interpreter (void)
       break;
 #endif
     case 12:
-      /* push-constant [long] */ // TODO must find a way to get 12bit objects, use 2 bytes ? FOOBAR
+      /* push-constant [long] */
       FETCH_NEXT_BYTECODE();
-      arg1 = bytecode;
+      second_half = bytecode;
+      FETCH_NEXT_BYTECODE();
+      arg1 = (second_half << 8) | bytecode;
       PUSH_ARG1();
       break;
     case 13:
@@ -2261,9 +2282,10 @@ void interpreter (void)
     case 15:
       /* return */
       arg1 = POP();
-      pc = ((rom_addr)(ram_get_field0 (cont) + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (cont);
-      env = ram_get_car (ram_get_car (cont)); // TODO were field1 and 2 of cont
-      cont = ram_get_cdr (ram_get_car (cont));
+      pc = ((ram_get_field2 (cont) << 8) | ram_get_field3 (cont)) + CODE_START;
+      second_half = ram_get_car (cont);
+      env = ram_get_car (second_half);
+      cont = ram_get_cdr (second_half);
       PUSH_ARG1();
       break;
     }
