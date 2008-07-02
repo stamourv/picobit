@@ -369,9 +369,10 @@ obj globals[GLOVARS];
 #define RAM_BIGNUM(o) (ram_get_field0 (o) == BIGNUM_FIELD0)
 #define ROM_BIGNUM(o) (rom_get_field0 (o) == BIGNUM_FIELD0)
 
-#define CONTINUATION2_FIELD0 1
-#define RAM_CONTINUATION2(o) (ram_get_field0 (o) == CONTINUATION2_FIELD0)
-#define ROM_CONTINUATION2(o) (rom_get_field0 (o) == CONTINUATION2_FIELD0)
+// TODO this is not in use
+#define TRIPLET_FIELD0 1
+#define RAM_TRIPLET(o) (ram_get_field0 (o) == TRIPLET_FIELD0)
+#define ROM_TRIPLET(o) (rom_get_field0 (o) == TRIPLET_FIELD0)
 
 #define PAIR_FIELD0 2
 #define RAM_PAIR(o) (ram_get_field0 (o) == PAIR_FIELD0)
@@ -504,12 +505,11 @@ void set_global (uint8 i, obj o)
 
 /* Number of object fields of objects in ram */
 
-#define HAS_3_OBJECT_FIELDS(field0) ((field0) <= PAIR_FIELD0)
-// TODO was ((field0) <= PAIR_FIELD0), but now no one has 3 fields
-// TODO FOOBAR should be 0, but if it is, red-green breaks
-#define HAS_2_OBJECT_FIELDS(field0) ((field0) >  PAIR_FIELD0)
-#define HAS_1_OBJECT_FIELD(field0)  0
-// TODO change these
+#define HAS_3_OBJECT_FIELDS(field0) 0
+#define HAS_2_OBJECT_FIELDS(field0) ((field0) ==  PAIR_FIELD0)
+#define HAS_1_OBJECT_FIELD(field0)  ((field0) >= PROCEDURE_FIELD0)
+// procedures and continuations have both 1 pointer
+// TODO change when we add true vectors
 
 #define NIL OBJ_FALSE
 
@@ -540,7 +540,7 @@ int32 a3;
 
 void init_ram_heap (void)
 {
-  uint8 i; // TODO should it be 16 ? for now we have 16 globals, might want more than 256
+  uint8 i;
   obj o = MAX_RAM_ENCODING;
 
   free_list = 0;
@@ -566,9 +566,9 @@ void init_ram_heap (void)
 }
 
 void mark (obj temp)
-{
+{  
   /* mark phase */
-
+  
   obj stack;
   obj visit;
 
@@ -613,47 +613,28 @@ void mark (obj temp)
        *         +---+-|-+---+---+            +---+---+---+---+
        *     <---------+
        */
-
+      // TODO since no-one has 3 fields anymore, not really 4 cases ?
+      
       if (ram_get_gc_tags (visit) != GC_TAG_UNMARKED)
         IF_GC_TRACE(printf ("case 1\n"));
       else
         {
           field0 = ram_get_field0 (visit);
 
-          if (HAS_3_OBJECT_FIELDS(field0)) // TODO now pairs are considered to have 3 fields, but don't really. looks like the gc will have to be rewritten
-            {
-              IF_GC_TRACE(printf ("case 2\n"));
-
-            visit_field3:
-
-              temp = ram_get_field3 (visit);
-
-              if (IN_RAM(temp))
-                {
-                  IF_GC_TRACE(printf ("case 3\n"));
-                  ram_set_gc_tags (visit, GC_TAG_2_LEFT);
-                  ram_set_field3 (visit, stack);
-                  goto push;
-                }
-
-              IF_GC_TRACE(printf ("case 4\n"));
-
-              goto visit_field2;
-            }
-
           if (HAS_2_OBJECT_FIELDS(field0))
             {
               IF_GC_TRACE(printf ("case 5\n"));
+	      // TODO we don't have cases 2-4 anymore
 
             visit_field2:
 
-              temp = ram_get_field2 (visit);
+              temp = ram_get_cdr (visit); // TODO was field2
 
               if (IN_RAM(temp))
                 {
                   IF_GC_TRACE(printf ("case 6\n"));
                   ram_set_gc_tags (visit, GC_TAG_1_LEFT);
-                  ram_set_field2 (visit, stack);
+                  ram_set_cdr (visit, stack); // TODO was field2
                   goto push;
                 }
 
@@ -668,13 +649,13 @@ void mark (obj temp)
 
             visit_field1:
 
-              temp = ram_get_field1 (visit);
+              temp = ram_get_car (visit); // TODO was field1
 
               if (IN_RAM(temp))
                 {
                   IF_GC_TRACE(printf ("case 9\n"));
                   ram_set_gc_tags (visit, GC_TAG_0_LEFT);
-                  ram_set_field1 (visit, stack);
+                  ram_set_car (visit, stack); // TODO was field1
                   goto push;
                 }
 
@@ -692,24 +673,12 @@ void mark (obj temp)
 
       if (stack != NIL)
         {
-          if (ram_get_gc_tags (stack) == GC_TAG_2_LEFT)
-            {
-              IF_GC_TRACE(printf ("case 12\n"));
-
-              temp = ram_get_field3 (stack);  /* pop through field 3 */
-              ram_set_field3 (stack, visit);
-              visit = stack;
-              stack = temp;
-
-              goto visit_field2;
-            }
-
           if (ram_get_gc_tags (stack) == GC_TAG_1_LEFT)
             {
               IF_GC_TRACE(printf ("case 13\n"));
 
-              temp = ram_get_field2 (stack);  /* pop through field 2 */
-              ram_set_field2 (stack, visit);
+              temp = ram_get_cdr (stack);  /* pop through field 2 */ // TODO was field2
+              ram_set_cdr (stack, visit); // TODO was field2
               visit = stack;
               stack = temp;
 
@@ -718,8 +687,8 @@ void mark (obj temp)
 
           IF_GC_TRACE(printf ("case 14\n"));
 
-          temp = ram_get_field1 (stack);  /* pop through field 1 */
-          ram_set_field1 (stack, visit);
+          temp = ram_get_car (stack);  /* pop through field 1 */ // TODO was field1
+          ram_set_car (stack, visit); // TODO was field1
           visit = stack;
           stack = temp;
 
@@ -902,7 +871,7 @@ void show (obj o)
 
       if (field0 == BIGNUM_FIELD0)
         printf ("%d", decode_int (o));
-      else if (field0 == CONTINUATION2_FIELD0)
+      else if (field0 == TRIPLET_FIELD0) // TODO not in use
         printf ("#<triplet>");
       else if (field0 == PAIR_FIELD0)
         {
