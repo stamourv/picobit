@@ -406,11 +406,14 @@ obj globals[GLOVARS];
 
 // TODO changed, now gc bits are 0x60, were 0xc0, but the 1st is not always used
 #define RAM_GET_GC_TAGS_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x60)
+#define RAM_SET_GC_TAGS_MACRO(o,tags)                                      \
+  (RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x9f) | (tags)))
 #define RAM_SET_GC_TAG0_MACRO(o,tag)                                    \
   RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xdf) | (tag))
 #define RAM_SET_GC_TAG1_MACRO(o,tag)                                    \
   RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xbf) | (tag))
 // TODO we can't set them both at once now, since some objects only have 1
+// FOOBAR, maybe we can
 
 #if WORD_BITS == 8
 #define RAM_GET_FIELD1_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,1))
@@ -456,9 +459,11 @@ obj globals[GLOVARS];
 #endif
 
 uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
+void ram_set_gc_tags  (obj o, uint8 tags) { RAM_SET_GC_TAGS_MACRO(o, tags); }
 void ram_set_gc_tag0 (obj o, uint8 tag) { RAM_SET_GC_TAG0_MACRO(o,tag); }
 void ram_set_gc_tag1 (obj o, uint8 tag) { RAM_SET_GC_TAG1_MACRO(o,tag); }
 // TODO we can't set them both at once anymore, some object only use 1
+// FOOBAR actually, we might be able to, if we don't ever set or unset something used for the type
 uint8 ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
 word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); } // TODO used to return obj, which used to be the same as words
 word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
@@ -506,16 +511,19 @@ void set_global (uint8 i, obj o)
 /* Interface to GC */
 
 /* GC tags are in the top 2 bits of field 0 */
-// TODO change GC with new representation
-#define GC_TAG_0_LEFT   (3<<6)
-#define GC_TAG_1_LEFT   (2<<6)
-#define GC_TAG_UNMARKED (0<<6)  /* must be 0 */
+// TODO change GC with new representation FOOBAR
+#define GC_TAG_0_LEFT   (1<<5)
+// TODO was 3<<5, changed to play nice with procedures and bignums, but should actually set only this bit, not clear the other
+#define GC_TAG_1_LEFT   (2<<5)
+#define GC_TAG_UNMARKED (0<<5)  /* must be 0 */ // TODO FOOBAR is it ok ? eevn for bignums ?
 
 /* Number of object fields of objects in ram */
-// TODO change
-#define HAS_2_OBJECT_FIELDS(field0) ((field0) ==  PAIR_FIELD0)
-#define HAS_1_OBJECT_FIELD(field0)  ((field0) >= PROCEDURE_FIELD0)
-// procedures and continuations have both 1 pointer
+#define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR(visit))
+#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) || RAM_PROCEDURE(visit))
+// TODO now we consider that all composites have at least 1 field, even symbols, as do procedures. no problem for symbols, since the car is always #f
+// TODO was : (RAM_STRING(visit) || RAM_VECTOR(visit) || RAM_PROCEDURE(visit))
+// TODO no real way to tell using simple inequality
+// TODO if we ever have true bignums, bignums will have 1 object field
 
 #define NIL OBJ_FALSE
 
@@ -531,15 +539,14 @@ obj arg3;
 obj arg4;
 obj cont;
 obj env;
-obj second_half; /* the second half of continuations */
 
-uint8 na; /* interpreter variables */ // TODO what's that ?
+uint8 na; /* interpreter variables */ // TODO what's na ?
 rom_addr pc;
 rom_addr entry;
 uint8 bytecode;
 uint8 bytecode_hi4;
 uint8 bytecode_lo4;
-uint8 field0; // TODO is it used anymore
+obj second_half; /* the second half of continuations */
 int32 a1;
 int32 a2;
 int32 a3;
@@ -554,7 +561,7 @@ void init_ram_heap (void)
   while (o >= MIN_RAM_ENCODING)
     {
       ram_set_gc_tags (o, GC_TAG_UNMARKED);
-      ram_set_field1 (o, free_list);
+      ram_set_car (o, free_list); // TODO was field1
       free_list = o;
       o--;
     }
@@ -575,7 +582,7 @@ void mark (obj temp)
 {  
   /* mark phase */
   
-  obj stack;
+  obj stack; // TODO do we need a stack ? since we have 0-1-2 children, we could do deutsche schorr waite
   obj visit;
 
   if (IN_RAM(temp))
@@ -621,26 +628,26 @@ void mark (obj temp)
        */
       // TODO since no-one has 3 fields anymore, not really 4 cases ?
       
-      if (ram_get_gc_tags (visit) != GC_TAG_UNMARKED)
-        IF_GC_TRACE(printf ("case 1\n"));
+      //      if (ram_get_gc_tags (visit) != GC_TAG_UNMARKED) // TODO always matches procedures, WRONG, maybe check only the right gc bit ?/
+      if (ram_get_gc_tags (visit) & 0x2f) // TODO we check only the last gc bit
+	IF_GC_TRACE(printf ("case 1\n")); // TODO are there cases where checking only the last gc bit is wrong ?
+      // TODO FOOBAR ok, with our new way, what do we check here ?
       else
         {
-          field0 = ram_get_field0 (visit);
-
-          if (HAS_2_OBJECT_FIELDS(field0))
+          if (HAS_2_OBJECT_FIELDS(visit))
             {
               IF_GC_TRACE(printf ("case 5\n"));
 	      // TODO we don't have cases 2-4 anymore
 
             visit_field2:
 
-              temp = ram_get_cdr (visit); // TODO was field2
+              temp = ram_get_cdr (visit);
 
               if (IN_RAM(temp))
                 {
                   IF_GC_TRACE(printf ("case 6\n"));
                   ram_set_gc_tags (visit, GC_TAG_1_LEFT);
-                  ram_set_cdr (visit, stack); // TODO was field2
+                  ram_set_cdr (visit, stack);
                   goto push;
                 }
 
@@ -649,19 +656,19 @@ void mark (obj temp)
               goto visit_field1;
             }
 
-          if (HAS_1_OBJECT_FIELD(field0))
+          if (HAS_1_OBJECT_FIELD(visit))
             {
               IF_GC_TRACE(printf ("case 8\n"));
 
             visit_field1:
 
-              temp = ram_get_car (visit); // TODO was field1
+              temp = ram_get_car (visit);
 
               if (IN_RAM(temp))
                 {
                   IF_GC_TRACE(printf ("case 9\n"));
-                  ram_set_gc_tags (visit, GC_TAG_0_LEFT);
-                  ram_set_car (visit, stack); // TODO was field1
+                  ram_set_gc_tag0 (visit, GC_TAG_0_LEFT); // TODO changed, now we only set the bit 0, we don't change the bit 1, since some objets have only 1 mark bit
+                  ram_set_car (visit, stack);
                   goto push;
                 }
 
@@ -670,7 +677,7 @@ void mark (obj temp)
           else
             IF_GC_TRACE(printf ("case 11\n"));
 
-          ram_set_gc_tags (visit, GC_TAG_0_LEFT);
+          ram_set_gc_tag0 (visit, GC_TAG_0_LEFT); // TODO changed, same as above
         }
 
     pop:
@@ -679,12 +686,12 @@ void mark (obj temp)
 
       if (stack != NIL)
         {
-          if (ram_get_gc_tags (stack) == GC_TAG_1_LEFT)
+          if (ram_get_gc_tags (stack) == GC_TAG_1_LEFT) // TODO FOOBAR, this is always true for procedures that have not been marked, can such an object get here ? probably not, since when a procedure is popped, it has already been visited, so will be at 0 left
             {
               IF_GC_TRACE(printf ("case 13\n"));
 
-              temp = ram_get_cdr (stack);  /* pop through field 2 */ // TODO was field2
-              ram_set_cdr (stack, visit); // TODO was field2
+              temp = ram_get_cdr (stack);  /* pop through field 2 */
+              ram_set_cdr (stack, visit);
               visit = stack;
               stack = temp;
 
@@ -693,8 +700,8 @@ void mark (obj temp)
 
           IF_GC_TRACE(printf ("case 14\n"));
 
-          temp = ram_get_car (stack);  /* pop through field 1 */ // TODO was field1
-          ram_set_car (stack, visit); // TODO was field1
+          temp = ram_get_car (stack);  /* pop through field 1 */
+          ram_set_car (stack, visit);
           visit = stack;
           stack = temp;
 
@@ -721,14 +728,18 @@ void sweep (void)
 
   while (visit >= MIN_RAM_ENCODING)
     {
-      if (ram_get_gc_tags (visit) == GC_TAG_UNMARKED) /* unmarked? */
+      if ((RAM_COMPOSITE(visit) && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) || (ram_get_gc_tags (visit) & GC_TAG_0_LEFT)) /* unmarked? */
+	// TODO now we check only 1 bit if the object has only 1 mark bit
         {
-          ram_set_field1 (visit, free_list);
+          ram_set_car (visit, free_list); // TODO was field1
           free_list = visit;
         }
       else
         {
-          ram_set_gc_tags (visit, GC_TAG_UNMARKED);
+	  if (RAM_COMPOSITE(visit))
+	    ram_set_gc_tags (visit, GC_TAG_UNMARKED);
+	  else // only 1 mark bit to unset
+	    ram_set_gc_tag0 (visit, GC_TAG_UNMARKED);
 #ifdef DEBUG_GC
           n++;
 #endif

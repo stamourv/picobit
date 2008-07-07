@@ -18,6 +18,7 @@
 (define program-start-addr #x2000)
 
 (define serial-port-name "com1") ; default, works for Windows
+(define serial-port-name "rs232") ; ADDED now to named pipe
 
 (let loop ((lst '("/dev/cu.USA28X181P1.1"
                   "/dev/cu.USA28X181P2.2"
