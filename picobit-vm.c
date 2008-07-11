@@ -6,6 +6,7 @@
  * History:
  *
  *   15/08/2004  Release of version 1
+ *   6/07/2008  Modified for PICOBOARD2_R3
  */
 
 #define DEBUG_not
@@ -23,7 +24,7 @@ typedef unsigned long uint32;
 /*---------------------------------------------------------------------------*/
 
 
-#ifdef __18CXX
+#ifdef PICOBOARD2
 #define ROBOT
 #endif
 
@@ -33,79 +34,6 @@ typedef unsigned long uint32;
 
 #ifndef ROBOT
 #define WORKSTATION
-#endif
-
-
-#ifdef __18CXX
-
-#include <p18f452.h>
-
-extern volatile near uint8 IR_TX_BUF[2+(8+2)+2];
-extern volatile near uint8 FW_EVENTS;
-extern volatile near uint8 FW_OPS;
-extern volatile near uint8 IR_TX_LENGTH;
-extern volatile near uint8 IR_TX_LEDS;
-extern volatile near uint8 IR_TX_CURRENT_LEDS;
-extern volatile near uint8 IR_TX_POWER;
-extern volatile near uint8 IR_TX_CURRENT_POWER;
-extern volatile near uint8 IR_TX_SHIFT_REG;
-extern volatile near uint8 IR_TX_PTR;
-extern volatile near uint8 IR_TX_TIMEOUT;
-extern volatile near uint8 IR_TX_WAIT_RANGE;
-extern volatile near uint8 IR_TX_RETRY_COUNT;
-extern volatile near uint8 IR_TX_CRC_HI;
-extern volatile near uint8 IR_TX_CRC_LO;
-extern volatile near uint8 IR_TX_HI4;
-extern volatile near uint8 IR_TX_LO4;
-extern volatile near uint8 INT_IR_STATE_HI;
-extern volatile near uint8 INT_IR_STATE_LO;
-extern volatile near uint8 INT_PCLATH;
-extern volatile near uint8 INT_CODE;
-extern volatile near uint8 IR_BIT_CLOCK;
-extern volatile near uint8 CLOCK_UP;
-extern volatile near uint8 CLOCK_HI;
-extern volatile near uint8 CLOCK_LO;
-extern volatile near uint8 RANDOM;
-extern volatile near uint8 NODE_NUM;
-extern volatile near uint8 IR_RX_SOURCE;
-extern volatile near uint8 IR_RX_LENGTH;
-extern volatile near uint8 IR_RX_BUF[2+(2+8)+2];
-extern volatile near uint8 IR_RX_CRC_HI;
-extern volatile near uint8 IR_RX_CRC_LO;
-extern volatile near uint8 IR_RX_HI4;
-extern volatile near uint8 IR_RX_LO4;
-extern volatile near uint8 DRIVE_A_MODE;
-extern volatile near uint8 DRIVE_A_PWM;
-extern volatile near uint8 DRIVE_B_MODE;
-extern volatile near uint8 DRIVE_B_PWM;
-extern volatile near uint8 DRIVE_C_MODE;
-extern volatile near uint8 DRIVE_C_PWM;
-extern volatile near uint8 MOTOR_ID;
-extern volatile near uint8 FW_VALUE_UP;
-extern volatile near uint8 MOTOR_ROT;
-extern volatile near uint8 FW_VALUE_HI;
-extern volatile near uint8 MOTOR_POW;
-extern volatile near uint8 FW_VALUE_LO;
-extern volatile near uint8 FW_VALUE_TMP;
-extern volatile near uint8 FW_LAST_TX_TIME_LO;
-extern volatile near uint8 IR_RX_SAMPLE_TIMER;
-extern volatile near uint8 IR_RX_SHIFT_REG;
-extern volatile near uint8 IR_RX_PREVIOUS;
-extern volatile near uint8 IR_RX_PTR;
-extern volatile near uint8 IR_RX_BYTE;
-extern volatile near uint8 STDIO_TX_SEQ_NUM;
-extern volatile near uint8 STDIO_RX_SEQ_NUM;
-extern volatile near uint8 FW_TEMP1;
-
-extern void fw_clock_read (void);
-extern void fw_motor (void);
-extern void fw_light_read (void);
-extern void fw_ir_tx (void);
-extern void fw_ir_rx_stdio_char (void);
-extern void fw_ir_tx_wait_ready (void);
-extern void fw_ir_tx_stdio (void);
-extern void program_mode (void);
-
 #endif
 
 
@@ -147,7 +75,7 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #define WORD_BITS 8
 
-#define CODE_START 0x2000
+#define CODE_START 0x5000
 
 #define GLOVARS 16
 
@@ -162,10 +90,10 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 /*---------------------------------------------------------------------------*/
 
 
-#ifdef __18CXX
+#ifdef PICOBOARD2
 
-#define ERROR(msg) program_mode ()
-#define TYPE_ERROR(type) program_mode ()
+#define ERROR(msg) halt_with_error()
+#define TYPE_ERROR(type) halt_with_error()
 
 #endif
 
@@ -217,7 +145,13 @@ typedef uint16 obj;
 #endif
 
 
-#ifdef __18CXX
+#ifdef PICOBOARD2
+
+#if 0
+#pragma udata picobit_heap=0x200
+uint8 ram_mem[RAM_BYTES];
+#pragma udata
+#endif
 
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
@@ -237,7 +171,7 @@ uint8 ram_mem[RAM_BYTES];
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef __18CXX
+#ifdef PICOBOARD2
 
 #if WORD_BITS == 8
 #endif
@@ -314,26 +248,27 @@ obj globals[GLOVARS];
   d is cdr
   gives an address space of 2^13 * 4 = 32k (not all of it is for RAM, though)
 
-  symbol       1GG00000 00000000 00100000 00000000  TODO not used ? seems symbols are not even really supported, but the led user functions do use them, strange
+  symbol       1GG00000 00000000 00100000 00000000
 
   string       1GG***** *chars** 01000000 00000000
 
-  vector       1GG***** *elems** 01100000 00000000  TODO not used yet
+  vector       1GG***** *elems** 01100000 00000000 TODO not used yet
 
-  closure      01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa
-  0x5ff<a<0x4000 is entry TODO we now have more 16 bits for the entry, 16 whole, how to use it ?
+  closure      01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa TODO OLD
+  closure      01Gaaaaa aaaaaaaa aaaxxxxx xxxxxxxx
+  0x5ff<a<0x4000 is entry
   x is pointer to environment
-
-  continuation 01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa  0x5ff<a<0x4000 is pc
-  TODO actually, 16 bits for the code
-  x is pointer to the second half
-  TODO ok, ugly hack, closures are in only one object, but continuations (since they seem to only be created by the runtime) are stored in 2, the compiler doesn't need to be changed much, not for closures at least, we'll just have to see if the similar representation is used somewhere in the vm
-
-  second half  1GGxxxxx xxxxxxxx 000yyyyy yyyyyyyy
-  of continuations, actually a simple pair
-  x is environment
-  y is parent continuation
-
+  the reason why the environment is on the cdr (and the entry is split on 3
+  bytes) is that, when looking for a variable, a closure is considered to be a
+  pair. The compiler adds an extra offset to any variable in the closure's
+  environment, so the car of the closure (which doesn't really exist) is never
+  checked, but the cdr is followed to find the other bindings
+  
+  continuation 01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa  0x5ff<a<0x4000 is pc TODO old
+  continuation 01Gxxxxx xxxxxxxx 100yyyyy yyyyyyyy
+  x is parent continuation
+  y is pointer to the second half, which is a closure (contains env and entry)
+  
   An environment is a list of objects built out of pairs.  On entry to
   a procedure the environment is the list of parameters to which is
   added the environment of the closure being called.
@@ -393,10 +328,15 @@ obj globals[GLOVARS];
 #define RAM_VECTOR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
 #define ROM_VECTOR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
 
-// procedure / continuation first byte : 01Gxxxxx
-#define PROCEDURE_FIELD0 0x40
-#define RAM_PROCEDURE(o) ((ram_get_field0 (o) & 0xc0) == PROCEDURE_FIELD0)
-#define ROM_PROCEDURE(o) ((rom_get_field0 (o) & 0xc0) == PROCEDURE_FIELD0)
+// continuation third byte : 100xxxxx
+#define CONTINUATION_FIELD2 0x80
+#define RAM_CONTINUATION(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
+#define ROM_CONTINUATION(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
+
+// closure first byte : 01Gxxxxx
+#define CLOSURE_FIELD0 0x40
+#define RAM_CLOSURE(o) ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
+#define ROM_CLOSURE(o) ((rom_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
 
 /*---------------------------------------------------------------------------*/
 
@@ -404,7 +344,6 @@ obj globals[GLOVARS];
 #define RAM_SET_FIELD0_MACRO(o,val) ram_set (OBJ_TO_RAM_ADDR(o,0), val)
 #define ROM_GET_FIELD0_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,0))
 
-// TODO changed, now gc bits are 0x60, were 0xc0, but the 1st is not always used
 #define RAM_GET_GC_TAGS_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x60)
 #define RAM_SET_GC_TAGS_MACRO(o,tags)                                      \
   (RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x9f) | (tags)))
@@ -412,8 +351,6 @@ obj globals[GLOVARS];
   RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xdf) | (tag))
 #define RAM_SET_GC_TAG1_MACRO(o,tag)                                    \
   RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xbf) | (tag))
-// TODO we can't set them both at once now, since some objects only have 1
-// FOOBAR, maybe we can
 
 #if WORD_BITS == 8
 #define RAM_GET_FIELD1_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,1))
@@ -427,7 +364,6 @@ obj globals[GLOVARS];
 #define ROM_GET_FIELD3_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,3))
 #endif
 
-// TODO this might be of use, but doesn't look like it is for now
 #if WORD_BITS == 10
 #define RAM_GET_FIELD1_MACRO(o)                                         \
   (ram_get (OBJ_TO_RAM_ADDR(o,1)) + ((RAM_GET_FIELD0_MACRO(o) & 0x03)<<8))
@@ -462,8 +398,6 @@ uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
 void ram_set_gc_tags  (obj o, uint8 tags) { RAM_SET_GC_TAGS_MACRO(o, tags); }
 void ram_set_gc_tag0 (obj o, uint8 tag) { RAM_SET_GC_TAG0_MACRO(o,tag); }
 void ram_set_gc_tag1 (obj o, uint8 tag) { RAM_SET_GC_TAG1_MACRO(o,tag); }
-// TODO we can't set them both at once anymore, some object only use 1
-// FOOBAR actually, we might be able to, if we don't ever set or unset something used for the type
 uint8 ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
 word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); } // TODO used to return obj, which used to be the same as words
 word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
@@ -496,7 +430,7 @@ void ram_set_cdr (obj o, obj val)
   ram_set_field3 (o, val & 0xff);
 }
 
-obj get_global (uint8 i) // TODO 8 ? do we want more than 256 globals ?
+obj get_global (uint8 i)
 {
   return globals[i];
 }
@@ -511,18 +445,15 @@ void set_global (uint8 i, obj o)
 /* Interface to GC */
 
 /* GC tags are in the top 2 bits of field 0 */
-// TODO change GC with new representation FOOBAR
 #define GC_TAG_0_LEFT   (1<<5)
 // TODO was 3<<5, changed to play nice with procedures and bignums, but should actually set only this bit, not clear the other
 #define GC_TAG_1_LEFT   (2<<5)
 #define GC_TAG_UNMARKED (0<<5)  /* must be 0 */ // TODO FOOBAR is it ok ? eevn for bignums ?
 
 /* Number of object fields of objects in ram */
-#define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR(visit))
-#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) || RAM_PROCEDURE(visit))
-// TODO now we consider that all composites have at least 1 field, even symbols, as do procedures. no problem for symbols, since the car is always #f
-// TODO was : (RAM_STRING(visit) || RAM_VECTOR(visit) || RAM_PROCEDURE(visit))
-// TODO no real way to tell using simple inequality
+#define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR(visit) || RAM_CONTINUATION(visit))
+#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit))
+// TODO now we consider that all composites have at least 1 field, even symbols, as do procedures. no problem for symbols, since the car is always #f (make sure)
 // TODO if we ever have true bignums, bignums will have 1 object field
 
 #define NIL OBJ_FALSE
@@ -561,7 +492,7 @@ void init_ram_heap (void)
   while (o >= MIN_RAM_ENCODING)
     {
       ram_set_gc_tags (o, GC_TAG_UNMARKED);
-      ram_set_car (o, free_list); // TODO was field1
+      ram_set_car (o, free_list);
       free_list = o;
       o--;
     }
@@ -667,7 +598,7 @@ void mark (obj temp)
               if (IN_RAM(temp))
                 {
                   IF_GC_TRACE(printf ("case 9\n"));
-                  ram_set_gc_tag0 (visit, GC_TAG_0_LEFT); // TODO changed, now we only set the bit 0, we don't change the bit 1, since some objets have only 1 mark bit
+                  ram_set_gc_tag0 (visit, GC_TAG_0_LEFT); // TODO changed, now we only set bit 0, we don't change bit 1, since some objets have only 1 mark bit
                   ram_set_car (visit, stack);
                   goto push;
                 }
@@ -686,7 +617,7 @@ void mark (obj temp)
 
       if (stack != NIL)
         {
-          if (ram_get_gc_tags (stack) == GC_TAG_1_LEFT) // TODO FOOBAR, this is always true for procedures that have not been marked, can such an object get here ? probably not, since when a procedure is popped, it has already been visited, so will be at 0 left
+          if (ram_get_gc_tags (stack) == GC_TAG_1_LEFT) // TODO FOOBAR, this is always true for closures that have not been marked, can such an object get here ? probably not, since when a procedure is popped, it has already been visited, so will be at 0 left
             {
               IF_GC_TRACE(printf ("case 13\n"));
 
@@ -731,7 +662,7 @@ void sweep (void)
       if ((RAM_COMPOSITE(visit) && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) || (ram_get_gc_tags (visit) & GC_TAG_0_LEFT)) /* unmarked? */
 	// TODO now we check only 1 bit if the object has only 1 mark bit
         {
-          ram_set_car (visit, free_list); // TODO was field1
+          ram_set_car (visit, free_list);
           free_list = visit;
         }
       else
@@ -886,8 +817,11 @@ void show (obj o)
       else
         in_ram = 0;
 
-      if ((in_ram && RAM_BIGNUM(o)) || ROM_BIGNUM(o))
-        printf ("%d", decode_int (o));
+      if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o)))
+	{
+	  printf ("\n%d\n", ROM_BIGNUM(o)); // TODO debug
+	  printf ("%d", decode_int (o)); // TODO gets here, but shouldn't, with test-globals
+	}
       else if ((in_ram && RAM_COMPOSITE(o)) || ROM_COMPOSITE(o))
         {
 	  obj car;
@@ -904,7 +838,7 @@ void show (obj o)
 
 	      if (cdr == OBJ_NULL)
 		printf (")");
-	      else if (RAM_PAIR(ram_get_field0 (cdr)))
+	      else if (RAM_PAIR(cdr))
 		{
 		  car = ram_get_car (cdr);
 		  cdr = ram_get_cdr (cdr);
@@ -919,7 +853,7 @@ void show (obj o)
 		  printf (")");
 		}
 	    }
-	  else if (ROM_PAIR(o))
+	  else if (!in_ram && ROM_PAIR(o))
 	    {
 	      car = rom_get_car (o);
 	      cdr = rom_get_cdr (o);
@@ -929,7 +863,7 @@ void show (obj o)
 
 	      if (cdr == OBJ_NULL)
 		printf (")");
-	      else if (ROM_PAIR(rom_get_field0 (cdr)))
+	      else if (ROM_PAIR(cdr))
 		{
 		  car = rom_get_car (cdr);
 		  cdr = rom_get_cdr (cdr);
@@ -944,11 +878,11 @@ void show (obj o)
 		  printf (")");
 		}
 	    }
-	  else if ((in_ram && RAM_SYMBOL(o)) || ROM_SYMBOL(o))
+	  else if ((in_ram && RAM_SYMBOL(o)) || (!in_ram && ROM_SYMBOL(o)))
 	    printf ("#<symbol>");
-	  else if ((in_ram && RAM_STRING(o)) || ROM_STRING(o))
+	  else if ((in_ram && RAM_STRING(o)) || (!in_ram && ROM_STRING(o)))
 	    printf ("#<string>");
-	  else if ((in_ram && RAM_VECTOR(o)) || ROM_VECTOR(o))
+	  else if ((in_ram && RAM_VECTOR(o)) || (!in_ram && ROM_VECTOR(o)))
 	    printf ("#<vector>");
         }
       else
@@ -958,9 +892,9 @@ void show (obj o)
           /* rom_addr pc; */
 
           /* if (IN_RAM(o)) */
-          /*   env = ram_get_field1 (o); */
+          /*   env = ram_get_car (o); */
           /* else */
-          /*   env = rom_get_field1 (o); */
+          /*   env = rom_get_cdr (o); */
 
           /* if (IN_RAM(o)) */
           /*   parent_cont = ram_get_field2 (o); */
@@ -968,9 +902,9 @@ void show (obj o)
           /*   parent_cont = rom_get_field2 (o); */
 
           /* if (IN_RAM(o)) */
-          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + ram_get_field3 (o); */
+          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - CLOSURE_FIELD0)) << 8) + ram_get_field3 (o); */
           /* else */
-          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - PROCEDURE_FIELD0)) << 8) + rom_get_field3 (o); */
+          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - CLOSURE_FIELD0)) << 8) + rom_get_field3 (o); */
 
           /* printf ("{0x%04x ", pc); */
           /* show (env); */
@@ -1097,6 +1031,23 @@ void prim_gt (void)
   arg2 = OBJ_FALSE;
 }
 
+void prim_ior (void)
+{
+  a1 = decode_int (arg1);
+  a2 = decode_int (arg2);
+  arg1 = encode_int (a1 | a2);
+  arg2 = OBJ_FALSE;
+}
+
+void prim_xor (void)
+{
+  a1 = decode_int (arg1);
+  a2 = decode_int (arg2);
+  arg1 = encode_int (a1 ^ a2);
+  arg2 = OBJ_FALSE;
+}
+
+
 /*---------------------------------------------------------------------------*/
 
 /* List operations */
@@ -1140,7 +1091,9 @@ void prim_car (void)
       arg1 = rom_get_car (arg1);
     }
   else
-    TYPE_ERROR("pair");
+    {
+      TYPE_ERROR("pair");
+    }
 }
 
 void prim_cdr (void)
@@ -1158,7 +1111,9 @@ void prim_cdr (void)
       arg1 = rom_get_cdr (arg1);
     }
   else
-    TYPE_ERROR("pair");
+    {
+      TYPE_ERROR("pair");
+    }
 }
 
 void prim_set_car (void)
@@ -1173,7 +1128,9 @@ void prim_set_car (void)
       arg2 = OBJ_FALSE;
     }
   else
-    TYPE_ERROR("pair");
+    {
+      TYPE_ERROR("pair");
+    }
 }
 
 void prim_set_cdr (void)
@@ -1188,7 +1145,9 @@ void prim_set_cdr (void)
       arg2 = OBJ_FALSE;
     }
   else
-    TYPE_ERROR("pair");
+    {
+      TYPE_ERROR("pair");
+    }
 }
 
 void prim_nullp (void)
@@ -1259,22 +1218,6 @@ void prim_string2list (void)
 			      0);
 }
 
-void prim_ior (void)
-{
-  a1 = decode_int (arg1);
-  a2 = decode_int (arg2);
-  arg1 = encode_int (a1 | a2);
-  arg2 = OBJ_FALSE;
-}
-
-void prim_xor (void)
-{
-  a1 = decode_int (arg1);
-  a2 = decode_int (arg2);
-  arg1 = encode_int (a1 ^ a2);
-  arg2 = OBJ_FALSE;
-}
-
 
 /*---------------------------------------------------------------------------*/
 
@@ -1283,7 +1226,7 @@ void prim_xor (void)
 
 void prim_print (void)
 {
-#ifdef __18CXX
+#ifdef PICOBOARD2
 #endif
 
 #ifdef WORKSTATION
@@ -1300,11 +1243,9 @@ int32 read_clock (void)
 {
   int32 now = 0;
 
-#ifdef __18CXX
+#ifdef PICOBOARD2
 
-  fw_clock_read ();
-
-  now = ((int32)(((int16)FW_VALUE_UP << 8) + FW_VALUE_HI) << 8) + FW_VALUE_LO;
+  now = from_now( 0 );
 
 #endif
 
@@ -1317,7 +1258,7 @@ int32 read_clock (void)
 
   ftime (&tb);
 
-  now = tb.time * 100 + tb.millitm / 10;
+  now = tb.time * 1000 + tb.millitm;
   if (start == 0)
     start = now;
   now -= start;
@@ -1329,7 +1270,7 @@ int32 read_clock (void)
 
   if (gettimeofday (&tv, NULL) == 0)
     {
-      now = tv.tv_sec * 100 + tv.tv_usec / 10000;
+      now = tv.tv_sec * 1000 + tv.tv_usec / 1000;
       if (start == 0)
         start = now;
       now -= start;
@@ -1352,16 +1293,11 @@ void prim_clock (void)
 void prim_motor (void)
 {
   decode_2_int_args ();
-  a3 = decode_int (arg3);
 
-  if (a1 < 0 || a1 > 2 || a2 < -1 || a2 > 1 || a3 < -4 || a3 > 4)
+  if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100)
     ERROR("argument out of range to procedure \"motor\"");
 
-#ifdef __18CXX
-
-  MOTOR_ID  = a1;
-  MOTOR_ROT = a2;
-  MOTOR_POW = a3;
+#ifdef PICOBOARD2
 
   fw_motor ();
 
@@ -1369,7 +1305,33 @@ void prim_motor (void)
 
 #ifdef WORKSTATION
 
-  printf ("motor %d -> rotation=%d power=%d\n", a1, a2, a3);
+  printf ("motor %d -> power=%d\n", a1, a2);
+  fflush (stdout);
+
+#endif
+
+  arg1 = OBJ_FALSE;
+  arg2 = OBJ_FALSE;
+}
+
+
+void prim_led (void)
+{
+  decode_2_int_args ();
+  a3 = decode_int (arg3);
+
+  if (a1 < 1 || a1 > 3 || a2 < 0 || a3 < 0)
+    ERROR("argument out of range to procedure \"led\"");
+
+#ifdef PICOBOARD2
+
+  LED_set( a1, a2, a3 );
+
+#endif
+
+#ifdef WORKSTATION
+
+  printf ("led %d -> duty=%d period=%d\n", a1, a2, a3 );
   fflush (stdout);
 
 #endif
@@ -1380,32 +1342,22 @@ void prim_motor (void)
 }
 
 
-void prim_led (void)
+void prim_led2_color (void)
 {
   a1 = decode_int (arg1);
 
-  if (a1 < 0 || a1 > 2){
-    printf("%d", a1); // TODO debug
-    ERROR("argument out of range to procedure \"led\"");
-  }
+  if (a1 < 0 || a1 > 1)
+    ERROR("argument out of range to procedure \"led2-color\"");
 
-#ifdef __18CXX
+#ifdef PICOBOARD2
 
-  LATBbits.LATB5 = (a1 == 1);
-  LATBbits.LATB4 = (a1 == 2);
-
-#endif
-
-#ifdef HI_TECH_C
-
-  ACTIVITY_LED1 = (a1 == 1);
-  ACTIVITY_LED2 = (a1 == 2);
+  LED2_color_set( a1 );
 
 #endif
 
 #ifdef WORKSTATION
 
-  printf ("led -> %s\n", (a1==1)?"red":(a1==2)?"green":"off");
+  printf ("led2-color -> %s\n", (a1==0)?"green":"red");
   fflush (stdout);
 
 #endif
@@ -1416,25 +1368,22 @@ void prim_led (void)
 
 void prim_getchar_wait (void)
 {
-  a1 = decode_int (arg1);
+  decode_2_int_args();
   a1 = read_clock () + a1;
 
-#ifdef __18CXX
+  if (a1 < 0 || a2 < 1 || a2 > 3)
+    ERROR("argument out of range to procedure \"getchar-wait\"");
+
+#ifdef PICOBOARD2
 
   arg1 = OBJ_FALSE;
 
-  do
-    {
-      uint8 seq_num = STDIO_RX_SEQ_NUM;
-
-      fw_ir_rx_stdio_char ();
-
-      if (seq_num != STDIO_RX_SEQ_NUM)
-        {
-          arg1 = encode_int (FW_VALUE_LO);
-          break;
-        }
-    } while (read_clock () < a1);
+  {
+    serial_port_set ports;
+    ports = serial_rx_wait_with_timeout( a2, a1 );
+    if (ports != 0)
+      arg1 = encode_int (serial_rx_read( ports ));
+  }
 
 #endif
 
@@ -1466,19 +1415,14 @@ void prim_getchar_wait (void)
 
 void prim_putchar (void)
 {
-  a1 = decode_int (arg1);
+  decode_2_int_args ();
 
-  if (a1 < 0 || a1 > 255)
+  if (a1 < 0 || a1 > 255 || a2 < 1 || a2 > 3)
     ERROR("argument out of range to procedure \"putchar\"");
 
-#ifdef __18CXX
+#ifdef PICOBOARD2
 
-  fw_ir_tx_wait_ready ();
-
-  IR_TX_BUF[2] = a1;
-  IR_TX_LENGTH = 1;
-
-  fw_ir_tx_stdio ();
+  serial_tx_write( a2, a1 );
 
 #endif
 
@@ -1490,32 +1434,105 @@ void prim_putchar (void)
 #endif
 
   arg1 = OBJ_FALSE;
+  arg2 = OBJ_FALSE;
 }
 
 
-void prim_light (void)
+void prim_beep (void)
 {
-  uint8 light;
+  decode_2_int_args ();
 
-#ifdef __18CXX
+  if (a1 < 1 || a1 > 255 || a2 < 0)
+    ERROR("argument out of range to procedure \"beep\"");
 
-  fw_light_read ();
+#ifdef PICOBOARD2
 
-  light = FW_VALUE_LO;
+  beep( a1, from_now( a2 ) );
 
 #endif
 
 #ifdef WORKSTATION
 
-  light = read_clock () & 31;
-
-  if (light > 15) light = 32 - light;
-
-  light += 40;
+  printf ("beep -> freq-div=%d duration=%d\n", a1, a2 );
+  fflush (stdout);
 
 #endif
 
-  arg1 = encode_int (light);
+  arg1 = OBJ_FALSE;
+  arg2 = OBJ_FALSE;
+}
+
+
+void prim_adc (void)
+{
+  short x;
+
+  a1 = decode_int (arg1);
+
+  if (a1 < 1 || a1 > 3)
+    ERROR("argument out of range to procedure \"adc\"");
+
+#ifdef PICOBOARD2
+
+  x = adc( a1 );
+
+#endif
+
+#ifdef WORKSTATION
+
+  x = read_clock () & 255;
+
+  if (x > 127) x = 256 - x;
+
+  x += 200;
+
+#endif
+
+  arg1 = encode_int (x);
+}
+
+
+void prim_dac (void)
+{
+  a1 = decode_int (arg1);
+
+  if (a1 < 0 || a1 > 255)
+    ERROR("argument out of range to procedure \"dac\"");
+
+#ifdef PICOBOARD2
+
+  dac( a1 );
+
+#endif
+
+#ifdef WORKSTATION
+
+  printf ("dac -> %d\n", a1 );
+  fflush (stdout);
+
+#endif
+
+  arg1 = OBJ_FALSE;
+}
+
+
+void prim_sernum (void)
+{
+  short x;
+
+#ifdef PICOBOARD2
+
+  x = serial_num ();
+
+#endif
+
+#ifdef WORKSTATION
+
+  x = 0;
+
+#endif
+
+  arg1 = encode_int (x);
 }
 
 
@@ -1757,21 +1774,21 @@ char *prim_name[48] =
     "prim #%string?",
     "prim #%string->list",
     "prim #%list->string",
-    "prim #%set-fst!", // ADDED TODO obsolete, but kept to have the right size
-    "prim #%set-snd!", // ADDED
-    "prim #%set-trd!", // ADDED
+    "prim #%prim29",
+    "prim #%prim30",
+    "prim #%prim31",
     "prim #%print",
     "prim #%clock",
     "prim #%motor",
     "prim #%led",
+    "prim #%led2-color",
     "prim #%getchar-wait",
     "prim #%putchar",
-    "prim #%light",
-    "prim #%triplet?", // ADDED
-    "prim #%triplet", // ADDED
-    "prim #%fst", // ADDED
-    "prim #%snd", // ADDED
-    "prim #%trd", // ADDED
+    "prim #%beep",
+    "prim #%adc",
+    "prim #%dac",
+    "prim #%sernum",
+    "prim #%prim43",
     "push-constant [long]",
     "shift",
     "pop",
@@ -1796,24 +1813,33 @@ obj pop (void)
   return o;
 }
 
-void pop_procedure (void) // TODO where do we get the env of the procedure ?
-{ // TODO can continuations end up ond the stack ? if so, they act differently than procedures
+void pop_procedure (void)
+{ // TODO BARF what to do when continuations end up here ?
   arg1 = POP();
+  
   if (IN_RAM(arg1))
     {
-      if (RAM_PROCEDURE(arg1)) 
+      if (RAM_CONTINUATION(arg1))
+	ERROR("continuation in pop_procedure"); // TODO this might be legitimate, but for now, we can't do this. if this error comes up, fix this function so it can handle continuations
+      
+      if (!RAM_CLOSURE(arg1))
 	TYPE_ERROR("procedure");
       
-      entry = ((ram_get_field2 (arg1) << 8) | ram_get_field3 (arg1))
-	+ CODE_START;
+      entry = (((ram_get_field0 (arg1) & 0x1f) << 11)
+	       | (ram_get_field1 (arg1) << 3)
+	       | (ram_get_field2 (arg1) >> 5)) + CODE_START;
     }
   else if (IN_ROM(arg1))
     {
-      if (ROM_PROCEDURE(arg1))
+      if (ROM_CONTINUATION(arg1))
+	ERROR("continuation in pop_procedure"); // TODO same as above
+      
+      if (!ROM_CLOSURE(arg1))
         TYPE_ERROR("procedure");
 
-      entry = ((rom_get_field2 (arg1) << 8) | rom_get_field3 (arg1))
-	+ CODE_START;
+      entry = (((rom_get_field0 (arg1) & 0x1f) << 11)
+	       | (rom_get_field1 (arg1) << 3)
+	       | (rom_get_field2 (arg1) >> 5)) + CODE_START;
     }
   else
     TYPE_ERROR("procedure");
@@ -1823,7 +1849,7 @@ void handle_arity_and_rest_param (void)
 {
   uint8 np;
 
-  np = rom_get (entry++); // TODO does that mean we can't have procedures in ram ?
+  np = rom_get (entry++);
 
   if ((np & 0x80) == 0)
     {
@@ -1849,8 +1875,8 @@ void handle_arity_and_rest_param (void)
           na--;
         }
 
-      arg1 = cons (arg3, arg1); // TODO what shpuld be the value of arg1 at this point ? the popped procedure ? the old env ? looks like the popped procedure
-      arg3 = OBJ_FALSE;
+      arg1 = cons (arg3, arg1);
+      arg3 = OBJ_FALSE; // TODO changed nothing with the new new closures, everything looks ok
     }
 }
 
@@ -1865,16 +1891,25 @@ void build_env (void)
       na--;
     }
 
-  arg3 = OBJ_FALSE;
+  arg3 = OBJ_FALSE; // TODO changed nothing here either
 }
 
 void save_cont (void)
 {
-  second_half = cons (env, cont);
-  cont = alloc_ram_cell_init (PROCEDURE_FIELD0 | ((second_half &0x1f00) >> 8),
-                              second_half & 0xff,
-                              (pc & 0xff00) >> 8,
-                              pc & 0xff);
+  // the second half is a closure
+  second_half = alloc_ram_cell_init (CLOSURE_FIELD0 | ((pc & 0xf800) >> 11),
+				     (pc & 0x07f8) >> 3,
+				     ((pc & 0x0007) << 5) | (env >> 8),
+				     env & 0xff);
+  cont = alloc_ram_cell_init (COMPOSITE_FIELD0 | (cont >> 8),
+                              cont & 0xff,
+			      CONTINUATION_FIELD2 | (second_half >> 8),
+                              second_half & 0xff);
+  // TODO was :
+  /* cont = alloc_ram_cell_init (CLOSURE_FIELD0 | ((second_half &0x1f00) >> 8), */
+  /*                             second_half & 0xff, */
+  /*                             (pc & 0xff00) >> 8, */
+  /*                             pc & 0xff); */
 }
 
 void interpreter (void)
@@ -1900,7 +1935,6 @@ void interpreter (void)
   CASE(PUSH_CONSTANT2);
 
   IF_TRACE(printf("  (push-constant "); show (bytecode_lo4+16); printf (")\n"));
-  // TODO for bigger fixnums and co, we have to use push long ? fix push long
   arg1 = bytecode_lo4+16;
 
   PUSH_ARG1();
@@ -1920,7 +1954,7 @@ void interpreter (void)
       bytecode_lo4--;
     }
 
-  arg1 = ram_get_car (arg1);
+  arg1 = ram_get_car (arg1); // TODO BARF what to do if we want to get something in the env of a continuation ? will it happen, or only when called, when it becomes a simple closure ? if only when a closure, we're fine, I guess, since 1 is added to the offset by the compiler to skip the closure
 
   PUSH_ARG1();
 
@@ -1929,7 +1963,7 @@ void interpreter (void)
   /***************************************************************************/
   CASE(PUSH_STACK2);
 
-  IF_TRACE(printf("  (push-stack %d)\n", bytecode_lo4+16)); // TODO do we ever need to go this far in the stack ? since the stack is the env, maybe, if not, we have one free instruction
+  IF_TRACE(printf("  (push-stack %d)\n", bytecode_lo4+16));
 
   bytecode_lo4 += 16;
 
@@ -1974,7 +2008,7 @@ void interpreter (void)
 
   na = bytecode_lo4;
 
-  pop_procedure ();
+  pop_procedure (); // TODO FOOBAR can we call a continuation ? if so, fix pop_procedure
   handle_arity_and_rest_param ();
   build_env ();
   save_cont ();
@@ -2014,7 +2048,7 @@ void interpreter (void)
 
   IF_TRACE(printf("  (call-toplevel 0x%04x)\n", ((second_half << 8) | bytecode) + CODE_START));
 
-  entry = ((second_half << 8) | bytecode) + CODE_START; // TODO FOOBAR we'd have to change the compiler to use 2 bytes after the opcode instead of one, and now we have the last 4 bits of the opcode free, to do pretty much anything
+  entry = ((second_half << 8) | bytecode) + CODE_START; // TODO FOOBAR we have the last 4 bits of the opcode free, to do pretty much anything
   arg1 = OBJ_NULL;
 
   na = rom_get (entry++);
@@ -2087,15 +2121,15 @@ void interpreter (void)
   IF_TRACE(printf("  (closure 0x%04x)\n", (second_half << 8) | bytecode));
   // TODO original had CODE_START, while the real code below didn't
 
-  arg2 = POP(); // #f TODO should be, at least, and not used anymore
+  arg2 = POP(); // #f TODO should be, at least, and not used anymore, would it break anything not to use it in the compiler anymore ? maybe try, it's not urgent, but would be nice
   arg3 = POP(); // env
 
   entry = (second_half << 8) | bytecode; // TODO original had no CODE_START, why ?
 
-  arg1 = alloc_ram_cell_init (PROCEDURE_FIELD0 | ((arg3 & 0x1f00) >> 8),
-			      arg3 & 0xff,
-                              second_half,
-                              bytecode);
+  arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (second_half >> 3),
+			      ((second_half & 0x07) << 5) | (bytecode >> 3),
+			      ((bytecode & 0x07) << 5) |((arg3 & 0x1f00) >> 8),
+                              arg3 & 0xff);
 
   PUSH_ARG1();
 
@@ -2175,7 +2209,7 @@ void interpreter (void)
       arg1 = POP(); /* thunk to call */
       cont = POP(); /* continuation */
 
-      PUSH_ARG1();
+      PUSH_ARG1(); // TODO we don't call the continuation, no change was needed
 
       na = 0;
 
@@ -2195,10 +2229,14 @@ void interpreter (void)
       arg1 = POP(); /* value to return */
       cont = POP(); /* continuation */
 
-      pc = ((ram_get_field2 (cont) << 8) | ram_get_field3 (cont)) + CODE_START;
-      second_half = ram_get_car (cont);
-      env = ram_get_car (second_half);
-      cont = ram_get_cdr (second_half);
+      second_half = ram_get_cdr (cont);
+      
+      pc = ((ram_get_field0 (second_half) >> 11) // TODO have a function for that
+	    | ((ram_get_field1 (second_half) >> 3) & 0xff)
+	    | (ram_get_field2 (second_half) & 0x07)) + CODE_START;
+
+      env = ram_get_cdr (second_half);
+      cont = ram_get_car (cont);
 
       PUSH_ARG1();
 
@@ -2247,28 +2285,32 @@ void interpreter (void)
       prim_clock ();  PUSH_ARG1();  break;
     case 2:
       /* prim #%motor */
-      arg3 = POP();  arg2 = POP();  arg1 = POP();  prim_motor ();  break;
+      arg2 = POP();  arg1 = POP();  prim_motor ();  break;
     case 3:
       /* prim #%led */
-      arg1 = POP();  prim_led ();  ;break;
+      arg3 = POP();  arg2 = POP();  arg1 = POP();  prim_led ();  ;break;
     case 4:
-      /* prim #%getchar-wait */
-      arg1 = POP();  prim_getchar_wait ();  PUSH_ARG1();  break;
+      /* prim #%led2-color */
+      arg1 = POP();  prim_led2_color ();  break;
     case 5:
-      /* prim #%putchar */
-      arg1 = POP();  prim_putchar ();  break;
+      /* prim #%getchar-wait */
+      arg2 = POP();  arg1 = POP();  prim_getchar_wait ();  PUSH_ARG1();  break;
     case 6:
-      /* prim #%light */
-      prim_light ();  PUSH_ARG1();  break;
-#if 0
-    case 7: // TODO since not all of them will be used for vectors, maybe some could be used to have more globals ? or something else ?
-      break;
+      /* prim #%putchar */
+      arg2 = POP();  arg1 = POP();  prim_putchar ();  break;
+    case 7:
+      /* prim #%beep */
+      arg2 = POP();  arg1 = POP();  prim_beep ();  break;
     case 8:
-      break;
+      /* prim #%adc */
+      arg1 = POP();  prim_adc ();  PUSH_ARG1();  break;
     case 9:
-      break;
+      /* prim #%dac */
+      arg1 = POP();  prim_dac ();  break;
     case 10:
-      break;
+      /* prim #%sernum */
+      prim_sernum ();  PUSH_ARG1();  break;
+#if 0
     case 11:
       break;
 #endif
@@ -2293,10 +2335,12 @@ void interpreter (void)
     case 15:
       /* return */
       arg1 = POP();
-      pc = ((ram_get_field2 (cont) << 8) | ram_get_field3 (cont)) + CODE_START;
-      second_half = ram_get_car (cont);
-      env = ram_get_car (second_half);
-      cont = ram_get_cdr (second_half);
+      second_half = ram_get_cdr (cont);
+      pc = ((ram_get_field0 (second_half) >> 11)
+	    | ((ram_get_field1 (second_half) >> 3) & 0xff)
+	    | (ram_get_field2 (second_half) & 0x07)) + CODE_START;
+      env = ram_get_cdr (second_half);
+      cont = ram_get_car (cont);
       PUSH_ARG1();
       break;
     }
@@ -2377,200 +2421,6 @@ int main (int argc, char *argv[])
 
   return errcode;
 }
-
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-#ifdef __18CXX
-
-/* $Id: c018i.c,v 1.1.2.1 2004/03/09 16:47:01 sealep Exp $ */
-
-/* Copyright (c)1999 Microchip Technology */
-
-/* MPLAB-C18 startup code, including initialized data */
-
-#if 0
-/* external reference to the user's main routine */
-extern void main (void);
-/* prototype for the startup function */
-void _entry (void);
-#endif
-void _startup (void);
-/* prototype for the initialized data setup */
-void _do_cinit (void);
-
-extern volatile near unsigned long short TBLPTR;
-extern near unsigned FSR0;
-extern near char FPFLAGS;
-#define RND 6
-
-#if 0
-#pragma code _entry_scn=0x000000
-void
-_entry (void)
-{
-  _asm goto _startup _endasm
-
-    }
-#pragma code _startup_scn
-#endif
-
-void
-_startup (void)
-{
-  _asm
-    // Initialize the stack pointer
-    lfsr 1, _stack lfsr 2, _stack clrf TBLPTRU, 0 // 1st silicon doesn't do this on POR
-    bcf FPFLAGS,RND,0 // Initialize rounding flag for floating point libs
-
-    _endasm
-    _do_cinit ();
-
-  // Call the user's main routine
-  interpreter ();
-
-  ERROR("halted");
-}                               /* end _startup() */
-
-/* MPLAB-C18 initialized data memory support */
-/* The linker will populate the _cinit table */
-extern far rom struct
-{
-  unsigned short num_init;
-  struct _init_entry
-  {
-    unsigned long from;
-    unsigned long to;
-    unsigned long size;
-  }
-    entries[];
-}
-  _cinit;
-
-#pragma code _cinit_scn
-void
-_do_cinit (void)
-{
-  /* we'll make the assumption in the following code that these statics
-   * will be allocated into the same bank.
-   */
-  static short long prom;
-  static unsigned short curr_byte;
-  static unsigned short curr_entry;
-  static short long data_ptr;
-
-  // Initialized data...
-  TBLPTR = (short long)&_cinit;
-  _asm
-    movlb data_ptr
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf curr_entry, 1
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf curr_entry+1, 1
-    _endasm
-    //while (curr_entry)
-    //{
-    test:
-  _asm
-    bnz 3
-    tstfsz curr_entry, 1
-    bra 1
-    _endasm
-    goto done;
-  /* Count down so we only have to look up the data in _cinit
-   * once.
-   *
-   * At this point we know that TBLPTR points to the top of the current
-   * entry in _cinit, so we can just start reading the from, to, and
-   * size values.
-   */
-  _asm
-    /* read the source address */
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf prom, 1
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf prom+1, 1
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf prom+2, 1
-    /* skip a byte since it's stored as a 32bit int */
-    tblrdpostinc
-    /* read the destination address directly into FSR0 */
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf FSR0L, 0
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf FSR0H, 0
-    /* skip two bytes since it's stored as a 32bit int */
-    tblrdpostinc
-    tblrdpostinc
-    /* read the destination address directly into FSR0 */
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf curr_byte, 1
-    tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf curr_byte+1, 1
-    /* skip two bytes since it's stored as a 32bit int */
-    tblrdpostinc
-    tblrdpostinc
-    _endasm
-    //prom = data_ptr->from;
-    //FSR0 = data_ptr->to;
-    //curr_byte = (unsigned short) data_ptr->size;
-    /* the table pointer now points to the next entry. Save it
-     * off since we'll be using the table pointer to do the copying
-     * for the entry.
-     */
-    data_ptr = TBLPTR;
-
-  /* now assign the source address to the table pointer */
-  TBLPTR = prom;
-
-  /* do the copy loop */
-  _asm
-    // determine if we have any more bytes to copy
-    movlb curr_byte
-    movf curr_byte, 1, 1
-    copy_loop:
-  bnz 2 // copy_one_byte
-    movf curr_byte + 1, 1, 1
-    bz 7 // done_copying
-
-    copy_one_byte:
-  tblrdpostinc
-    movf TABLAT, 0, 0
-    movwf POSTINC0, 0
-
-    // decrement byte counter
-    decf curr_byte, 1, 1
-    bc -8 // copy_loop
-    decf curr_byte + 1, 1, 1
-    bra -7 // copy_one_byte
-
-    done_copying:
-
-  _endasm
-    /* restore the table pointer for the next entry */
-    TBLPTR = data_ptr;
-  /* next entry... */
-  curr_entry--;
-  goto test;
- done:
-  ;
-}
-
-#pragma code picobit_boot=0x001ffa
-void _picobit_boot (void)
-{
-  _asm goto _startup _endasm
-    }
 
 #endif
 

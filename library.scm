@@ -58,7 +58,6 @@
 
 (define <=
   (lambda (x y)
-    ;; (#%<= x y) ;; ADDED not a primitive anymore
     (or (< x y) (= x y))))
 
 (define >
@@ -67,7 +66,6 @@
 
 (define >=
   (lambda (x y)
-    ;; (#%>= x y) ;; ADDED, not a primitive anymore
     (or (> x y) (= x y))))
 
 (define pair?
@@ -167,7 +165,15 @@
   (lambda chars
     (#%list->string chars)))
 
-(define string-length ;; TODO are all these string operations efficient ? they all convert to lists. Since we have the equivalent of a vector, isn't there a way to do better ?
+(define string->list
+  (lambda (str)
+    (#%string->list str)))
+
+(define list->string
+  (lambda (chars)
+    (#%list->string chars)))
+
+(define string-length ;; TODO are all these string operations efficient ? they all convert to lists. use true vectors when we have them ?
   (lambda (str)
     (length (#%string->list str))))
 
@@ -255,22 +261,38 @@
   (lambda ()
     (#%clock)))
 
+(define beep
+  (lambda (freq-div duration)
+    (#%beep freq-div duration)))
+
 (define light
+  (lambda (sensor)
+    (#%adc sensor)))
+
+(define adc
+  (lambda (sensor)
+    (#%adc sensor)))
+
+(define dac
+  (lambda (level)
+    (#%dac level)))
+
+(define sernum
   (lambda ()
-    (#%light)))
+    (#%sernum)))
 
 (define putchar
   (lambda (c)
-    (#%putchar c)))
+    (#%putchar c 3)))
 
 (define getchar
   (lambda ()
-    (or (#%getchar-wait 0)
+    (or (#%getchar-wait 0 3)
         (getchar))))
 
 (define getchar-wait
   (lambda (duration)
-    (#%getchar-wait duration)))
+    (#%getchar-wait duration 3)))
 
 (define sleep
   (lambda (duration)
@@ -283,16 +305,19 @@
         #f)))
 
 (define motor
-  (lambda (x y z)
-    (#%motor x y z)))
+  (lambda (id power)
+    (#%motor id power)))
+
 
 (define led
+  (lambda (id duty period)
+    (#%led id duty period)))
+
+(define led2-color
   (lambda (state)
     (if (#%eq? state 'red)
-        (#%led 1)
-        (if (#%eq? state 'green)
-            (#%led 2)
-            (#%led 0)))))
+        (#%led2-color 1)
+        (#%led2-color 0))))
 
 (define display
   (lambda (x)
@@ -304,14 +329,14 @@
   (lambda (x)
     (if (#%string? x)
         (begin
-          (#%putchar #\")
+          (#%putchar #\" 3)
           (display x)
-          (#%putchar #\"))
+          (#%putchar #\" 3))
         (if (#%number? x)
             (display (number->string x))
             (if (#%pair? x)
                 (begin
-                  (#%putchar #\()
+                  (#%putchar #\( 3)
                   (write (#%car x))
                   (#%write-list (#%cdr x)))
                 (if (#%symbol? x)
@@ -321,16 +346,16 @@
 (define #%write-list
   (lambda (lst)
     (if (#%null? lst)
-        (#%putchar #\))
+        (#%putchar #\) 3)
         (if (#%pair? lst)
             (begin
-              (#%putchar #\space)
+              (#%putchar #\space 3)
               (write (#%car lst))
               (#%write-list (#%cdr lst)))
             (begin
               (display " . ")
               (write lst)
-              (#%putchar #\)))))))
+              (#%putchar #\) 3))))))
 
 (define number->string
   (lambda (n)
@@ -349,7 +374,7 @@
 (define pp
   (lambda (x)
     (write x)
-    (#%putchar #\newline)))
+    (#%putchar #\newline 3)))
 
 (define caar
   (lambda (p)
@@ -371,17 +396,13 @@
     (cdr (car (cdr p)))))
 
 (define equal?
-  (lambda (x y) ;; TODO rewrite once we have cond
+  (lambda (x y) ;; TODO rewrite once we have cond, also add vectors
     (if (eq? x y)
 	#t
 	(if (and (pair? x) (pair? y))
 	    (and (equal? (car x) (car y))
 		 (equal? (cdr x) (cdr y)))
-	    (if (and (triplet? x) (triplet? y))
-		(and (equal? (fst x) (fst y))
-		     (equal? (snd x) (snd y))
-		     (equal? (trd x) (trd y)))
-		#f))))) ;; TODO could this have a problem ?
+	    #f)))) ;; TODO could this have a problem ?
 
 (define assoc
   (lambda (t l) ;; TODO rewrite once we have cond
@@ -396,24 +417,6 @@
 (define vector-ref list-ref)
 (define vector-set! list-set!)
 
-(define triplet? (lambda (t) (#%triplet? t)))
-(define triplet (lambda (x y z) (#%triplet x y z)))
-(define fst (lambda (t) (#%fst t)))
-(define snd (lambda (t) (#%snd t)))
-(define trd (lambda (t) (#%trd t)))
-(define set-fst! (lambda (t v) (#%set-fst! t v)))
-(define set-snd! (lambda (t v) (#%set-snd! t v)))
-(define set-trd! (lambda (t v) (#%set-trd! t v)))
-;; TODO for tests on gambit
-;; (define (triplet x y z) (vector x y z))
-;; (define (fst t) (vector-ref t 0))
-;; (define (snd t) (vector-ref t 1))
-;; (define (trd t) (vector-ref t 2))
-;; (define (set-fst! t v) (vector-set! t 0 v))
-;; (define (set-snd! t v) (vector-set! t 1 v))
-;; (define (set-trd! t v) (vector-set! t 2 v))
-
-
 (define bitwise-ior (lambda (x y) (#%ior x y)))
 (define bitwise-xor (lambda (x y) (#%xor x y)))
 ;; TODO add bitwise-and ? bitwise-not ?
@@ -423,89 +426,21 @@
 
 (define else #t) ; for cond, among others
 
-;; vectors are implemented using r-a-lists
-;; TODO takes only marginally more code space than lists made from triplets, maybe 150 bytes more in the stack (the total is in the order of 10.5k)
-(define u8vector (lambda x (list->u8vector x)))
-(define list->u8vector (lambda (x) (list->r-a-list x)))
-(define u8vector-length (lambda (x) (r-a-length x)))
-(define u8vector-ref (lambda (x y) (r-a-ref x y)))
-(define u8vector-set! (lambda (x y z) (r-a-set! x y z)))
+;; TODO temporary, using lists since triplets are gone
+(define u8vector (lambda x (list x)))
+(define list->u8vector (lambda (x) x))
+(define u8vector-length (lambda (x) (length x)))
+(define u8vector-ref (lambda (x y) (list-ref x y)))
+(define u8vector-set! (lambda (x y z) (list-set! x y z)))
 (define make-u8vector
   (lambda (n x)
     (if (= n 0)
 	'()
-	(r-a-cons x (make-u8vector (- n 1) x)))))
-
-
-;; implementation of Chris Okasaki's random access lists
-;; basically, we have a list (made from pairs) of pairs of complete binary
-;; trees (made from triplets) and their number of elements (length first)
-;; the trees are represented : (root left right)
-;; however, unlike Okasaki, our lists are not purely functional, since we do
-;; the changes in-place
-
-(define r-a-list (lambda x (list->r-a-list x)))
-(define list->r-a-list
-  (lambda (l) (if (null? l) '() (r-a-cons (car l) (list->r-a-list (cdr l))))))
-
-(define r-a-cons
-  (lambda (x y)
-    (if (and (pair? y)
-	     (pair? (cdr y))
-	     (= (caar y) (caadr y)))
-	;; the first 2 trees are of the same size, merge them
-	(cons (cons (+ 1 (caar y) (caadr y))
-		    (triplet x (cdar y) (cdadr y)))
-	      (cddr y))
-	;; the first 2 trees are not of the same size, insert in front
-	(cons (cons 1 (triplet x '() '()))
-	      y))))
-
-(define r-a-length
-  (lambda (l) (if (null? l) 0 (+ (caar l) (r-a-length (cdr l))))))
-
-(define r-a-ref
-  (lambda (r i)
-    (if (null? r)
-	#f ; out of bounds
-	(let ((size (caar r)))
-	  (if (< i size)
-	      ;; what we want is in the 1st tree
-	      (r-a-tree-ref size (cdar r) i)
-	      ;; keep looking
-	      (r-a-ref (cdr r) (- i size)))))))
-(define r-a-tree-ref
-  (lambda (s r i)
-    (if (= i 0)
-	(fst r)
-	(let ((s2 (quotient s 2)))
-	  (if (<= i s2)
-	      ;; these 2 will break if the tree is malformed
-	      (r-a-tree-ref s2 (snd r) (- i 1))
-	      (r-a-tree-ref s2 (trd r) (- i 1 s2)))))))
-
-(define r-a-set! ; unlike Okasaki, we do the change in-place
-  (lambda (r i v)
-    (if (null? r)
-	#f ; out of bounds
-	(let ((size (caar r)))
-	  (if (< i size)
-	      ;; what we want is in the 1st tree
-	      (r-a-tree-set! size (cdar r) i v)
-	      ;; keep looking
-	      (r-a-set! (cdr r) (- i size) v))))))
-(define r-a-tree-set!
-  (lambda (s r i v)
-    (if (= i 0)
-	(set-fst! r v)
-	(let ((s2 (quotient s 2)))
-	  (if (<= i s2)
-	      ;; these 2 will break if the tree is malformed
-	      (r-a-tree-set! s2 (snd r) (- i 1) v)
-	      (r-a-tree-set! s2 (trd r) (- i 1 s2) v))))))
+	(cons x (make-u8vector (- n 1) x)))))
 
 
 ;; ROM VECTORS
+;; TODO make sure constant vectors end up in rom
 ;; (define u8vector ;; TODO use chris okasaki's random access lists for mutable vectors, and in-rom vectors (strings) for the rest, these functions are for the in-rom vectors
 ;;   (lambda (first . rest) ;; TODO can't we have all in the same arg ?
 ;;     (list->u8vector (cons first rest))))
