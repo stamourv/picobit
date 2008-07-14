@@ -429,6 +429,18 @@ void ram_set_cdr (obj o, obj val)
   ram_set_field2 (o, ((val & 0x1f00) >> 8) | (ram_get_field2 (o) & 0xc0));
   ram_set_field3 (o, val & 0xff);
 }
+obj ram_get_entry (obj o)
+{
+  return (((ram_get_field0 (o) & 0x1f) << 11)
+	  | (ram_get_field1 (o) << 3)
+	  | (ram_get_field2 (o) >> 5));
+}
+obj rom_get_entry (obj o)
+{
+  return (((rom_get_field0 (o) & 0x1f) << 11)
+	  | (rom_get_field1 (o) << 3)
+	  | (rom_get_field2 (o) >> 5));
+}
 
 obj get_global (uint8 i)
 {
@@ -818,11 +830,8 @@ void show (obj o)
         in_ram = 0;
 
       if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o)))
-	{
-	  printf ("\n%d\n", ROM_BIGNUM(o)); // TODO debug
-	  printf ("%d", decode_int (o)); // TODO gets here, but shouldn't, with test-globals
-	}
-      else if ((in_ram && RAM_COMPOSITE(o)) || ROM_COMPOSITE(o))
+	printf ("%d", decode_int (o));
+      else if ((in_ram && RAM_COMPOSITE(o)) || (!in_ram && ROM_COMPOSITE(o)))
         {
 	  obj car;
 	  obj cdr;
@@ -884,34 +893,41 @@ void show (obj o)
 	    printf ("#<string>");
 	  else if ((in_ram && RAM_VECTOR(o)) || (!in_ram && ROM_VECTOR(o)))
 	    printf ("#<vector>");
+	  else
+	    {
+	      printf ("(");
+	      car = ram_get_car (o);
+	      cdr = ram_get_cdr (o);
+	      goto loop_ram; // TODO ugly hack, takes advantage of the fact that pairs and continuations have the same layout
+	    }
         }
-      else
+      else // closure
         {
-          /* obj env; */
+          obj env;
           /* obj parent_cont; */
-          /* rom_addr pc; */
+          rom_addr pc;
 
-          /* if (IN_RAM(o)) */
-          /*   env = ram_get_car (o); */
-          /* else */
-          /*   env = rom_get_cdr (o); */
+          if (IN_RAM(o)) // TODO can closures be in rom ? I don't think so
+            env = ram_get_cdr (o); // TODO was car, but representation changed
+          else
+            env = rom_get_cdr (o);
 
           /* if (IN_RAM(o)) */
           /*   parent_cont = ram_get_field2 (o); */
           /* else */
           /*   parent_cont = rom_get_field2 (o); */
 
-          /* if (IN_RAM(o)) */
-          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - CLOSURE_FIELD0)) << 8) + ram_get_field3 (o); */
-          /* else */
-          /*   pc = ((rom_addr)(field0 + ((CODE_START>>8) - CLOSURE_FIELD0)) << 8) + rom_get_field3 (o); */
+          if (IN_RAM(o))
+	    pc = ram_get_entry (o);
+          else
+	    pc = rom_get_entry (o);
 
-          /* printf ("{0x%04x ", pc); */
-          /* show (env); */
+          printf ("{0x%04x ", pc);
+          show (env);
           /* printf (" "); */
           /* show (parent_cont); */
-          /* printf ("}"); */ // TODO the representation of procedures changed
-	  printf ("#<procedure>");
+          printf ("}");
+	  /* printf ("#<procedure>"); */
         }
     }
 
@@ -1814,7 +1830,7 @@ obj pop (void)
 }
 
 void pop_procedure (void)
-{ // TODO BARF what to do when continuations end up here ?
+{
   arg1 = POP();
   
   if (IN_RAM(arg1))
@@ -1825,9 +1841,7 @@ void pop_procedure (void)
       if (!RAM_CLOSURE(arg1))
 	TYPE_ERROR("procedure");
       
-      entry = (((ram_get_field0 (arg1) & 0x1f) << 11)
-	       | (ram_get_field1 (arg1) << 3)
-	       | (ram_get_field2 (arg1) >> 5)) + CODE_START;
+      entry = ram_get_entry (arg1) + CODE_START; // FOO all addresses in the bytecode should be from 0, not from CODE_START, should be fixed everywhere, but might not be
     }
   else if (IN_ROM(arg1))
     {
@@ -1837,9 +1851,7 @@ void pop_procedure (void)
       if (!ROM_CLOSURE(arg1))
         TYPE_ERROR("procedure");
 
-      entry = (((rom_get_field0 (arg1) & 0x1f) << 11)
-	       | (rom_get_field1 (arg1) << 3)
-	       | (rom_get_field2 (arg1) >> 5)) + CODE_START;
+      entry = rom_get_entry (arg1) + CODE_START;
     }
   else
     TYPE_ERROR("procedure");
@@ -1895,21 +1907,21 @@ void build_env (void)
 }
 
 void save_cont (void)
-{
+{ // BARF probably a problem here
   // the second half is a closure
-  second_half = alloc_ram_cell_init (CLOSURE_FIELD0 | ((pc & 0xf800) >> 11),
-				     (pc & 0x07f8) >> 3,
+  /* second_half = alloc_ram_cell_init (CLOSURE_FIELD0 | ((pc & 0xf800) >> 11), */
+  /* 				     (pc & 0x07f8) >> 3, */
+  /* 				     ((pc & 0x0007) << 5) | (env >> 8), */
+  /* 				     env & 0xff); */
+  second_half = alloc_ram_cell_init (CLOSURE_FIELD0 | (pc >> 11),
+				     (pc >> 3) & 0xff, // BREGG
 				     ((pc & 0x0007) << 5) | (env >> 8),
 				     env & 0xff);
+  // BREGG problem is, we add the start twice, in get entry, and somewhere else, but pc doesn't have it initially
   cont = alloc_ram_cell_init (COMPOSITE_FIELD0 | (cont >> 8),
                               cont & 0xff,
 			      CONTINUATION_FIELD2 | (second_half >> 8),
                               second_half & 0xff);
-  // TODO was :
-  /* cont = alloc_ram_cell_init (CLOSURE_FIELD0 | ((second_half &0x1f00) >> 8), */
-  /*                             second_half & 0xff, */
-  /*                             (pc & 0xff00) >> 8, */
-  /*                             pc & 0xff); */
 }
 
 void interpreter (void)
@@ -2048,7 +2060,7 @@ void interpreter (void)
 
   IF_TRACE(printf("  (call-toplevel 0x%04x)\n", ((second_half << 8) | bytecode) + CODE_START));
 
-  entry = ((second_half << 8) | bytecode) + CODE_START; // TODO FOOBAR we have the last 4 bits of the opcode free, to do pretty much anything
+  entry = (second_half << 8) + bytecode + CODE_START; // TODO FOOBAR we have the last 4 bits of the opcode free, to do pretty much anything
   arg1 = OBJ_NULL;
 
   na = rom_get (entry++);
@@ -2073,7 +2085,7 @@ void interpreter (void)
 
   IF_TRACE(printf("  (jump-toplevel 0x%04x)\n", ((second_half << 8) | bytecode) + CODE_START));
 
-  entry = ((second_half << 8) | bytecode) + CODE_START;
+  entry = (second_half << 8) + bytecode + CODE_START; // TODO this is a common pattern
   arg1 = OBJ_NULL;
 
   na = rom_get (entry++);
@@ -2091,10 +2103,17 @@ void interpreter (void)
   CASE(GOTO);
 
   FETCH_NEXT_BYTECODE();
+  second_half = bytecode;
+
+  FETCH_NEXT_BYTECODE();
+  
   // TODO goto's use 12-bit addresses, unlike calls and jumps, which use 16, is it ok ?
+  // actually, the compiler gives them 16 bit addresses now, it seems
+  // that means we have even more free instructions, but that now even gotos are on 3 bytes
   IF_TRACE(printf("  (goto 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
 
-  pc = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode;
+  pc = (second_half << 8) + bytecode + CODE_START;
+  /* pc = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode; */ // TODO not anymore
 
   DISPATCH();
 
@@ -2102,11 +2121,15 @@ void interpreter (void)
   CASE(GOTO_IF_FALSE);
 
   FETCH_NEXT_BYTECODE();
+  second_half = bytecode;
+
+  FETCH_NEXT_BYTECODE();
 
   IF_TRACE(printf("  (goto-if-false 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
 
   if (POP() == OBJ_FALSE)
-    pc = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode;
+    pc = (second_half << 8) + bytecode + CODE_START;
+    /* pc = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode; */
 
   DISPATCH();
 
@@ -2121,7 +2144,7 @@ void interpreter (void)
   IF_TRACE(printf("  (closure 0x%04x)\n", (second_half << 8) | bytecode));
   // TODO original had CODE_START, while the real code below didn't
 
-  arg2 = POP(); // #f TODO should be, at least, and not used anymore, would it break anything not to use it in the compiler anymore ? maybe try, it's not urgent, but would be nice
+  /* arg2 = POP(); // #f TODO should be, at least, and not used anymore, would it break anything not to use it in the compiler anymore ? maybe try, it's not urgent, but would be nice */ // TODO we got rid of this in the compiler
   arg3 = POP(); // env
 
   entry = (second_half << 8) | bytecode; // TODO original had no CODE_START, why ?
@@ -2231,9 +2254,7 @@ void interpreter (void)
 
       second_half = ram_get_cdr (cont);
       
-      pc = ((ram_get_field0 (second_half) >> 11) // TODO have a function for that
-	    | ((ram_get_field1 (second_half) >> 3) & 0xff)
-	    | (ram_get_field2 (second_half) & 0x07)) + CODE_START;
+      pc = ram_get_entry (second_half);
 
       env = ram_get_cdr (second_half);
       cont = ram_get_car (cont);
@@ -2336,9 +2357,7 @@ void interpreter (void)
       /* return */
       arg1 = POP();
       second_half = ram_get_cdr (cont);
-      pc = ((ram_get_field0 (second_half) >> 11)
-	    | ((ram_get_field1 (second_half) >> 3) & 0xff)
-	    | (ram_get_field2 (second_half) & 0x07)) + CODE_START;
+      pc = ram_get_entry (second_half);
       env = ram_get_cdr (second_half);
       cont = ram_get_car (cont);
       PUSH_ARG1();
