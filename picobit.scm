@@ -748,7 +748,7 @@
 
 (define gen-closure
   (lambda (label-entry ctx)
-    (gen-instruction (list 'closure label-entry) 1 1 ctx))) ;; TODO was 2 1
+    (gen-instruction (list 'closure label-entry) 1 1 ctx)))
 
 (define gen-prim
   (lambda (id nargs unspec-result? ctx)
@@ -1040,10 +1040,10 @@
                          (gen-push-local-var (car vars) ctx)))))
 
   (if (null? vars)
-      (gen-closure label-entry ;; TODO it seems no actual closure objects are stored in ROM, only the code to generate them, so we probably are ok if we don't modify anything, the vm takes care of everything
-                   (gen-push-constant '() ctx)) ;; TODO was (gen-push-constant #f ctx)
       (gen-closure label-entry
-                   (build vars ctx)))) ;; TODO was (gen-push-constant #f ctx)
+                   (gen-push-constant '() ctx))
+      (gen-closure label-entry
+                   (build vars ctx))))
 ;; TODO the last branch was changed because since pointers are now larger, there is not a pointer-sized free space in each closure, which could make it behave like a pair. now, everything is in the env, and closures only have a cdr
 
 (define comp-prc
@@ -2417,11 +2417,11 @@
 
 ;------------------------------------------------------------------------------
 
-(define min-fixnum-encoding 3)
-(define min-fixnum -5)
-(define max-fixnum 40)
+(define min-fixnum-encoding 3) ;; BARF was changed
+(define min-fixnum 0) ;; TODO have from 0 to 255, and 256-3 rom objects TODO was -5
+(define max-fixnum 255) ;; TODO was 40
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
-(define min-ram-encoding 128) ;; TODO change ?
+(define min-ram-encoding 512) ;; TODO was 128 NEW (all these)
 (define max-ram-encoding 8191)
 
 (define code-start #x5000)
@@ -2450,7 +2450,7 @@
       (char->integer obj)
       obj))
 
-(define (encode-constant obj constants) ;; TODO FOOBAR, this should return a 12 bit value
+(define (encode-constant obj constants)
   (let ((o (translate-constant obj)))
     (let ((e (encode-direct o)))
       (if e
@@ -2460,7 +2460,7 @@
                 (vector-ref (cdr x) 0)
                 (compiler-error "unknown object" obj)))))))
 
-(define (add-constant obj constants from-code? cont) ;; TODO where does the actual encoding actually take place ? at assembly time ? probably
+(define (add-constant obj constants from-code? cont)
   (let ((o (translate-constant obj)))
     (let ((e (encode-direct o)))
       (if e
@@ -2514,7 +2514,7 @@
                                      new-constants
                                      cont)))))
 
-(define (add-global var globals cont) ;; TODO check if mutable, and if not, put as constant
+(define (add-global var globals cont)
   (let ((x (assq var globals)))
     (if x
         (cont globals)
@@ -2534,7 +2534,7 @@
       (if (null? lst)
           (if (> i min-ram-encoding)
 	      (compiler-error "too many constants")
-	      csts) ;; TODO do some constant propagation, actually, more for globals ?
+	      csts)
           (begin
             (vector-set! (cdr (car lst)) 0 i)
             (loop (+ i 1)
@@ -2583,11 +2583,9 @@
             (define (label-instr label opcode)
               (asm-at-assembly
                (lambda (self)
-                 3) ;; TODO BARF was 2, maybe was length ? seems to be fixed
+                 3)
                (lambda (self)
                  (let ((pos (- (asm-label-pos label) code-start)))
-                   ;; (asm-8 (+ (quotient pos 256) opcode))
-		   ;; TODO do we mess up any offsets ? FOOBAR
 		   (asm-8 opcode)
 		   (asm-8 (quotient pos 256))
                    (asm-8 (modulo pos 256))))))

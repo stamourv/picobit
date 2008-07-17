@@ -6,7 +6,7 @@
  * History:
  *
  *   15/08/2004  Release of version 1
- *   6/07/2008  Modified for PICOBOARD2_R3
+ *   06/07/2008  Modified for PICOBOARD2_R3
  */
 
 #define DEBUG_not
@@ -82,7 +82,6 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 #ifdef DEBUG
 #define IF_TRACE(x) x
 #define IF_GC_TRACE(x) x
-// TODO the last x was added to have gc debug info
 #else
 #define IF_TRACE(x)
 #define IF_GC_TRACE(x)
@@ -134,16 +133,18 @@ typedef uint16 obj;
 
 /*---------------------------------------------------------------------------*/
 
-#define MIN_RAM_ENCODING 128
+/* #define MIN_RAM_ENCODING 128 */ // TODO NEW
 #define MAX_RAM_ENCODING 8192
+#define MIN_RAM_ENCODING 512
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
 // TODO watch out if we address more than what the PIC actually has
 
 // TODO change if we change the proportion of rom and ram addresses
 #if WORD_BITS == 8
 #define OBJ_TO_RAM_ADDR(o,f) (((ram_addr)((uint16)(o) - MIN_RAM_ENCODING) << 2) + (f))
-#define OBJ_TO_ROM_ADDR(o,f) (((rom_addr)((uint8)(o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
+#define OBJ_TO_ROM_ADDR(o,f) (((rom_addr)((uint16)(o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
 #endif
+// TODO ROM had uint8 cast, but seemed to cause problems
 
 
 #ifdef PICOBOARD2
@@ -156,7 +157,7 @@ uint8 ram_mem[RAM_BYTES];
 
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
-
+// TODO change these since we change proportion of ram and rom ?
 #endif
 
 
@@ -285,8 +286,10 @@ obj globals[GLOVARS];
 #define OBJ_NULL  2
 
 #define MIN_FIXNUM_ENCODING 3
-#define MIN_FIXNUM (-5)
-#define MAX_FIXNUM 40
+#define MIN_FIXNUM 0
+// TODO NEW was (-5)
+#define MAX_FIXNUM 255
+// TODO NEW was 40
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING+MAX_FIXNUM-MIN_FIXNUM+1)
 
 #define ENCODE_FIXNUM(n) ((obj)(n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
@@ -294,7 +297,7 @@ obj globals[GLOVARS];
 
 #if WORD_BITS == 8
 #define IN_RAM(o) ((o) >= MIN_RAM_ENCODING)
-#define IN_ROM(o) ((o) >= MIN_ROM_ENCODING)
+#define IN_ROM(o) (!IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
 #endif
 // TODO BARF rom only checks the lower bound, might cause problem if not used in an else
 
@@ -479,7 +482,7 @@ void show_type (obj o) // for debugging purposes
 	else if (ROM_VECTOR(o)) printf("%x : rom vector\n", o);
 	else if (ROM_CONTINUATION(o)) printf("%x : rom continuation\n", o);
 	else if (RAM_CLOSURE(o)) printf("%x : rom closure\n", o);
-      }
+      } // TODO add fixnums, bools, nil
   }
 #endif
 
@@ -665,7 +668,7 @@ void mark (obj temp)
 
 	  if (RAM_CLOSURE(stack)) // TODO doesn't seem to solve the problem
 	    // closures have one object field, but it's in the cdr
-	    // TODO will the stack ever be a closure ?
+	    // TODO will the stack ever be a closure ? probably
 	    {
 	      IF_GC_TRACE(printf ("case 13.5\n")); // TODO renumber cases
 
@@ -894,7 +897,7 @@ void show (obj o)
 	    loop:
 	      
 	      show (car);
-	      
+
 	      if (cdr == OBJ_NULL)
 		printf (")");
 	      else if ((IN_RAM(cdr) && RAM_PAIR(cdr))
@@ -2351,7 +2354,7 @@ void interpreter (void)
       break;
 #endif
     case 12:
-      /* push-constant [long] */ // BARF seems to be wrong
+      /* push-constant [long] */
       FETCH_NEXT_BYTECODE();
       second_half = bytecode;
       FETCH_NEXT_BYTECODE();
