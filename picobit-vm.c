@@ -81,7 +81,8 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #ifdef DEBUG
 #define IF_TRACE(x) x
-#define IF_GC_TRACE(x)
+#define IF_GC_TRACE(x) x
+// TODO the last x was added to have gc debug info
 #else
 #define IF_TRACE(x)
 #define IF_GC_TRACE(x)
@@ -135,8 +136,8 @@ typedef uint16 obj;
 
 #define MIN_RAM_ENCODING 128
 #define MAX_RAM_ENCODING 8192
-// TODO some space in rom is not used, use for fixnums ?
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
+// TODO watch out if we address more than what the PIC actually has
 
 // TODO change if we change the proportion of rom and ram addresses
 #if WORD_BITS == 8
@@ -243,7 +244,6 @@ obj globals[GLOVARS];
   TODO we could have 29-bit integers
   
   pair         1GGaaaaa aaaaaaaa 000ddddd dddddddd
-  TODO was 00000010 aaaaaaaa aaaadddd dddddddd
   a is car
   d is cdr
   gives an address space of 2^13 * 4 = 32k (not all of it is for RAM, though)
@@ -264,8 +264,7 @@ obj globals[GLOVARS];
   environment, so the car of the closure (which doesn't really exist) is never
   checked, but the cdr is followed to find the other bindings
   
-  continuation 01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa  0x5ff<a<0x4000 is pc TODO old
-  continuation 01Gxxxxx xxxxxxxx 100yyyyy yyyyyyyy
+  continuation 1GGxxxxx xxxxxxxx 100yyyyy yyyyyyyy
   x is parent continuation
   y is pointer to the second half, which is a closure (contains env and entry)
   
@@ -295,8 +294,9 @@ obj globals[GLOVARS];
 
 #if WORD_BITS == 8
 #define IN_RAM(o) ((o) >= MIN_RAM_ENCODING)
-#define IN_ROM(o) ((int8)(o) >= MIN_ROM_ENCODING)
+#define IN_ROM(o) ((o) >= MIN_ROM_ENCODING)
 #endif
+// TODO BARF rom only checks the lower bound, might cause problem if not used in an else
 
 // bignum first byte : 00G00000
 #define BIGNUM_FIELD0 0
@@ -338,6 +338,7 @@ obj globals[GLOVARS];
 #define RAM_CLOSURE(o) ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
 #define ROM_CLOSURE(o) ((rom_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
 
+
 /*---------------------------------------------------------------------------*/
 
 #define RAM_GET_FIELD0_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,0))
@@ -345,6 +346,8 @@ obj globals[GLOVARS];
 #define ROM_GET_FIELD0_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,0))
 
 #define RAM_GET_GC_TAGS_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x60)
+#define RAM_GET_GC_TAG0_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x20)
+#define RAM_GET_GC_TAG1_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x40)
 #define RAM_SET_GC_TAGS_MACRO(o,tags)                                      \
   (RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x9f) | (tags)))
 #define RAM_SET_GC_TAG0_MACRO(o,tag)                                    \
@@ -395,6 +398,8 @@ obj globals[GLOVARS];
 #endif
 
 uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
+uint8 ram_get_gc_tag0 (obj o) { return RAM_GET_GC_TAG0_MACRO(o); }
+uint8 ram_get_gc_tag1 (obj o) { return RAM_GET_GC_TAG1_MACRO(o); }
 void ram_set_gc_tags  (obj o, uint8 tags) { RAM_SET_GC_TAGS_MACRO(o, tags); }
 void ram_set_gc_tag0 (obj o, uint8 tag) { RAM_SET_GC_TAG0_MACRO(o,tag); }
 void ram_set_gc_tag1 (obj o, uint8 tag) { RAM_SET_GC_TAG1_MACRO(o,tag); }
@@ -452,6 +457,33 @@ void set_global (uint8 i, obj o)
   globals[i] = o;
 }
 
+#ifdef WORKSTATION
+void show_type (obj o) // for debugging purposes
+  {
+    if (IN_RAM (o))
+      {
+	if (RAM_BIGNUM(o)) printf("%x : ram bignum\n", o);
+	else if (RAM_PAIR(o)) printf("%x : ram pair\n", o);
+	else if (RAM_SYMBOL(o)) printf("%x : ram symbol\n", o);
+	else if (RAM_STRING(o)) printf("%x : ram string\n", o);
+	else if (RAM_VECTOR(o)) printf("%x : ram vector\n", o);
+	else if (RAM_CONTINUATION(o)) printf("%x : ram continuation\n", o);
+	else if (RAM_CLOSURE(o)) printf("%x : ram closure\n", o);
+      }
+    else
+      {
+	if (ROM_BIGNUM(o)) printf("%x : rom bignum\n", o);
+	else if (ROM_PAIR(o)) printf("%x : rom pair\n", o);
+	else if (ROM_SYMBOL(o)) printf("%x : rom symbol\n", o);
+	else if (ROM_STRING(o)) printf("%x : rom string\n", o);
+	else if (ROM_VECTOR(o)) printf("%x : rom vector\n", o);
+	else if (ROM_CONTINUATION(o)) printf("%x : rom continuation\n", o);
+	else if (RAM_CLOSURE(o)) printf("%x : rom closure\n", o);
+      }
+  }
+#endif
+
+
 /*---------------------------------------------------------------------------*/
 
 /* Interface to GC */
@@ -460,12 +492,12 @@ void set_global (uint8 i, obj o)
 #define GC_TAG_0_LEFT   (1<<5)
 // TODO was 3<<5, changed to play nice with procedures and bignums, but should actually set only this bit, not clear the other
 #define GC_TAG_1_LEFT   (2<<5)
-#define GC_TAG_UNMARKED (0<<5)  /* must be 0 */ // TODO FOOBAR is it ok ? eevn for bignums ?
+#define GC_TAG_UNMARKED (0<<5)
 
 /* Number of object fields of objects in ram */
 #define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR(visit) || RAM_CONTINUATION(visit))
 #define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit))
-// TODO now we consider that all composites have at least 1 field, even symbols, as do procedures. no problem for symbols, since the car is always #f (make sure)
+// all composites except pairs and continuations have 1 object field
 // TODO if we ever have true bignums, bignums will have 1 object field
 
 #define NIL OBJ_FALSE
@@ -483,7 +515,7 @@ obj arg4;
 obj cont;
 obj env;
 
-uint8 na; /* interpreter variables */ // TODO what's na ?
+uint8 na; /* interpreter variables */ // TODO number of args, never more than a byte
 rom_addr pc;
 rom_addr entry;
 uint8 bytecode;
@@ -521,11 +553,12 @@ void init_ram_heap (void)
   second_half = OBJ_FALSE;
 }
 
+
 void mark (obj temp)
 {  
   /* mark phase */
   
-  obj stack; // TODO do we need a stack ? since we have 0-1-2 children, we could do deutsche schorr waite
+  obj stack;
   obj visit;
 
   if (IN_RAM(temp))
@@ -537,50 +570,21 @@ void mark (obj temp)
       stack = visit;
       visit = temp;
 
-      IF_GC_TRACE(printf ("push   stack=%d (tag=%d)  visit=%d (tag=%d)\n", stack, ram_get_gc_tags (stack)>>6, visit, ram_get_gc_tags (visit)>>6));
-
-      /*
-       * Four cases are possible:
-       *
-       * A)
-       *                          stack  visit tag F1  F2  F3
-       *                           NIL    |   +---+---+---+---+
-       *                                  +-> | ? |   |   |   |
-       *                                      +---+---+---+---+
-       *
-       * B)
-       *          tag F1  F2  F3  stack  visit tag F1  F2  F3
-       *         +---+---+---+---+   |    |   +---+---+---+---+
-       *         | 1 |   |   |   | <-+    +-> | ? |   |   |   |
-       *         +---+---+---+-|-+            +---+---+---+---+
-       *     <-----------------+
-       *
-       * C)
-       *          tag F1  F2  F3  stack  visit tag F1  F2  F3
-       *         +---+---+---+---+   |    |   +---+---+---+---+
-       *         | 2 |   |   |   | <-+    +-> | ? |   |   |   |
-       *         +---+---+-|-+---+            +---+---+---+---+
-       *     <-------------+
-       *
-       * D)
-       *          tag F1  F2  F3  stack  visit tag F1  F2  F3
-       *         +---+---+---+---+   |    |   +---+---+---+---+
-       *         | 3 |   |   |   | <-+    +-> | ? |   |   |   |
-       *         +---+-|-+---+---+            +---+---+---+---+
-       *     <---------+
-       */
-      // TODO since no-one has 3 fields anymore, not really 4 cases ?
+      // TODO seems gc is called much too early, after 256 is reached
       
-      //      if (ram_get_gc_tags (visit) != GC_TAG_UNMARKED) // TODO always matches procedures, WRONG, maybe check only the right gc bit ?/
-      if (ram_get_gc_tags (visit) & 0x2f) // TODO we check only the last gc bit
-	IF_GC_TRACE(printf ("case 1\n")); // TODO are there cases where checking only the last gc bit is wrong ?
-      // TODO FOOBAR ok, with our new way, what do we check here ?
+      //      IF_GC_TRACE(printf ("push   stack=%d (tag=%d)  visit=%d (tag=%d)\n", stack, ram_get_gc_tags (stack)>>5, visit, ram_get_gc_tags (visit)>>5)); // TODO error here, tried to get the tag of nil
+      IF_GC_TRACE(printf ("push   stack=%d  visit=%d (tag=%d)\n", stack, visit, ram_get_gc_tags (visit)>>5));
+      
+      if ((HAS_1_OBJECT_FIELD (visit) && ram_get_gc_tag0 (visit))
+	  || (HAS_2_OBJECT_FIELDS (visit)
+	      && (ram_get_gc_tags (visit) != GC_TAG_UNMARKED)))
+	// TODO ugly condition
+	IF_GC_TRACE(printf ("case 1\n"));
       else
         {
-          if (HAS_2_OBJECT_FIELDS(visit))
+          if (HAS_2_OBJECT_FIELDS(visit)) // pairs and continuations
             {
               IF_GC_TRACE(printf ("case 5\n"));
-	      // TODO we don't have cases 2-4 anymore
 
             visit_field2:
 
@@ -605,14 +609,21 @@ void mark (obj temp)
 
             visit_field1:
 
-              temp = ram_get_car (visit);
+	      if (RAM_CLOSURE(visit)) // closures have the pointer in the cdr
+		temp = ram_get_cdr (visit);
+	      else
+		temp = ram_get_car (visit);
 
               if (IN_RAM(temp))
                 {
                   IF_GC_TRACE(printf ("case 9\n"));
                   ram_set_gc_tag0 (visit, GC_TAG_0_LEFT); // TODO changed, now we only set bit 0, we don't change bit 1, since some objets have only 1 mark bit
-                  ram_set_car (visit, stack);
-                  goto push;
+		  if (RAM_CLOSURE(visit)) // closures still have the pointer in the cdr TODO inverted
+		    ram_set_cdr (visit, stack); // TODO BREGG is it ok ? closures seem to get messed up
+		  else 
+		    ram_set_car (visit, stack);		  
+
+                  goto push; // TODO the loop goes through here, is the stack correctly set ?
                 }
 
               IF_GC_TRACE(printf ("case 10\n"));
@@ -625,25 +636,50 @@ void mark (obj temp)
 
     pop:
 
-      IF_GC_TRACE(printf ("pop    stack=%d (tag=%d)  visit=%d (tag=%d)\n", stack, ram_get_gc_tags (stack)>>6, visit, ram_get_gc_tags (visit)>>6));
-
+      /* IF_GC_TRACE(printf ("pop    stack=%d (tag=%d)  visit=%d (tag=%d)\n", stack, ram_get_gc_tags (stack)>>6, visit, ram_get_gc_tags (visit)>>6)); */
+      // TODO, like for push, getting the gc tags of nil is not great
+      IF_GC_TRACE(printf ("pop    stack=%d  visit=%d (tag=%d)\n", stack, visit, ram_get_gc_tags (visit)>>6));
+      
       if (stack != NIL)
         {
-          if (ram_get_gc_tags (stack) == GC_TAG_1_LEFT) // TODO FOOBAR, this is always true for closures that have not been marked, can such an object get here ? probably not, since when a procedure is popped, it has already been visited, so will be at 0 left
-            {
+          /* if ((ram_get_gc_tags (stack) == GC_TAG_1_LEFT)) */
+	  /*   // this condition will always be true for unmarked closures, but */
+	  /*   // such an object will never be on the stack (procedures will */
+	  /*   // always be marked at this point), so no false positives */
+	  if (HAS_2_OBJECT_FIELDS(stack) && ram_get_gc_tag1 (stack))
+	    // TODO more specific, might help, but if the bit stays set we'll loop
+	    {
               IF_GC_TRACE(printf ("case 13\n"));
 
-              temp = ram_get_cdr (stack);  /* pop through field 2 */
+              temp = ram_get_cdr (stack);  /* pop through cdr */
               ram_set_cdr (stack, visit);
               visit = stack;
               stack = temp;
+	      /* printf("FOO: %d\n", RAM_CONTINUATION(243)); // TODO ok, it's a continuation that causes us problems */
 
+	      ram_set_gc_tag1(visit, GC_TAG_UNMARKED);
+	      // we unset the "1-left" bit
+	      
               goto visit_field1;
             }
 
+	  if (RAM_CLOSURE(stack)) // TODO doesn't seem to solve the problem
+	    // closures have one object field, but it's in the cdr
+	    // TODO will the stack ever be a closure ?
+	    {
+	      IF_GC_TRACE(printf ("case 13.5\n")); // TODO renumber cases
+
+              temp = ram_get_cdr (stack);  /* pop through cdr */
+              ram_set_cdr (stack, visit);
+              visit = stack; // TODO BREGG do we set it back as we should ?
+              stack = temp;
+
+              goto pop;
+	    }
+
           IF_GC_TRACE(printf ("case 14\n"));
 
-          temp = ram_get_car (stack);  /* pop through field 1 */
+          temp = ram_get_car (stack);  /* pop through car */
           ram_set_car (stack, visit);
           visit = stack;
           stack = temp;
@@ -671,13 +707,15 @@ void sweep (void)
 
   while (visit >= MIN_RAM_ENCODING)
     {
-      if ((RAM_COMPOSITE(visit) && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) || (ram_get_gc_tags (visit) & GC_TAG_0_LEFT)) /* unmarked? */
-	// TODO now we check only 1 bit if the object has only 1 mark bit
+      if ((RAM_COMPOSITE(visit)
+	   && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) // 2 mark bit
+	  || !(ram_get_gc_tags (visit) & GC_TAG_0_LEFT)) // 1 mark bit
+	/* unmarked? */
         {
           ram_set_car (visit, free_list);
           free_list = visit;
         }
-      else
+      else // TODO do closures get swept even if they are live ?
         {
 	  if (RAM_COMPOSITE(visit))
 	    ram_set_gc_tags (visit, GC_TAG_UNMARKED);
@@ -704,6 +742,8 @@ void gc (void)
 {
   uint8 i;
 
+  IF_GC_TRACE(printf("\nGC BEGINS\n"));
+  
   mark (arg1);
   mark (arg2);
   mark (arg3);
@@ -736,7 +776,7 @@ obj alloc_ram_cell (void)
 
   o = free_list;
 
-  free_list = ram_get_field1 (o);
+  free_list = ram_get_car (o); // TODO was field1
 
   return o;
 }
@@ -820,7 +860,7 @@ void show (obj o)
     printf ("()");
   else if (o <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM)))
     printf ("%d", DECODE_FIXNUM(o));
-  else
+  else // TODO past here, everything is either in ram or in rom, until we add a 3rd space for vectors, that is
     {
       uint8 in_ram;
 
@@ -836,24 +876,43 @@ void show (obj o)
 	  obj car;
 	  obj cdr;
 
-	  if (in_ram && RAM_PAIR(o))
-	    {
-	      car = ram_get_car (o);
-	      cdr = ram_get_cdr (o);
+	  if ((in_ram && RAM_PAIR(o)) || (!in_ram && ROM_PAIR(o))) // TODO not exactly efficient, fix it
+	    {	      
+	      if (in_ram)
+		{
+		  car = ram_get_car (o);
+		  cdr = ram_get_cdr (o);
+		}
+	      else
+		{
+		  car = rom_get_car (o);
+		  cdr = rom_get_cdr (o);
+		}
+
 	      printf ("(");
-
-	    loop_ram:
+	      
+	    loop:
+	      
 	      show (car);
-
+	      
 	      if (cdr == OBJ_NULL)
 		printf (")");
-	      else if (RAM_PAIR(cdr))
+	      else if ((IN_RAM(cdr) && RAM_PAIR(cdr))
+		       || (IN_ROM(cdr) && ROM_PAIR(cdr)))
 		{
-		  car = ram_get_car (cdr);
-		  cdr = ram_get_cdr (cdr);
-
+		  if (IN_RAM(cdr))
+		    {
+		      car = ram_get_car (cdr);
+		      cdr = ram_get_cdr (cdr);
+		    }
+		  else
+		    {
+		      car = rom_get_car (cdr);
+		      cdr = rom_get_cdr (cdr);
+		    }
+		  
 		  printf (" ");
-		  goto loop_ram;
+		  goto loop;
 		}
 	      else
 		{
@@ -862,32 +921,7 @@ void show (obj o)
 		  printf (")");
 		}
 	    }
-	  else if (!in_ram && ROM_PAIR(o))
-	    {
-	      car = rom_get_car (o);
-	      cdr = rom_get_cdr (o);
-	      printf ("(");
-	    loop_rom:
-	      show (car);
-
-	      if (cdr == OBJ_NULL)
-		printf (")");
-	      else if (ROM_PAIR(cdr))
-		{
-		  car = rom_get_car (cdr);
-		  cdr = rom_get_cdr (cdr);
-
-		  printf (" ");
-		  goto loop_rom;
-		}
-	      else // TODO lots of repetition
-		{
-		  printf (" . ");
-		  show (cdr);
-		  printf (")");
-		}
-	    }
-	  else if ((in_ram && RAM_SYMBOL(o)) || (!in_ram && ROM_SYMBOL(o)))
+       	  else if ((in_ram && RAM_SYMBOL(o)) || (!in_ram && ROM_SYMBOL(o)))
 	    printf ("#<symbol>");
 	  else if ((in_ram && RAM_STRING(o)) || (!in_ram && ROM_STRING(o)))
 	    printf ("#<string>");
@@ -898,24 +932,18 @@ void show (obj o)
 	      printf ("(");
 	      car = ram_get_car (o);
 	      cdr = ram_get_cdr (o);
-	      goto loop_ram; // TODO ugly hack, takes advantage of the fact that pairs and continuations have the same layout
+	      goto loop; // TODO ugly hack, takes advantage of the fact that pairs and continuations have the same layout
 	    }
         }
       else // closure
         {
           obj env;
-          /* obj parent_cont; */
           rom_addr pc;
 
           if (IN_RAM(o)) // TODO can closures be in rom ? I don't think so
-            env = ram_get_cdr (o); // TODO was car, but representation changed
+            env = ram_get_cdr (o);
           else
             env = rom_get_cdr (o);
-
-          /* if (IN_RAM(o)) */
-          /*   parent_cont = ram_get_field2 (o); */
-          /* else */
-          /*   parent_cont = rom_get_field2 (o); */
 
           if (IN_RAM(o))
 	    pc = ram_get_entry (o);
@@ -924,10 +952,7 @@ void show (obj o)
 
           printf ("{0x%04x ", pc);
           show (env);
-          /* printf (" "); */
-          /* show (parent_cont); */
           printf ("}");
-	  /* printf ("#<procedure>"); */
         }
     }
 
@@ -936,6 +961,7 @@ void show (obj o)
 
 void show_state (rom_addr pc)
 {
+  printf("\n");
   printf ("pc=0x%04x bytecode=0x%02x env=", pc, rom_get (pc));
   show (env);
   printf (" cont=");
@@ -1834,20 +1860,14 @@ void pop_procedure (void)
   arg1 = POP();
   
   if (IN_RAM(arg1))
-    {
-      if (RAM_CONTINUATION(arg1))
-	ERROR("continuation in pop_procedure"); // TODO this might be legitimate, but for now, we can't do this. if this error comes up, fix this function so it can handle continuations
-      
+    {      
       if (!RAM_CLOSURE(arg1))
 	TYPE_ERROR("procedure");
       
       entry = ram_get_entry (arg1) + CODE_START; // FOO all addresses in the bytecode should be from 0, not from CODE_START, should be fixed everywhere, but might not be
     }
   else if (IN_ROM(arg1))
-    {
-      if (ROM_CONTINUATION(arg1))
-	ERROR("continuation in pop_procedure"); // TODO same as above
-      
+    {      
       if (!ROM_CLOSURE(arg1))
         TYPE_ERROR("procedure");
 
@@ -1907,17 +1927,12 @@ void build_env (void)
 }
 
 void save_cont (void)
-{ // BARF probably a problem here
+{
   // the second half is a closure
-  /* second_half = alloc_ram_cell_init (CLOSURE_FIELD0 | ((pc & 0xf800) >> 11), */
-  /* 				     (pc & 0x07f8) >> 3, */
-  /* 				     ((pc & 0x0007) << 5) | (env >> 8), */
-  /* 				     env & 0xff); */
   second_half = alloc_ram_cell_init (CLOSURE_FIELD0 | (pc >> 11),
-				     (pc >> 3) & 0xff, // BREGG
+				     (pc >> 3) & 0xff,
 				     ((pc & 0x0007) << 5) | (env >> 8),
 				     env & 0xff);
-  // BREGG problem is, we add the start twice, in get entry, and somewhere else, but pc doesn't have it initially
   cont = alloc_ram_cell_init (COMPOSITE_FIELD0 | (cont >> 8),
                               cont & 0xff,
 			      CONTINUATION_FIELD2 | (second_half >> 8),
@@ -2020,7 +2035,7 @@ void interpreter (void)
 
   na = bytecode_lo4;
 
-  pop_procedure (); // TODO FOOBAR can we call a continuation ? if so, fix pop_procedure
+  pop_procedure ();
   handle_arity_and_rest_param ();
   build_env ();
   save_cont ();
@@ -2232,7 +2247,7 @@ void interpreter (void)
       arg1 = POP(); /* thunk to call */
       cont = POP(); /* continuation */
 
-      PUSH_ARG1(); // TODO we don't call the continuation, no change was needed
+      PUSH_ARG1();
 
       na = 0;
 
@@ -2336,7 +2351,7 @@ void interpreter (void)
       break;
 #endif
     case 12:
-      /* push-constant [long] */
+      /* push-constant [long] */ // BARF seems to be wrong
       FETCH_NEXT_BYTECODE();
       second_half = bytecode;
       FETCH_NEXT_BYTECODE();
@@ -2407,7 +2422,7 @@ int main (int argc, char *argv[])
     }
 
 #ifdef DEBUG
-  printf ("Start address = 0x%04x\n", rom_start_addr);
+  printf ("Start address = 0x%04x\n", rom_start_addr); // TODO says 0, but should be CODE_START ?
 #endif
 
   if (argc != 2)

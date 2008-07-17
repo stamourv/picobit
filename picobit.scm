@@ -950,14 +950,10 @@
                      (compiler-error "undefined variable:" (var-id var))
 		     (let ((val (child1 (car (var-defs var)))))
 		       (if (and (not (mutable-var? var))
-				(cst? val))
-			   (begin (pp (var-id var))
-				  ;; TODO BARF had no effect, literals are
-				  ;; still the only constants
-				  (gen-push-constant (cst-val val) ctx))
+				(cst? val)) ;; immutable global, counted as cst
+			   (gen-push-constant (cst-val val) ctx)
 			   (gen-push-global (var-id var) ctx))))
-		 ;; TODO I though this might have caused problems, but the programs failed the same way at the same place with and without this
-                 (gen-push-local-var (var-id var) ctx))))
+                 (gen-push-local-var (var-id var) ctx)))) ;; TODO globals as csts seem to work (but only for constant-values ones, like it probably should)
 
           ((or (def? node)
                (set? node))
@@ -1206,7 +1202,7 @@
                   (var-refs var))
            prc))))
 
-(define mutable-var? ;; TODO use it to put immutable globals in rom
+(define mutable-var?
   (lambda (var)
     (not (null? (var-sets var)))))
 
@@ -1271,7 +1267,12 @@
     (define mark-var!
       (lambda (var)
         (if (and (var-global? var)
-                 (not (var-needed? var)))
+                 (not (var-needed? var))
+		 ;; globals that obey the following conditions are considered
+		 ;; to be constants
+		 (not (and (not (mutable-var? var))
+			   (> (length (var-defs var)) 0) ;; TODO to catch errors for primitives
+			   (cst? (child1 (car (var-defs var)))))))
             (begin
               (var-needed?-set! var #t)
               (for-each
@@ -1512,7 +1513,7 @@
                          (rev-instrs (bb-rev-instrs bb))
                          (jump (car rev-instrs))
                          (opcode (car jump)))
-                    (cond ((eq? opcode 'goto) ;; BREGG search for goto paused here
+                    (cond ((eq? opcode 'goto)
                            (let* ((label (cadr jump))
                                   (jump-replacement (resolve label)))
                              (if jump-replacement
