@@ -133,7 +133,6 @@ typedef uint16 obj;
 
 /*---------------------------------------------------------------------------*/
 
-/* #define MIN_RAM_ENCODING 128 */ // TODO NEW
 #define MAX_RAM_ENCODING 8192
 #define MIN_RAM_ENCODING 512
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
@@ -287,9 +286,7 @@ obj globals[GLOVARS];
 
 #define MIN_FIXNUM_ENCODING 3
 #define MIN_FIXNUM 0
-// TODO NEW was (-5)
 #define MAX_FIXNUM 255
-// TODO NEW was 40
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING+MAX_FIXNUM-MIN_FIXNUM+1)
 
 #define ENCODE_FIXNUM(n) ((obj)(n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
@@ -299,7 +296,7 @@ obj globals[GLOVARS];
 #define IN_RAM(o) ((o) >= MIN_RAM_ENCODING)
 #define IN_ROM(o) (!IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
 #endif
-// TODO BARF rom only checks the lower bound, might cause problem if not used in an else
+// TODO rom now checks both bounds, solved 1-2 bugs, but now needs 2 checks
 
 // bignum first byte : 00G00000
 #define BIGNUM_FIELD0 0
@@ -407,7 +404,7 @@ void ram_set_gc_tags  (obj o, uint8 tags) { RAM_SET_GC_TAGS_MACRO(o, tags); }
 void ram_set_gc_tag0 (obj o, uint8 tag) { RAM_SET_GC_TAG0_MACRO(o,tag); }
 void ram_set_gc_tag1 (obj o, uint8 tag) { RAM_SET_GC_TAG1_MACRO(o,tag); }
 uint8 ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
-word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); } // TODO used to return obj, which used to be the same as words
+word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); }
 word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
 word ram_get_field3 (obj o) { return RAM_GET_FIELD3_MACRO(o); }
 void ram_set_field0 (obj o, uint8 val) { RAM_SET_FIELD0_MACRO(o,val); }
@@ -427,14 +424,14 @@ obj ram_get_cdr (obj o)
 { return ((ram_get_field2 (o) & 0x1f) << 8) | ram_get_field3 (o); }
 obj rom_get_cdr (obj o)
 { return ((rom_get_field2 (o) & 0x1f) << 8) | rom_get_field3 (o); }
-void ram_set_car (obj o, obj val)
+void ram_set_car (obj o, obj val) // TODO  WRONG !
 {
-  ram_set_field0 (o, ((val & 0x1f00) >> 8) | (ram_get_field0 (o) & 0xc0));
+  ram_set_field0 (o, (val >> 8) | (ram_get_field0 (o) & 0xe0));
   ram_set_field1 (o, val & 0xff);
 }
-void ram_set_cdr (obj o, obj val)
+void ram_set_cdr (obj o, obj val) // TODO looks wrong too
 {
-  ram_set_field2 (o, ((val & 0x1f00) >> 8) | (ram_get_field2 (o) & 0xc0));
+  ram_set_field2 (o, (val >> 8) | (ram_get_field2 (o) & 0xe0));
   ram_set_field3 (o, val & 0xff);
 }
 obj ram_get_entry (obj o)
@@ -463,26 +460,32 @@ void set_global (uint8 i, obj o)
 #ifdef WORKSTATION
 void show_type (obj o) // for debugging purposes
   {
-    if (IN_RAM (o))
+    printf("%x : ", o);
+    if (o == OBJ_FALSE) printf("#f");
+    else if (o == OBJ_TRUE) printf("#t");
+    else if (o == OBJ_NULL) printf("()");
+    else if (o < MIN_ROM_ENCODING) printf("fixnum");
+    else if (IN_RAM (o))
       {
-	if (RAM_BIGNUM(o)) printf("%x : ram bignum\n", o);
-	else if (RAM_PAIR(o)) printf("%x : ram pair\n", o);
-	else if (RAM_SYMBOL(o)) printf("%x : ram symbol\n", o);
-	else if (RAM_STRING(o)) printf("%x : ram string\n", o);
-	else if (RAM_VECTOR(o)) printf("%x : ram vector\n", o);
-	else if (RAM_CONTINUATION(o)) printf("%x : ram continuation\n", o);
-	else if (RAM_CLOSURE(o)) printf("%x : ram closure\n", o);
+	if (RAM_BIGNUM(o)) printf("ram bignum");
+	else if (RAM_PAIR(o)) printf("ram pair");
+	else if (RAM_SYMBOL(o)) printf("ram symbol");
+	else if (RAM_STRING(o)) printf("ram string");
+	else if (RAM_VECTOR(o)) printf("ram vector");
+	else if (RAM_CONTINUATION(o)) printf("ram continuation");
+	else if (RAM_CLOSURE(o)) printf("ram closure");
       }
-    else
+    else // ROM
       {
-	if (ROM_BIGNUM(o)) printf("%x : rom bignum\n", o);
-	else if (ROM_PAIR(o)) printf("%x : rom pair\n", o);
-	else if (ROM_SYMBOL(o)) printf("%x : rom symbol\n", o);
-	else if (ROM_STRING(o)) printf("%x : rom string\n", o);
-	else if (ROM_VECTOR(o)) printf("%x : rom vector\n", o);
-	else if (ROM_CONTINUATION(o)) printf("%x : rom continuation\n", o);
-	else if (RAM_CLOSURE(o)) printf("%x : rom closure\n", o);
-      } // TODO add fixnums, bools, nil
+	if (ROM_BIGNUM(o)) printf("rom bignum");
+	else if (ROM_PAIR(o)) printf("rom pair");
+	else if (ROM_SYMBOL(o)) printf("rom symbol");
+	else if (ROM_STRING(o)) printf("rom string");
+	else if (ROM_VECTOR(o)) printf("rom vector");
+	else if (ROM_CONTINUATION(o)) printf("rom continuation");
+	else if (RAM_CLOSURE(o)) printf("rom closure");
+      }
+    printf("\n");
   }
 #endif
 
@@ -518,7 +521,7 @@ obj arg4;
 obj cont;
 obj env;
 
-uint8 na; /* interpreter variables */ // TODO number of args, never more than a byte
+uint8 na; /* interpreter variables */
 rom_addr pc;
 rom_addr entry;
 uint8 bytecode;
@@ -572,8 +575,6 @@ void mark (obj temp)
 
       stack = visit;
       visit = temp;
-
-      // TODO seems gc is called much too early, after 256 is reached
       
       //      IF_GC_TRACE(printf ("push   stack=%d (tag=%d)  visit=%d (tag=%d)\n", stack, ram_get_gc_tags (stack)>>5, visit, ram_get_gc_tags (visit)>>5)); // TODO error here, tried to get the tag of nil
       IF_GC_TRACE(printf ("push   stack=%d  visit=%d (tag=%d)\n", stack, visit, ram_get_gc_tags (visit)>>5));
@@ -658,7 +659,6 @@ void mark (obj temp)
               ram_set_cdr (stack, visit);
               visit = stack;
               stack = temp;
-	      /* printf("FOO: %d\n", RAM_CONTINUATION(243)); // TODO ok, it's a continuation that causes us problems */
 
 	      ram_set_gc_tag1(visit, GC_TAG_UNMARKED);
 	      // we unset the "1-left" bit
@@ -746,13 +746,21 @@ void gc (void)
   uint8 i;
 
   IF_GC_TRACE(printf("\nGC BEGINS\n"));
-  
+
+  IF_GC_TRACE(printf("arg1\n"));
   mark (arg1);
+  IF_GC_TRACE(printf("arg2\n"));
   mark (arg2);
+  IF_GC_TRACE(printf("arg3\n"));
   mark (arg3);
+  IF_GC_TRACE(printf("arg4\n"));
   mark (arg4);
+  IF_GC_TRACE(printf("cont\n"));
   mark (cont);
+  IF_GC_TRACE(printf("env\n"));
   mark (env);
+  IF_GC_TRACE(printf("second_half\n"));
+  mark (second_half); // TODO this is a test, maybe the temp values gets wiped, if so, we'd need to put second_half to #f once we're donw ith it (or use arg1 and co) BREGG
 
   for (i=0; i<GLOVARS; i++)
     mark (get_global (i));
@@ -779,7 +787,7 @@ obj alloc_ram_cell (void)
 
   o = free_list;
 
-  free_list = ram_get_car (o); // TODO was field1
+  free_list = ram_get_car (o);
 
   return o;
 }
@@ -968,7 +976,7 @@ void show_state (rom_addr pc)
   printf ("pc=0x%04x bytecode=0x%02x env=", pc, rom_get (pc));
   show (env);
   printf (" cont=");
-  show (cont);
+  /* show (cont); */ // TODO prob, it's cyclic
   printf ("\n");
   fflush (stdout);
 }
@@ -1911,7 +1919,7 @@ void handle_arity_and_rest_param (void)
         }
 
       arg1 = cons (arg3, arg1);
-      arg3 = OBJ_FALSE; // TODO changed nothing with the new new closures, everything looks ok
+      arg3 = OBJ_FALSE;
     }
 }
 
@@ -1926,7 +1934,7 @@ void build_env (void)
       na--;
     }
 
-  arg3 = OBJ_FALSE; // TODO changed nothing here either
+  arg3 = OBJ_FALSE;
 }
 
 void save_cont (void)
@@ -1936,10 +1944,16 @@ void save_cont (void)
 				     (pc >> 3) & 0xff,
 				     ((pc & 0x0007) << 5) | (env >> 8),
 				     env & 0xff);
+  show(second_half); // TODO debug
+  show(512); // TODO what's that already ?
+  show(cont); // TODO gc in alloc_ram_cell_init seems to cause the problem BREGG
   cont = alloc_ram_cell_init (COMPOSITE_FIELD0 | (cont >> 8),
                               cont & 0xff,
 			      CONTINUATION_FIELD2 | (second_half >> 8),
                               second_half & 0xff);
+  /* printf("OK\n"); // TODO debug */
+  /* show(ram_get_cdr(cont)); // TODO maybe parent is not ok ? */
+  /* printf("\nOK\n"); */
 }
 
 void interpreter (void)
@@ -1984,7 +1998,7 @@ void interpreter (void)
       bytecode_lo4--;
     }
 
-  arg1 = ram_get_car (arg1); // TODO BARF what to do if we want to get something in the env of a continuation ? will it happen, or only when called, when it becomes a simple closure ? if only when a closure, we're fine, I guess, since 1 is added to the offset by the compiler to skip the closure
+  arg1 = ram_get_car (arg1);
 
   PUSH_ARG1();
 
@@ -2026,6 +2040,10 @@ void interpreter (void)
   CASE(SET_GLOBAL);
 
   IF_TRACE(printf("  (set-global %d)\n", bytecode_lo4));
+
+  printf("provocative gc\n");
+  gc(); // TODO AHA! if we do some gc with a procedure (this time in env), things get messed up (at least in env, cont is #f) BREGG
+  show(env); // TODO looks better already
 
   set_global (bytecode_lo4, POP());
 
@@ -2072,7 +2090,7 @@ void interpreter (void)
   CASE(CALL_TOPLEVEL);
 
   FETCH_NEXT_BYTECODE();  
-  second_half = bytecode; // TODO make sure second_half is not already in use
+  second_half = bytecode;
   
   FETCH_NEXT_BYTECODE();
 
@@ -2084,7 +2102,11 @@ void interpreter (void)
   na = rom_get (entry++);
 
   build_env ();
-  save_cont ();
+  printf("build_env done\n"); // TODO debug
+  // TODO continuation seems intact after gc done in build_env (is there any ?)
+  save_cont (); // TODO ok, seems gc done here causes problems
+  show(cont); // TODO cont is messed up at this point BREGG
+  printf("save_cont done\n");
 
   env = arg1;
   pc = entry;
@@ -2097,7 +2119,7 @@ void interpreter (void)
   CASE(JUMP_TOPLEVEL);
 
   FETCH_NEXT_BYTECODE();  
-  second_half = bytecode; // TODO make sure second_half is not already in use
+  second_half = bytecode;
   
   FETCH_NEXT_BYTECODE();
 
@@ -2125,13 +2147,9 @@ void interpreter (void)
 
   FETCH_NEXT_BYTECODE();
   
-  // TODO goto's use 12-bit addresses, unlike calls and jumps, which use 16, is it ok ?
-  // actually, the compiler gives them 16 bit addresses now, it seems
-  // that means we have even more free instructions, but that now even gotos are on 3 bytes
   IF_TRACE(printf("  (goto 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
 
   pc = (second_half << 8) + bytecode + CODE_START;
-  /* pc = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode; */ // TODO not anymore
 
   DISPATCH();
 
@@ -2147,7 +2165,6 @@ void interpreter (void)
 
   if (POP() == OBJ_FALSE)
     pc = (second_half << 8) + bytecode + CODE_START;
-    /* pc = ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode; */
 
   DISPATCH();
 
@@ -2160,9 +2177,7 @@ void interpreter (void)
   FETCH_NEXT_BYTECODE();
 
   IF_TRACE(printf("  (closure 0x%04x)\n", (second_half << 8) | bytecode));
-  // TODO original had CODE_START, while the real code below didn't
 
-  /* arg2 = POP(); // #f TODO should be, at least, and not used anymore, would it break anything not to use it in the compiler anymore ? maybe try, it's not urgent, but would be nice */ // TODO we got rid of this in the compiler
   arg3 = POP(); // env
 
   entry = (second_half << 8) | bytecode; // TODO original had no CODE_START, why ?

@@ -2417,11 +2417,11 @@
 
 ;------------------------------------------------------------------------------
 
-(define min-fixnum-encoding 3) ;; BARF was changed
-(define min-fixnum 0) ;; TODO have from 0 to 255, and 256-3 rom objects TODO was -5
-(define max-fixnum 255) ;; TODO was 40
+(define min-fixnum-encoding 3)
+(define min-fixnum 0)
+(define max-fixnum 255)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
-(define min-ram-encoding 512) ;; TODO was 128 NEW (all these)
+(define min-ram-encoding 512)
 (define max-ram-encoding 8191)
 
 (define code-start #x5000)
