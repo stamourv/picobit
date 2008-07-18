@@ -527,7 +527,6 @@ rom_addr entry;
 uint8 bytecode;
 uint8 bytecode_hi4;
 uint8 bytecode_lo4;
-obj second_half; /* the second half of continuations */
 int32 a1;
 int32 a2;
 int32 a3;
@@ -556,7 +555,6 @@ void init_ram_heap (void)
   arg4 = OBJ_FALSE;
   cont = OBJ_FALSE;
   env  = OBJ_NULL;
-  second_half = OBJ_FALSE;
 }
 
 
@@ -759,8 +757,6 @@ void gc (void)
   mark (cont);
   IF_GC_TRACE(printf("env\n"));
   mark (env);
-  IF_GC_TRACE(printf("second_half\n"));
-  mark (second_half); // TODO this is a test, maybe the temp values gets wiped, if so, we'd need to put second_half to #f once we're donw ith it (or use arg1 and co) BREGG
 
   for (i=0; i<GLOVARS; i++)
     mark (get_global (i));
@@ -1940,20 +1936,15 @@ void build_env (void)
 void save_cont (void)
 {
   // the second half is a closure
-  second_half = alloc_ram_cell_init (CLOSURE_FIELD0 | (pc >> 11),
-				     (pc >> 3) & 0xff,
-				     ((pc & 0x0007) << 5) | (env >> 8),
-				     env & 0xff);
-  show(second_half); // TODO debug
-  show(512); // TODO what's that already ?
-  show(cont); // TODO gc in alloc_ram_cell_init seems to cause the problem BREGG
+  arg3 = alloc_ram_cell_init (CLOSURE_FIELD0 | (pc >> 11),
+			      (pc >> 3) & 0xff,
+			      ((pc & 0x0007) << 5) | (env >> 8),
+			      env & 0xff);
   cont = alloc_ram_cell_init (COMPOSITE_FIELD0 | (cont >> 8),
                               cont & 0xff,
-			      CONTINUATION_FIELD2 | (second_half >> 8),
-                              second_half & 0xff);
-  /* printf("OK\n"); // TODO debug */
-  /* show(ram_get_cdr(cont)); // TODO maybe parent is not ok ? */
-  /* printf("\nOK\n"); */
+			      CONTINUATION_FIELD2 | (arg3 >> 8),
+                              arg3 & 0xff);
+  arg3 = OBJ_FALSE;
 }
 
 void interpreter (void)
@@ -2041,10 +2032,6 @@ void interpreter (void)
 
   IF_TRACE(printf("  (set-global %d)\n", bytecode_lo4));
 
-  printf("provocative gc\n");
-  gc(); // TODO AHA! if we do some gc with a procedure (this time in env), things get messed up (at least in env, cont is #f) BREGG
-  show(env); // TODO looks better already
-
   set_global (bytecode_lo4, POP());
 
   DISPATCH();
@@ -2090,28 +2077,25 @@ void interpreter (void)
   CASE(CALL_TOPLEVEL);
 
   FETCH_NEXT_BYTECODE();  
-  second_half = bytecode;
+  arg2 = bytecode;
   
   FETCH_NEXT_BYTECODE();
 
-  IF_TRACE(printf("  (call-toplevel 0x%04x)\n", ((second_half << 8) | bytecode) + CODE_START));
+  IF_TRACE(printf("  (call-toplevel 0x%04x)\n", ((arg2 << 8) | bytecode) + CODE_START));
 
-  entry = (second_half << 8) + bytecode + CODE_START; // TODO FOOBAR we have the last 4 bits of the opcode free, to do pretty much anything
+  entry = (arg2 << 8) + bytecode + CODE_START; // TODO FOOBAR we have the last 4 bits of the opcode free, to do pretty much anything
   arg1 = OBJ_NULL;
 
   na = rom_get (entry++);
 
   build_env ();
-  printf("build_env done\n"); // TODO debug
-  // TODO continuation seems intact after gc done in build_env (is there any ?)
-  save_cont (); // TODO ok, seems gc done here causes problems
-  show(cont); // TODO cont is messed up at this point BREGG
-  printf("save_cont done\n");
+  save_cont ();
 
   env = arg1;
   pc = entry;
 
   arg1 = OBJ_FALSE;
+  arg2 = OBJ_FALSE;
 
   DISPATCH();
 
@@ -2119,13 +2103,13 @@ void interpreter (void)
   CASE(JUMP_TOPLEVEL);
 
   FETCH_NEXT_BYTECODE();  
-  second_half = bytecode;
+  arg2 = bytecode;
   
   FETCH_NEXT_BYTECODE();
 
-  IF_TRACE(printf("  (jump-toplevel 0x%04x)\n", ((second_half << 8) | bytecode) + CODE_START));
+  IF_TRACE(printf("  (jump-toplevel 0x%04x)\n", ((arg2 << 8) | bytecode) + CODE_START));
 
-  entry = (second_half << 8) + bytecode + CODE_START; // TODO this is a common pattern
+  entry = (arg2 << 8) + bytecode + CODE_START; // TODO this is a common pattern
   arg1 = OBJ_NULL;
 
   na = rom_get (entry++);
@@ -2136,6 +2120,7 @@ void interpreter (void)
   pc = entry;
 
   arg1 = OBJ_FALSE;
+  arg2 = OBJ_FALSE;
 
   DISPATCH();
 
@@ -2143,13 +2128,13 @@ void interpreter (void)
   CASE(GOTO);
 
   FETCH_NEXT_BYTECODE();
-  second_half = bytecode;
+  arg2 = bytecode;
 
   FETCH_NEXT_BYTECODE();
   
-  IF_TRACE(printf("  (goto 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
+  IF_TRACE(printf("  (goto 0x%04x)\n", (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
 
-  pc = (second_half << 8) + bytecode + CODE_START;
+  pc = (arg2 << 8) + bytecode + CODE_START;
 
   DISPATCH();
 
@@ -2157,14 +2142,14 @@ void interpreter (void)
   CASE(GOTO_IF_FALSE);
 
   FETCH_NEXT_BYTECODE();
-  second_half = bytecode;
+  arg2 = bytecode;
 
   FETCH_NEXT_BYTECODE();
 
-  IF_TRACE(printf("  (goto-if-false 0x%04x)\n", ((rom_addr)(bytecode_lo4 + (CODE_START >> 8)) << 8) + bytecode));
+  IF_TRACE(printf("  (goto-if-false 0x%04x)\n", (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
 
   if (POP() == OBJ_FALSE)
-    pc = (second_half << 8) + bytecode + CODE_START;
+    pc = (arg2 << 8) + bytecode + CODE_START;
 
   DISPATCH();
 
@@ -2172,18 +2157,18 @@ void interpreter (void)
   CASE(CLOSURE);
 
   FETCH_NEXT_BYTECODE();
-  second_half = bytecode;
+  arg2 = bytecode;
   
   FETCH_NEXT_BYTECODE();
 
-  IF_TRACE(printf("  (closure 0x%04x)\n", (second_half << 8) | bytecode));
+  IF_TRACE(printf("  (closure 0x%04x)\n", (arg2 << 8) | bytecode));
 
   arg3 = POP(); // env
 
-  entry = (second_half << 8) | bytecode; // TODO original had no CODE_START, why ?
+  entry = (arg2 << 8) | bytecode; // TODO original had no CODE_START, why ?
 
-  arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (second_half >> 3),
-			      ((second_half & 0x07) << 5) | (bytecode >> 3),
+  arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
+			      ((arg2 & 0x07) << 5) | (bytecode >> 3),
 			      ((bytecode & 0x07) << 5) |((arg3 & 0x1f00) >> 8),
                               arg3 & 0xff);
 
@@ -2285,14 +2270,15 @@ void interpreter (void)
       arg1 = POP(); /* value to return */
       cont = POP(); /* continuation */
 
-      second_half = ram_get_cdr (cont);
+      arg2 = ram_get_cdr (cont);
       
-      pc = ram_get_entry (second_half);
+      pc = ram_get_entry (arg2);
 
-      env = ram_get_cdr (second_half);
+      env = ram_get_cdr (arg2);
       cont = ram_get_car (cont);
 
       PUSH_ARG1();
+      arg2 = OBJ_FALSE;
 
       break;
     case 8:
@@ -2371,10 +2357,11 @@ void interpreter (void)
     case 12:
       /* push-constant [long] */
       FETCH_NEXT_BYTECODE();
-      second_half = bytecode;
+      arg2 = bytecode;
       FETCH_NEXT_BYTECODE();
-      arg1 = (second_half << 8) | bytecode;
+      arg1 = (arg2 << 8) | bytecode;
       PUSH_ARG1();
+      arg2 = OBJ_FALSE;
       break;
     case 13:
       /* shift */
@@ -2389,11 +2376,12 @@ void interpreter (void)
     case 15:
       /* return */
       arg1 = POP();
-      second_half = ram_get_cdr (cont);
-      pc = ram_get_entry (second_half);
-      env = ram_get_cdr (second_half);
+      arg2 = ram_get_cdr (cont);
+      pc = ram_get_entry (arg2);
+      env = ram_get_cdr (arg2);
       cont = ram_get_car (cont);
       PUSH_ARG1();
+      arg2 = OBJ_FALSE;
       break;
     }
 
