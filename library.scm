@@ -428,7 +428,7 @@
 
 ;; TODO temporary, using lists since triplets are gone
 (define u8vector (lambda x (list x)))
-(define list->u8vector (lambda (x) x))
+(define list->u8vector (lambda (x) x)) ;; TODO not used except for server
 (define u8vector-length (lambda (x) (length x)))
 (define u8vector-ref (lambda (x y) (list-ref x y)))
 (define u8vector-set! (lambda (x y z) (list-set! x y z)))

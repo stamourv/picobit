@@ -1823,9 +1823,9 @@ char *prim_name[48] =
     "prim #%string?",
     "prim #%string->list",
     "prim #%list->string",
-    "prim #%prim29",
-    "prim #%prim30",
-    "prim #%prim31",
+    "prim #%prim29", // TODO make-u8vector
+    "prim #%prim30", // TODO u8vector-ref
+    "prim #%prim31", // TODO u8vector-set!
     "prim #%print",
     "prim #%clock",
     "prim #%motor",
@@ -1835,9 +1835,9 @@ char *prim_name[48] =
     "prim #%putchar",
     "prim #%beep",
     "prim #%adc",
-    "prim #%dac",
+    "prim #%dac", // TODO not plugged to anything, put u8vector? ?
     "prim #%sernum",
-    "prim #%prim43",
+    "prim #%prim43", // TODO u8vector-length
     "push-constant [long]",
     "shift",
     "pop",
