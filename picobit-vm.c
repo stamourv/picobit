@@ -2562,7 +2562,7 @@ void interpreter (void)
       arg1 = POP(); prim_u8vector_length (); PUSH_ARG1(); break;
     case 12:
       /* push-constant [long] */
-      FETCH_NEXT_BYTECODE();
+      FETCH_NEXT_BYTECODE(); // TODO BREGG this is a test, the compiler only knows what's in rom or lower, so we only need a byte, unless we change the number of rom addresses OOPS, 8 bits is not enough even for fixnums, we'd probably be ok with 12, though (actually 9, but that's harder to have and 12 gives us more room should we increase the number of rom addresses)
       arg2 = bytecode;
       FETCH_NEXT_BYTECODE();
       arg1 = (arg2 << 8) | bytecode;

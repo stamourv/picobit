@@ -2604,7 +2604,7 @@
                   (asm-8 (+ #x00 n))
                   (begin
                     (asm-8 #xfc)
-                    (asm-8 (quotient n 256))
+                    (asm-8 (quotient n 256)) ;; BREGG this is a test, the compiler cannot know about anything over 256 (as long as no rom goes higher, which might change, watch out for this), so no need for 13 bits OOPS, actually, 8 is not enough for fixnums and rom, revert to 12 and use some of the free instrs ?
 		    (asm-8 (modulo n 256))))) ;; TODO with 13-bit objects, we need 2 bytes, maybe limit to 12, so we could use a byte and a half, but we'd need to use an opcode with only 4 bits, maybe the call/jump stuff can be combined ? FOOBAR
 
             (define (push-stack n)

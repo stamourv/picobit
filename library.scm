@@ -58,7 +58,7 @@
 
 (define <=
   (lambda (x y)
-    (or (< x y) (= x y))))
+    (or (#%< x y) (#%= x y))))
 
 (define >
   (lambda (x y)
@@ -66,7 +66,7 @@
 
 (define >=
   (lambda (x y)
-    (or (> x y) (= x y))))
+    (or (#%> x y) (#%= x y))))
 
 (define pair?
   (lambda (x)
@@ -114,7 +114,7 @@
 (define #%length-aux
   (lambda (lst n)
     (if (#%pair? lst)
-        (#%length-aux (cdr lst) (#%+ n 1)) ;; TODO had an error and looped
+        (#%length-aux (cdr lst) (#%+ n 1))
         n)))
 
 (define append
@@ -196,7 +196,7 @@
 
 (define #%substring-aux2
   (lambda (lst n)
-    (if (>= n 1) ;; TODO had an off-by-one
+    (if (>= n 1)
         (#%cons (#%car lst) (#%substring-aux2 (#%cdr lst) (#%- n 1)))
         '())))
 
@@ -272,10 +272,6 @@
 (define adc
   (lambda (sensor)
     (#%adc sensor)))
-
-;; (define dac
-;;   (lambda (level)
-;;     (#%dac level))) ;; gone
 
 (define sernum
   (lambda ()
@@ -378,39 +374,72 @@
 
 (define caar
   (lambda (p)
-    (car (car p))))
+    (#%car (#%car p))))
 (define cadr
   (lambda (p)
-    (car (cdr p))))
+    (#%car (#%cdr p))))
 (define cdar
   (lambda (p)
-    (cdr (car p))))
-(define cddr ;; TODO implement all of them up to 4 chars ?
+    (#%cdr (#%car p))))
+(define cddr
   (lambda (p)
-    (cdr (cdr p))))
+    (#%cdr (#%cdr p))))
+(define caaar
+  (lambda (p)
+    (#%car (#%car (#%car p)))))
 (define caadr
   (lambda (p)
-    (car (car (cdr p)))))
+    (#%car (#%car (#%cdr p)))))
+(define cadar
+  (lambda (p)
+    (#%car (#%cdr (#%car p)))))
+(define caddr
+  (lambda (p)
+    (#%car (#%cdr (#%cdr p)))))
+(define cdaar
+  (lambda (p)
+    (#%cdr (#%car (#%car p)))))
 (define cdadr
   (lambda (p)
-    (cdr (car (cdr p)))))
+    (#%cdr (#%car (#%cdr p)))))
+(define cddar
+  (lambda (p)
+    (#%cdr (#%cdr (#%car p)))))
+(define cdddr
+  (lambda (p)
+    (#%cdr (#%cdr (#%cdr p)))))
 
 (define equal?
-  (lambda (x y) ;; TODO rewrite once we have cond, also add vectors
-    (if (eq? x y)
+  (lambda (x y) ;; TODO rewrite once we have cond, also add vectors, actually, we do have cond, but I don't really trust it
+    (if (#%eq? x y)
 	#t
-	(if (and (pair? x) (pair? y))
-	    (and (equal? (car x) (car y))
-		 (equal? (cdr x) (cdr y)))
-	    #f)))) ;; TODO could this have a problem ?
+	(if (and (#%pair? x) (#%pair? y))
+	    (and (equal? (#%car x) (#%car y))
+		 (equal? (#%cdr x) (#%cdr y)))
+	    (if (and (#%u8vector? x) (#%u8vector? y))
+		(u8vector-equal? x y)
+		#f))))) ;; TODO could this have a problem ?
+
+(define u8vector-equal?
+  (lambda (x y)
+    (let ((lx (#%u8vector-length x)))
+      (if (#%= lx (#%u8vector-length y))
+	  (u8vector-equal?-loop x y lx)
+	  #f))))
+(define u8vector-equal?-loop
+  (lambda (x y l)
+    (if (#%= l 0)
+	#t
+	(and (#%= (#%u8vector-ref x l) (#%u8vector-ref y l))
+	     (u8vector-equal?-loop x y (#%- l 1)))))) ;; TODO test this
 
 (define assoc
   (lambda (t l) ;; TODO rewrite once we have cond
-    (if (null? l)
+    (if (#%null? l)
 	#f
 	(if (equal? t (caar l))
-	    (car l)
-	    (assoc t (cdr l))))))
+	    (#%car l)
+	    (assoc t (#%cdr l))))))
 
 ;; TODO ordinary vectors are never more that 6 elements long in the stack, so implementing them as lists is acceptable
 (define vector list)
@@ -421,8 +450,8 @@
 (define bitwise-xor (lambda (x y) (#%xor x y)))
 ;; TODO add bitwise-and ? bitwise-not ?
 
-(define current-time (lambda () (clock)))
-(define time->seconds (lambda (t) (quotient t 100))) ;; TODO no floats, is that a problem ?
+(define current-time (lambda () (#%clock)))
+(define time->seconds (lambda (t) (#%quotient t 100))) ;; TODO no floats, is that a problem ?
 
 (define else #t) ; for cond, among others
 
@@ -437,8 +466,9 @@
       v)))
 (define list->u8vector-loop
   (lambda (v n x)
-    (u8vector-set! v n (car x))
-    (if (not (null? (cdr x))) (list->u8vector-loop v (+ n 1) (cdr x)))))
+    (#%u8vector-set! v n (#%car x))
+    (if (#%not (#%null? (#%cdr x)))
+	(list->u8vector-loop v (#%+ n 1) (#%cdr x)))))
 (define u8vector-length (lambda (x) (#%u8vector-length x)))
 (define u8vector-ref (lambda (x y) (#%u8vector-ref x y)))
 (define u8vector-set! (lambda (x y z) (#%u8vector-set! x y z)))
@@ -447,20 +477,5 @@
     (make-u8vector-loop (#%make-u8vector n) n x)))
 (define make-u8vector-loop
   (lambda (v n x)
-    (u8vector-set! v n x)
-    (if (> n 0) (make-u8vector-loop v (- n 1) x))))
-
-
-;; ROM VECTORS
-;; TODO make sure constant vectors end up in rom
-;; (define u8vector ;; TODO use chris okasaki's random access lists for mutable vectors, and in-rom vectors (strings) for the rest, these functions are for the in-rom vectors
-;;   (lambda (first . rest) ;; TODO can't we have all in the same arg ?
-;;     (list->u8vector (cons first rest))))
-;; ;; TODO maybe still use the parser hack for the in-rom vectors, since they are known at compile time (but some might have variables inside instead of only numbers, would not work then)
-
-;; (define u8vector-ref
-;;   (lambda (u8 i)
-;;     (#%car (#%substring-aux1 (#%string->list u8) i))))
-;; ;; TODO yuck, this is O(n), do better, since we have contiguous memory for in-rom vectors, but not that important since these rom vectors are all small
-
-(define print display) ;; TODO watch out for differences between the 2
+    (#%u8vector-set! v n x)
+    (if (#%> n 0) (make-u8vector-loop v (#%- n 1) x))))
