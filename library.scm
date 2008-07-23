@@ -273,9 +273,9 @@
   (lambda (sensor)
     (#%adc sensor)))
 
-(define dac
-  (lambda (level)
-    (#%dac level)))
+;; (define dac
+;;   (lambda (level)
+;;     (#%dac level))) ;; gone
 
 (define sernum
   (lambda ()
@@ -426,17 +426,29 @@
 
 (define else #t) ; for cond, among others
 
-;; TODO temporary, using lists since triplets are gone
-(define u8vector (lambda x (list x)))
-(define list->u8vector (lambda (x) x)) ;; TODO not used except for server
-(define u8vector-length (lambda (x) (length x)))
-(define u8vector-ref (lambda (x y) (list-ref x y)))
-(define u8vector-set! (lambda (x y z) (list-set! x y z)))
+(define u8vector
+  (lambda x
+    (list->u8vector x)))
+(define list->u8vector ;; TODO not used except for server
+  (lambda (x)
+    (let* ((n (length x))
+	   (v (#%make-u8vector n)))
+      (list->u8vector-loop v 0 x)
+      v)))
+(define list->u8vector-loop
+  (lambda (v n x)
+    (u8vector-set! v n (car x))
+    (if (not (null? (cdr x))) (list->u8vector-loop v (+ n 1) (cdr x)))))
+(define u8vector-length (lambda (x) (#%u8vector-length x)))
+(define u8vector-ref (lambda (x y) (#%u8vector-ref x y)))
+(define u8vector-set! (lambda (x y z) (#%u8vector-set! x y z)))
 (define make-u8vector
   (lambda (n x)
-    (if (= n 0)
-	'()
-	(cons x (make-u8vector (- n 1) x)))))
+    (make-u8vector-loop (#%make-u8vector n) n x)))
+(define make-u8vector-loop
+  (lambda (v n x)
+    (u8vector-set! v n x)
+    (if (> n 0) (make-u8vector-loop v (- n 1) x))))
 
 
 ;; ROM VECTORS
