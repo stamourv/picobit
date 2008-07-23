@@ -140,6 +140,7 @@ typedef uint16 obj;
 // TODO this is new. if the pic has less than 8k of memory, start this lower
 // TODO max was 8192 for ram, would have been 1 too much (watch out, master branch still has that), now corrected
 // TODO the pic actually has 2k, so change these FOOBAR
+// TODO we'd only actually need 1024 or so for ram and vectors, since we can't address more. this gives us a lot of rom space
 
 #define MAX_RAM_ENCODING 4095
 #define MIN_RAM_ENCODING 512
@@ -389,37 +390,6 @@ obj globals[GLOVARS];
 // TODO put these in the ifdef ? and is the ifdef necessary ? are the vec macros necessary ? use the word field instead of byte, for consistency ?
 #endif
 
-// TODO are these used at all ?
-/* #if WORD_BITS == 10 */
-/* #define RAM_GET_FIELD1_MACRO(o)                                         \ */
-/*   (ram_get (OBJ_TO_RAM_ADDR(o,1)) + ((RAM_GET_FIELD0_MACRO(o) & 0x03)<<8)) */
-/* #define RAM_GET_FIELD2_MACRO(o)                                         \ */
-/*   (ram_get (OBJ_TO_RAM_ADDR(o,2)) + ((RAM_GET_FIELD0_MACRO(o) & 0x0c)<<6)) */
-/* #define RAM_GET_FIELD3_MACRO(o)                                         \ */
-/*   (ram_get (OBJ_TO_RAM_ADDR(o,3)) + ((RAM_GET_FIELD0_MACRO(o) & 0x30)<<4)) */
-/* #define RAM_SET_FIELD1_MACRO(o,val)                                     \ */
-/*   do {                                                                  \ */
-/*     ram_set (OBJ_TO_RAM_ADDR(o,1), (val) & 0xff);                       \ */
-/*     RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xfc) + (((val) >> 8) & 0x03)); \ */
-/*   } while (0) */
-/* #define RAM_SET_FIELD2_MACRO(o,val)                                     \ */
-/*   do {                                                                  \ */
-/*     ram_set (OBJ_TO_RAM_ADDR(o,2), (val) & 0xff);                       \ */
-/*     RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xf3) + (((val) >> 6) & 0x0c)); \ */
-/*   } while (0) */
-/* #define RAM_SET_FIELD3_MACRO(o,val)                                     \ */
-/*   do {                                                                  \ */
-/*     ram_set (OBJ_TO_RAM_ADDR(o,3), (val) & 0xff);                       \ */
-/*     RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xcf) + (((val) >> 4) & 0x30)); \ */
-/*   } while (0) */
-/* #define ROM_GET_FIELD1_MACRO(o)                                         \ */
-/*   (rom_get (OBJ_TO_ROM_ADDR(o,1)) + ((ROM_GET_FIELD0_MACRO(o) & 0x03)<<8)) */
-/* #define ROM_GET_FIELD2_MACRO(o)                                         \ */
-/*   (rom_get (OBJ_TO_ROM_ADDR(o,2)) + ((ROM_GET_FIELD0_MACRO(o) & 0x0c)<<6)) */
-/* #define ROM_GET_FIELD3_MACRO(o)                                         \ */
-/*   (rom_get (OBJ_TO_ROM_ADDR(o,3)) + ((ROM_GET_FIELD0_MACRO(o) & 0x30)<<4)) */
-/* #endif */
-
 uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
 uint8 ram_get_gc_tag0 (obj o) { return RAM_GET_GC_TAG0_MACRO(o); }
 uint8 ram_get_gc_tag1 (obj o) { return RAM_GET_GC_TAG1_MACRO(o); }
@@ -438,15 +408,15 @@ uint8 rom_get_field0 (obj o) { return ROM_GET_FIELD0_MACRO(o); }
 word rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
 word rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
 word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
-word vec_get_byte0 (obj o) { return VEC_GET_BYTE0_MACRO(o); }
-word vec_get_byte1 (obj o) { return VEC_GET_BYTE1_MACRO(o); }
-word vec_get_byte2 (obj o) { return VEC_GET_BYTE2_MACRO(o); }
-word vec_get_byte3 (obj o) { return VEC_GET_BYTE3_MACRO(o); }
-word vec_set_byte0 (obj o, word val) { VEC_SET_BYTE0_MACRO(o,val); }
-word vec_set_byte1 (obj o, word val) { VEC_SET_BYTE1_MACRO(o,val); }
-word vec_set_byte2 (obj o, word val) { VEC_SET_BYTE2_MACRO(o,val); }
-word vec_set_byte3 (obj o, word val) { VEC_SET_BYTE3_MACRO(o,val); }
-// TODO use the word field or byte ?
+/* word vec_get_byte0 (obj o) { return VEC_GET_BYTE0_MACRO(o); } */
+/* word vec_get_byte1 (obj o) { return VEC_GET_BYTE1_MACRO(o); } */
+/* word vec_get_byte2 (obj o) { return VEC_GET_BYTE2_MACRO(o); } */
+/* word vec_get_byte3 (obj o) { return VEC_GET_BYTE3_MACRO(o); } */
+/* word vec_set_byte0 (obj o, word val) { VEC_SET_BYTE0_MACRO(o,val); } */
+/* word vec_set_byte1 (obj o, word val) { VEC_SET_BYTE1_MACRO(o,val); } */
+/* word vec_set_byte2 (obj o, word val) { VEC_SET_BYTE2_MACRO(o,val); } */
+/* word vec_set_byte3 (obj o, word val) { VEC_SET_BYTE3_MACRO(o,val); } */
+// TODO use the word field or byte ? actually the ram functions are used, since this is in ram anyways
 
 obj ram_get_car (obj o)
 { return ((ram_get_field0 (o) & 0x1f) << 8) | ram_get_field1 (o); }
@@ -1330,7 +1300,7 @@ void prim_make_u8vector (void)
 }
 
 void prim_u8vector_ref (void)
-{
+{ // TODO how do we deal with rom vectors ? as lists ? they're never all that long
   arg2 = decode_int (arg2);
 
   if (IN_RAM(arg1))
@@ -1343,7 +1313,7 @@ void prim_u8vector_ref (void)
     }
   else if (IN_ROM(arg1))
     {
-      if (!ROM_VECTOR(arg1)) // TODO can we even have vectors in rom ? it would be nice, but I have no idea how it could happen
+      if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("vector");
       if (rom_get_car (arg1) < arg2)
 	ERROR("vector index too large");
@@ -1352,11 +1322,11 @@ void prim_u8vector_ref (void)
   else
     TYPE_ERROR("vector");
 
-  arg1 += (arg2 / 4);
-  arg2 %= 4;
-
   if (IN_VEC(arg1))
     {
+      arg1 += (arg2 / 4);
+      arg2 %= 4;
+      
       switch (arg2)
 	{
 	case 0:
@@ -1368,23 +1338,17 @@ void prim_u8vector_ref (void)
 	case 3:
 	  arg1 = ram_get_field3 (arg1); break;
 	}
+      
+      arg1 = encode_int (arg1);
     }
-  else // rom vector
-    {
-      switch (arg2) // TODO no way to be more concise ?
-	{
-	case 0:
-	  arg1 = rom_get_field0 (arg1); break;
-	case 1:
-	  arg1 = rom_get_field1 (arg1); break;
-	case 2:
-	  arg1 = rom_get_field2 (arg1); break;
-	case 3:
-	  arg1 = rom_get_field3 (arg1); break;
-	}
+  else // rom vector, stored as a list
+    { // TODO since these are stored as lists, nothing prevents us from having ordinary vectors, and not just byte vectors. in rom, both are lists so they are the same. in ram, byte vectors are in vector space, while ordinary vectors are still lists (the functions are already in the library)
+      while (arg2--)	
+	arg1 = rom_get_cdr (arg1);
+      
+      arg1 = rom_get_car (arg1);
     }
 
-  arg1 = encode_int (arg1); // TODO necessary ?
   arg2 = OBJ_FALSE;
 }
 
@@ -1438,7 +1402,7 @@ void prim_u8vector_length (void)
     }
   else if (IN_ROM(arg1))
     {
-      if (!ROM_VECTOR(arg1)) // TODO can we even have vectors in rom ? it would be nice, but I have no idea how it could happen
+      if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("vector");
       arg1 = rom_get_car (arg1);
     }

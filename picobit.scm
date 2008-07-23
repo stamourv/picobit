@@ -381,7 +381,7 @@
                    (var-sets-set! var (cons r (var-sets var)))
                    r)
 		 (compiler-error "set! is only permitted on global variables"))))
-          ((and (pair? expr)
+          ((and (pair? expr) ;; TODO since literal vectors are quoted, this does the job
                 (eq? (car expr) 'quote))
            (make-cst #f '() (cadr expr)))
           ((and (pair? expr)
@@ -1749,7 +1749,7 @@
         (reorder! bbs)))))
 
 
-(define expand-loads ;; ADDED
+(define expand-loads
   (lambda (exprs)
     (map (lambda (e)
 	   (if (eq? (car e) 'load)
@@ -1763,7 +1763,7 @@
     (let* ((library
             (with-input-from-file "library.scm" read-all))
            (toplevel-exprs
-            (expand-loads (append library ;; ADDED (didn't have expand-loads)
+            (expand-loads (append library
 				  (with-input-from-file filename read-all))))
            (global-env
             (make-global-env))
@@ -2423,7 +2423,9 @@
 (define max-fixnum 255)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
 (define min-ram-encoding 512)
-(define max-ram-encoding 8191)
+(define max-ram-encoding 4095)
+(define min-vec-encoding 4096)
+(define max-vec-encoding 8191)
 
 (define code-start #x5000)
 
@@ -2500,7 +2502,13 @@
                                          new-constants
                                          #f
                                          cont)))
-
+			((u8vector? o) ;; NEW, for now they are lists
+			 (let ((elems (u8vector->list o)))
+			   (vector-set! descr 3 elems)
+			   (add-constant elems
+					 new-constants
+					 #f
+					 cont)))
                         (else
                          (cont new-constants))))))))))
 
@@ -2739,13 +2747,22 @@
 			  (asm-8 (bitwise-and obj-enc #xff))
 			  (asm-8 #x40)
 			  (asm-8 0)))
-                       ((vector? obj) ;; BREGG change this
+                       ((vector? obj) ;; BREGG change this, we have no ordinary vectors
+			;; TODO this is the OLD representation, NOT GOOD (but not used) BREGG
 			(let ((obj-enc (encode-constant (vector-ref descr 3)
 							constants)))
 			  (asm-8 (+ #x80 (arithmetic-shift obj-enc -8)))
 			  (asm-8 (bitwise-and obj-enc #xff))
 			  (asm-8 #x60)
 			  (asm-8 0)))
+		       ((u8vector? obj) ;; NEW, lists for now (internal representation same as ordinary vectors, who don't actually exist)
+			(let ((obj-enc (encode-constant (vector-ref descr 3)
+							constants))
+			      (l (length (vector-ref descr 3))))
+			  (asm-8 (+ #x80 (arithmetic-shift l -8)))
+			  (asm-8 (bitwise-and l #xff))
+			  (asm-8 (+ #x60 (arithmetic-shift obj-enc -8)))
+			  (asm-8 (bitwise-and obj-enc #xff))))
                        (else
                         (compiler-error "unknown object type" obj)))))
              constants)
