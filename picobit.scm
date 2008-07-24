@@ -529,6 +529,15 @@
 	     (parse use
 		    (cons (cdr prim) (cdr expr))
 		    env)))
+	  ;; binary arthimetic operations can use primitives directly
+	  ((and (pair? expr)
+		(= (length (cdr expr)) 2)
+		(assoc (car expr) '((+ . #%+) (- . #%-) (* . #%*))))
+	   =>
+	   (lambda (prim)
+	     (parse use
+		    (cons (cdr prim) (cdr expr))
+		    env)))
           ((and (pair? expr)
                 (memq (car expr)
                       '(quote quasiquote unquote unquote-splicing lambda if
