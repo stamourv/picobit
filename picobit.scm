@@ -234,7 +234,7 @@
 
 	  (make-var '#%make-u8vector #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
 	  (make-var '#%u8vector-ref #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
-	  (make-var '#%u8vector-set! #t '() '() '() #f (make-primitive 3 #f #f)) ;; ADDED
+	  (make-var '#%u8vector-set! #t '() '() '() #f (make-primitive 3 #f #t)) ;; ADDED
 	  
           (make-var '#%print #t '() '() '() #f (make-primitive 1 #f #t))
           (make-var '#%clock #t '() '() '() #f (make-primitive 0 #f #f))
@@ -252,6 +252,46 @@
           (make-var '#%readyq #t '() '() '() #f #f)
 	  
           )))
+
+;; list of primitives that can be safely substituted for the equivalent
+;; function when it is called.
+;; this saves the calls to the primitive wrapper functions, which are still
+;; needed if a program needs the value of a "primitive", for example in :
+;; (define foo car)
+;; TODO have the arg length ?
+(define substitute-primitives
+  '((number? . #%number?)
+    (quotient . #%quotient)
+    (remainder . #%remainder)
+    (= . #%=)
+    (< . #%<)
+    (> . #%>)
+    (pair? . #%pair?)
+    (cons . #%cons)
+    (car . #%car)
+    (cdr . #%cdr)
+    (set-car! . #%set-car!)
+    (set-cdr! . #%set-cdr!)
+    (null? . #%null?)
+    (eq? . #%eq?)
+    (not . #%not)
+    (modulo . #%remainder)
+    (string->list . #%string->list)
+    (list->string . #%list->string)
+    (clock . #%clock)
+    (beep . #%beep)
+    (light . #%adc)
+    (adc . #%adc)
+    (sernum . #%sernum)
+    (motor . #%motor)
+    (led . #%led)
+    (bitwise-ior . #%ior)
+    (bitwise-xor . #%xor)
+    (current-time . #%clock)
+    (u8vector-length . #%u8vector-length)
+    (u8vector-ref . #%u8vector-ref)
+    (u8vector-set! . #%u8vector-set!)
+    ))
 
 (define env-lookup
   (lambda (env id)
@@ -481,6 +521,14 @@
                                        v
                                        (cons 'or (cddr expr)))))
                          env))))
+	  ;; primitive substitution here
+	  ((and (pair? expr)
+		(assoc (car expr) substitute-primitives))
+	   =>
+	   (lambda (prim)
+	     (parse use
+		    (cons (cdr prim) (cdr expr))
+		    env)))
           ((and (pair? expr)
                 (memq (car expr)
                       '(quote quasiquote unquote unquote-splicing lambda if
