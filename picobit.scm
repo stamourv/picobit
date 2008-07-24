@@ -522,6 +522,7 @@
                                        (cons 'or (cddr expr)))))
                          env))))
 	  ;; primitive substitution here
+	  ;; TODO do this optimization in the following pass instead of at parse time ?
 	  ((and (pair? expr)
 		(assoc (car expr) substitute-primitives))
 	   =>
@@ -530,6 +531,7 @@
 		    (cons (cdr prim) (cdr expr))
 		    env)))
 	  ;; binary arthimetic operations can use primitives directly
+	  ;; TODO if more than one arg, unroll ? would save calls
 	  ((and (pair? expr)
 		(= (length (cdr expr)) 2)
 		(assoc (car expr) '((+ . #%+) (- . #%-) (* . #%*))))
@@ -2693,20 +2695,20 @@
                   (compiler-error "call has too many arguments")
                   (asm-8 (+ #x70 n))))
 
-            (define (call-toplevel label) ;; TODO use 8-bit opcodes for these
+            (define (call-toplevel label)
               (label-instr label #x80))
 
             (define (jump-toplevel label)
-              (label-instr label #x90))
+              (label-instr label #x81))
 
             (define (goto label)
-              (label-instr label #xa0))
+              (label-instr label #x82))
 
             (define (goto-if-false label)
-              (label-instr label #xb0))
+              (label-instr label #x83))
 
             (define (closure label)
-              (label-instr label #xc0)) ;; FOOBAR change here ?
+              (label-instr label #x84))
 
             (define (prim n)
               (asm-8 (+ #xd0 n)))

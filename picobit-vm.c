@@ -1987,6 +1987,8 @@ int read_hex_file (char *filename)
 #define SET_GLOBAL     0x50
 #define CALL           0x60
 #define JUMP           0x70
+#define BRANCHES       0x80
+
 #define CALL_TOPLEVEL  0x80
 #define JUMP_TOPLEVEL  0x90
 #define GOTO           0xa0
@@ -2280,108 +2282,155 @@ void interpreter (void)
   DISPATCH();
 
   /***************************************************************************/
-  CASE(CALL_TOPLEVEL);
+  CASE(BRANCHES);
 
-  FETCH_NEXT_BYTECODE();  
-  arg2 = bytecode;
+  switch (bytecode_lo4)
+    {
+    case 0: // call-toplevel TODO put these in separate functions ?
+      FETCH_NEXT_BYTECODE();  
+      arg2 = bytecode;
+      
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (call-toplevel 0x%04x)\n",
+		      ((arg2 << 8) | bytecode) + CODE_START));
+      
+      entry = (arg2 << 8) + bytecode + CODE_START;
+      arg1 = OBJ_NULL;
+      
+      na = rom_get (entry++);
+      
+      build_env ();
+      save_cont ();
+
+      env = arg1;
+      pc = entry;
+      
+      arg1 = OBJ_FALSE;
+      arg2 = OBJ_FALSE;
+      
+      break;
+      
+    case 1: // jump-toplevel
+      FETCH_NEXT_BYTECODE();  
+      arg2 = bytecode;
+      
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (jump-toplevel 0x%04x)\n",
+		      ((arg2 << 8) | bytecode) + CODE_START));
+      
+      entry = (arg2 << 8) + bytecode + CODE_START; // TODO this is a common pattern
+      arg1 = OBJ_NULL;
+      
+      na = rom_get (entry++);
+      
+      build_env ();
+      
+      env = arg1;
+      pc = entry;
+      
+      arg1 = OBJ_FALSE;
+      arg2 = OBJ_FALSE;
+      
+      break;
+      
+    case 2: // goto
+      FETCH_NEXT_BYTECODE();
+      arg2 = bytecode;
+      
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (goto 0x%04x)\n",
+		      (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
   
-  FETCH_NEXT_BYTECODE();
+      pc = (arg2 << 8) + bytecode + CODE_START;
+      
+      break;
 
-  IF_TRACE(printf("  (call-toplevel 0x%04x)\n", ((arg2 << 8) | bytecode) + CODE_START));
+    case 3: // goto-if-false
+      FETCH_NEXT_BYTECODE();
+      arg2 = bytecode;
+      
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (goto-if-false 0x%04x)\n",
+		      (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
+      
+      if (POP() == OBJ_FALSE)
+	pc = (arg2 << 8) + bytecode + CODE_START;
 
-  entry = (arg2 << 8) + bytecode + CODE_START; // TODO FOOBAR we have the last 4 bits of the opcode free, to do pretty much anything
-  arg1 = OBJ_NULL;
+      break;
 
-  na = rom_get (entry++);
+    case 4: // closure
+      FETCH_NEXT_BYTECODE();
+      arg2 = bytecode;
+      
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (closure 0x%04x)\n", (arg2 << 8) | bytecode));
+      
+      arg3 = POP(); // env
+      
+      entry = (arg2 << 8) | bytecode; // TODO original had no CODE_START, why ?
+      
+      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
+				  ((arg2 & 0x07) << 5) | (bytecode >> 3),
+				  ((bytecode &0x07) <<5) |((arg3 &0x1f00) >>8),
+				  arg3 & 0xff);
+      
+      PUSH_ARG1();
+      
+      arg2 = OBJ_FALSE;
+      arg3 = OBJ_FALSE;
+      
+      break;
 
-  build_env ();
-  save_cont ();
-
-  env = arg1;
-  pc = entry;
-
-  arg1 = OBJ_FALSE;
-  arg2 = OBJ_FALSE;
+#if 0
+    case 5:
+      break;
+    case 6:
+      break;
+    case 7:
+      break;
+    case 8:
+      break;
+    case 9:
+      break;
+    case 10:
+      break;
+    case 11:
+      break;
+    case 12:
+      break;
+    case 13:
+      break;
+    case 14:
+      break;
+    case 15:
+      break;
+#endif
+    }
 
   DISPATCH();
 
   /***************************************************************************/
-  CASE(JUMP_TOPLEVEL);
-
-  FETCH_NEXT_BYTECODE();  
-  arg2 = bytecode;
-  
-  FETCH_NEXT_BYTECODE();
-
-  IF_TRACE(printf("  (jump-toplevel 0x%04x)\n", ((arg2 << 8) | bytecode) + CODE_START));
-
-  entry = (arg2 << 8) + bytecode + CODE_START; // TODO this is a common pattern
-  arg1 = OBJ_NULL;
-
-  na = rom_get (entry++);
-
-  build_env ();
-
-  env = arg1;
-  pc = entry;
-
-  arg1 = OBJ_FALSE;
-  arg2 = OBJ_FALSE;
+  CASE(JUMP_TOPLEVEL); // BREGG move, have push long here
 
   DISPATCH();
 
   /***************************************************************************/
-  CASE(GOTO);
-
-  FETCH_NEXT_BYTECODE();
-  arg2 = bytecode;
-
-  FETCH_NEXT_BYTECODE();
-  
-  IF_TRACE(printf("  (goto 0x%04x)\n", (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
-
-  pc = (arg2 << 8) + bytecode + CODE_START;
+  CASE(GOTO); // BREGG move
 
   DISPATCH();
 
   /***************************************************************************/
-  CASE(GOTO_IF_FALSE);
-
-  FETCH_NEXT_BYTECODE();
-  arg2 = bytecode;
-
-  FETCH_NEXT_BYTECODE();
-
-  IF_TRACE(printf("  (goto-if-false 0x%04x)\n", (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
-
-  if (POP() == OBJ_FALSE)
-    pc = (arg2 << 8) + bytecode + CODE_START;
+  CASE(GOTO_IF_FALSE); // BREGG move
 
   DISPATCH();
 
   /***************************************************************************/
-  CASE(CLOSURE);
-
-  FETCH_NEXT_BYTECODE();
-  arg2 = bytecode;
-  
-  FETCH_NEXT_BYTECODE();
-
-  IF_TRACE(printf("  (closure 0x%04x)\n", (arg2 << 8) | bytecode));
-
-  arg3 = POP(); // env
-
-  entry = (arg2 << 8) | bytecode; // TODO original had no CODE_START, why ?
-
-  arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
-			      ((arg2 & 0x07) << 5) | (bytecode >> 3),
-			      ((bytecode & 0x07) << 5) |((arg3 & 0x1f00) >> 8),
-                              arg3 & 0xff);
-
-  PUSH_ARG1();
-
-  arg2 = OBJ_FALSE;
-  arg3 = OBJ_FALSE;
+  CASE(CLOSURE); // BREGG move
 
   DISPATCH();
 
@@ -2561,7 +2610,7 @@ void interpreter (void)
       /* prim #%u8vector-length */
       arg1 = POP(); prim_u8vector_length (); PUSH_ARG1(); break;
     case 12:
-      /* push-constant [long] */
+      /* push-constant [long] */ // BREGG move to a 4-bit opcode
       FETCH_NEXT_BYTECODE(); // TODO BREGG this is a test, the compiler only knows what's in rom or lower, so we only need a byte, unless we change the number of rom addresses OOPS, 8 bits is not enough even for fixnums, we'd probably be ok with 12, though (actually 9, but that's harder to have and 12 gives us more room should we increase the number of rom addresses)
       arg2 = bytecode;
       FETCH_NEXT_BYTECODE();
