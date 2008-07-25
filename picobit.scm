@@ -2649,14 +2649,29 @@
           (let ((constants (sort-constants constants)))
 
             (define (label-instr label opcode)
+	      (define (short? self label) ;; TODO have this between -128 and 127 ? would be more flexible, I guess
+		(let ((dist (- (asm-label-pos label) self)))
+		  (and (< dist 256)
+		       (> dist 0))))
               (asm-at-assembly
+	       ;; if the distance from pc to the label fits in a single byte,
+	       ;; a short instruction is used, containing a relative address
+	       ;; if not, the full 16-bit label is used
+;;; 	       (lambda (self)
+;;; 		 (and (short? self label)
+;;; 		      2))
+;;; 	       (lambda (self)
+;;; 		 (asm-8 (+ opcode 5))
+;;; 		 (asm-8 (- (asm-label-pos label) self)))
+	       ;; TODO don't work at the moment
+	       
                (lambda (self)
-                 3)
+		 3)
                (lambda (self)
-                 (let ((pos (- (asm-label-pos label) code-start)))
-		   (asm-8 opcode)
-		   (asm-8 (quotient pos 256))
-                   (asm-8 (modulo pos 256))))))
+		 (let ((pos (- (asm-label-pos label) code-start)))
+			 (asm-8 opcode)
+			 (asm-8 (quotient pos 256))
+			 (asm-8 (modulo pos 256))))))
 
             (define (push-constant n)
               (if (<= n 31)

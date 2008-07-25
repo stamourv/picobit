@@ -79,6 +79,7 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 #define CODE_START 0x5000
 
 #define GLOVARS 16
+// TODO should this be read from the file like constants or statically allocated ? if read, it might cause problems because of dynamic allocation
 
 #ifdef DEBUG
 #define IF_TRACE(x) x
@@ -190,7 +191,7 @@ uint8 rom_get (rom_addr a)
 #ifdef WORKSTATION
 
 #define ROM_BYTES 8192
-// TODO the new pics have 32k, change this ?
+// TODO the new pics have 32k, change this ? minus the vm size, firmware ?
 
 uint8 rom_mem[ROM_BYTES] =
   {
@@ -2343,7 +2344,7 @@ void interpreter (void)
       FETCH_NEXT_BYTECODE();
       
       IF_TRACE(printf("  (goto 0x%04x)\n",
-		      (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
+		      (arg2 << 8) + bytecode + CODE_START));
   
       pc = (arg2 << 8) + bytecode + CODE_START;
       
@@ -2356,7 +2357,7 @@ void interpreter (void)
       FETCH_NEXT_BYTECODE();
       
       IF_TRACE(printf("  (goto-if-false 0x%04x)\n",
-		      (rom_addr)((arg2 << 8) + bytecode + CODE_START)));
+		      (arg2 << 8) + bytecode + CODE_START));
       
       if (POP() == OBJ_FALSE)
 	pc = (arg2 << 8) + bytecode + CODE_START;
@@ -2373,7 +2374,7 @@ void interpreter (void)
       
       arg3 = POP(); // env
       
-      entry = (arg2 << 8) | bytecode; // TODO original had no CODE_START, why ?
+      entry = (arg2 << 8) | bytecode;
       
       arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
 				  ((arg2 & 0x07) << 5) | (bytecode >> 3),
@@ -2387,17 +2388,88 @@ void interpreter (void)
       
       break;
 
+    case 5: // call-toplevel-short
+      FETCH_NEXT_BYTECODE(); // TODO the sort version have a lot in common with the long ones, abstract ?
+      
+      IF_TRACE(printf("  (call-toplevel-short 0x%04x)\n",
+		      pc + bytecode + CODE_START));
+      
+      entry = pc + bytecode + CODE_START;
+      arg1 = OBJ_NULL;
+      
+      na = rom_get (entry++);
+      
+      build_env ();
+      save_cont ();
+
+      env = arg1;
+      pc = entry;
+      
+      arg1 = OBJ_FALSE;
+      
+      break;
+      
+    case 6: // jump-toplevel-short
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (jump-toplevel-short 0x%04x)\n",
+		      pc + bytecode + CODE_START));
+      
+      entry = pc + bytecode + CODE_START;
+      arg1 = OBJ_NULL;
+      
+      na = rom_get (entry++);
+      
+      build_env ();
+      
+      env = arg1;
+      pc = entry;
+      
+      arg1 = OBJ_FALSE;
+      
+      break;
+      
+    case 7: // goto-short
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (goto-short 0x%04x)\n", pc + bytecode + CODE_START));
+  
+      pc = pc + bytecode + CODE_START;
+      
+      break;
+      
+    case 8: // goto-if-false-short
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (goto-if-false-short 0x%04x)\n",
+		      pc + bytecode + CODE_START));
+      
+      if (POP() == OBJ_FALSE)
+	pc = pc + bytecode + CODE_START;
+      
+      break;
+      
+    case 9: // closure-short TODO I doubt these short instrs will have great effect, and this is the one I doubt the most about
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (closure-short 0x%04x)\n", pc + bytecode));
+      
+      arg3 = POP(); // env
+      
+      entry = pc + bytecode; // TODO makes sense for a closure ?
+      
+      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
+				  ((arg2 & 0x07) << 5) | (bytecode >> 3),
+				  ((bytecode &0x07) <<5) |((arg3 &0x1f00) >>8),
+				  arg3 & 0xff);
+      
+      PUSH_ARG1();
+      
+      arg3 = OBJ_FALSE;
+      
+      break;
+      
 #if 0
-    case 5:
-      break;
-    case 6:
-      break;
-    case 7:
-      break;
-    case 8:
-      break;
-    case 9:
-      break;
     case 10:
       break;
     case 11:
@@ -2406,11 +2478,26 @@ void interpreter (void)
       break;
     case 13:
       break;
-    case 14:
-      break;
-    case 15:
-      break;
 #endif
+    case 14: // push_global [long]
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (push-global [long] %d)\n", bytecode));
+      
+      arg1 = get_global (bytecode);
+      
+      PUSH_ARG1();
+      
+      break;
+      
+    case 15: // set_global [long]
+      FETCH_NEXT_BYTECODE();
+      
+      IF_TRACE(printf("  (set-global [long] %d)\n", bytecode));
+      
+      set_global (bytecode, POP());
+      
+      break;
     }
 
   DISPATCH();
@@ -2419,7 +2506,11 @@ void interpreter (void)
   CASE(PUSH_CONSTANT_LONG);
 
   /* push-constant [long] */
+
   FETCH_NEXT_BYTECODE();
+
+  IF_TRACE(printf("  (push [long] 0x%04x)\n", (bytecode_lo4 << 8) + bytecode));
+
   arg1 = (bytecode_lo4 << 8) | bytecode;
   PUSH_ARG1();
   
@@ -2701,7 +2792,7 @@ int main (int argc, char *argv[])
       else
         {
 #if 0
-          for (i=0; i<8192; i++)
+          for (i=0; i<8192; i++) // TODO remove this ? and not the night address space, now 16 bits
             if (rom_get (i) != 0xff)
               printf ("rom_mem[0x%04x] = 0x%02x\n", i, rom_get (i));
 #endif
