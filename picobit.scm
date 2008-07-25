@@ -2485,6 +2485,7 @@
 (define max-ram-encoding 4095)
 (define min-vec-encoding 4096)
 (define max-vec-encoding 8191)
+(define max-globals 128) ;; TODO might change
 
 (define code-start #x5000)
 
@@ -2584,10 +2585,13 @@
 
 (define (add-global var globals cont)
   (let ((x (assq var globals)))
-    (if x
-        (cont globals)
+    (if x	
+        (begin
+	  ;; increment reference counter
+	  (vector-set! (cdr x) 1 (+ (vector-ref (cdr x) 1) 1))
+	  (cont globals))
         (let ((new-globals
-               (cons (cons var (length globals))
+               (cons (cons var (vector (length globals) 1)) ;; TODO added reference counter
                      globals)))
           (cont new-globals)))))
 
@@ -2600,13 +2604,32 @@
     (let loop ((i min-rom-encoding)
                (lst csts))
       (if (null? lst)
-          (if (> i min-ram-encoding)
+	  ;; constants can use all the rom addresses up to 256 constants since
+	  ;; their number is encoded in a byte at the beginning of the bytecode
+          (if (or (> i min-ram-encoding) (> (- i min-rom-encoding) 256))
 	      (compiler-error "too many constants")
 	      csts)
           (begin
             (vector-set! (cdr (car lst)) 0 i)
             (loop (+ i 1)
                   (cdr lst)))))))
+
+(define (sort-globals globals) ;; TODO a lot in common with sort-constants, ABSTRACT
+  (let ((glbs
+	 (sort-list globals
+		    (lambda (x y)
+		      (> (vector-ref (cdr x) 1)
+			 (vector-ref (cdr y) 1))))))
+    (let loop ((i 0)
+	       (lst glbs))
+      (if (null? lst)
+	  (if (> i max-globals) ;; TODO get rid of this check, and check for 256, since we want dynamically allocated globals, and the number will be encoded in a byte
+	      (compiler-error "too many global variables")
+	      glbs)	  
+	  (begin
+	    (vector-set! (cdr (car lst)) 0 i)
+	    (loop (+ i 1)
+		  (cdr lst)))))))
 
 (define assemble
   (lambda (code hex-filename)
@@ -2646,7 +2669,8 @@
                           globals
                           labels))))
 
-          (let ((constants (sort-constants constants)))
+          (let ((constants (sort-constants constants))
+		(globals   (sort-globals   globals)))
 
             (define (label-instr label opcode)
 	      (define (short? self label) ;; TODO have this between -128 and 127 ? would be more flexible, I guess
@@ -2663,7 +2687,7 @@
 ;;; 	       (lambda (self)
 ;;; 		 (asm-8 (+ opcode 5))
 ;;; 		 (asm-8 (- (asm-label-pos label) self)))
-	       ;; TODO don't work at the moment
+	       ;; TODO doesn't work at the moment
 	       
                (lambda (self)
 		 3)
@@ -2685,19 +2709,17 @@
                   (compiler-error "stack is too deep")
                   (asm-8 (+ #x20 n))))
 
-            (define (push-global n)
-	      (asm-8 (+ #x40 n)) ;; TODO maybe do the same as for csts, have a push-long-global to have more ?
-              ;; (if (> n 15)
-	      ;;     (compiler-error "too many global variables")
-	      ;;     (asm-8 (+ #x40 n)))
-	      ) ;; TODO actually inline most, or put as csts
+            (define (push-global n) ;; TODO check if the numbers are good, we sorted them
+	      (if (<= n 15)
+		  (asm-8 (+ #x40 n))
+		  (begin (asm-8 #x8e)
+			 (asm-8 n))))
 
             (define (set-global n)
-	      (asm-8 (+ #x50 n))
-              ;; (if (> n 15) ;; ADDED prevented the stack from compiling
-	      ;;     (compiler-error "too many global variables")
-	      ;;     (asm-8 (+ #x50 n)))
-	      )
+              (if (<= n 15)
+	          (asm-8 (+ #x50 n))
+		  (begin (asm-8 #x8f)
+			 (asm-8 n))))
 
             (define (call n)
               (if (> n 15)
@@ -2785,7 +2807,7 @@
             (asm-8 #xfb)
             (asm-8 #xd7)
             (asm-8 (length constants))
-            (asm-8 0)
+            (asm-8 0) ;; TODO use for length globals ?
 
             (pp (list constants: constants globals: globals)) ;; TODO debug
 
@@ -2861,10 +2883,14 @@
                            (push-stack (cadr instr)))
 
                           ((eq? (car instr) 'push-global)
-                           (push-global (cdr (assq (cadr instr) globals))))
+                           (push-global (vector-ref
+					 (cdr (assq (cadr instr) globals))
+					 0)))
 
                           ((eq? (car instr) 'set-global)
-                           (set-global (cdr (assq (cadr instr) globals))))
+                           (set-global (vector-ref
+					(cdr (assq (cadr instr) globals))
+					0)))
 
                           ((eq? (car instr) 'call)
                            (call (cadr instr)))

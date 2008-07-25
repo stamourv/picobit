@@ -78,7 +78,8 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #define CODE_START 0x5000
 
-#define GLOVARS 16
+#define GLOVARS 128
+// TODO was 16, and might change
 // TODO should this be read from the file like constants or statically allocated ? if read, it might cause problems because of dynamic allocation
 
 #ifdef DEBUG
@@ -2209,7 +2210,7 @@ void interpreter (void)
   CASE(PUSH_STACK2);
 
   IF_TRACE(printf("  (push-stack %d)\n", bytecode_lo4+16));
-
+  // TODO does this ever happens ?
   bytecode_lo4 += 16;
 
   arg1 = env;
@@ -2390,7 +2391,7 @@ void interpreter (void)
 
     case 5: // call-toplevel-short
       FETCH_NEXT_BYTECODE(); // TODO the sort version have a lot in common with the long ones, abstract ?
-      
+      // TODO short instructions don't work at the moment
       IF_TRACE(printf("  (call-toplevel-short 0x%04x)\n",
 		      pc + bytecode + CODE_START));
       
@@ -2480,7 +2481,7 @@ void interpreter (void)
       break;
 #endif
     case 14: // push_global [long]
-      FETCH_NEXT_BYTECODE();
+      FETCH_NEXT_BYTECODE(); // TODO doesn't work yet
       
       IF_TRACE(printf("  (push-global [long] %d)\n", bytecode));
       
