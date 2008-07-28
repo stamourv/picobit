@@ -1322,7 +1322,8 @@ void prim_u8vector_ref (void)
     {
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
-      if (rom_get_car (arg1) < arg2)
+      arg3 = rom_get_car (arg1); // we'll need the length later
+      if (arg3 < arg2)
 	ERROR("vector index too large");
       arg1 = rom_get_cdr (arg1);
     }
@@ -1350,13 +1351,19 @@ void prim_u8vector_ref (void)
     }
   else // rom vector, stored as a list
     { // TODO since these are stored as lists, nothing prevents us from having ordinary vectors, and not just byte vectors. in rom, both are lists so they are the same. in ram, byte vectors are in vector space, while ordinary vectors are still lists (the functions are already in the library)
+      arg4 = arg2; // we save the index
+      
       while (arg2--)	
 	arg1 = rom_get_cdr (arg1);
-      
-      arg1 = rom_get_car (arg1);
+
+      // since rom vectors are dotted pairs, the last element is in cdr
+      if (arg4 < (arg3 - 1))
+	arg1 = rom_get_car (arg1);
     }
 
   arg2 = OBJ_FALSE;
+  arg3 = OBJ_FALSE;
+  arg4 = OBJ_FALSE;
 }
 
 void prim_u8vector_set (void)

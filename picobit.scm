@@ -62,7 +62,7 @@
 
 (define-type node
   extender: define-type-of-node
-  parent
+  (parent unprintable:)
   children
 )
 
@@ -183,9 +183,9 @@
 (define-type var
   id
   global?
-  refs
-  sets
-  defs
+  (refs unprintable:) 
+  (sets unprintable:)
+  (defs unprintable:)
   needed?
   primitive
 )
@@ -2650,8 +2650,11 @@
                                          new-constants
                                          #f
                                          cont)))
-			((u8vector? o) ;; NEW, for now they are lists
-			 (let ((elems (u8vector->list o)))
+			;; literal vectors (in rom) are stored as a dotted list
+			;; (the last 2 elements are stored as (x . y) rather
+			;; than (x . (y . ()))), saves a pair by vector
+			((u8vector? o)			 
+			 (let ((elems (list->dotted (u8vector->list o))))
 			   (vector-set! descr 3 elems)
 			   (add-constant elems
 					 new-constants
@@ -2659,6 +2662,16 @@
 					 cont)))
                         (else
                          (cont new-constants))))))))))
+
+(define (list->dotted l)
+  (cons (car l) (if (= (length l) 2)
+		    (cadr l)
+		    (list->dotted (cdr l)))))
+
+(define (dotted-length l)
+  (if (pair? (cdr l))
+      (+ 1 (dotted-length (cdr l)))
+      2))
 
 (define (add-constants objs constants cont)
   (if (null? objs)
@@ -2939,7 +2952,7 @@
 		       ((u8vector? obj) ;; NEW, lists for now (internal representation same as ordinary vectors, who don't actually exist)
 			(let ((obj-enc (encode-constant (vector-ref descr 3)
 							constants))
-			      (l (length (vector-ref descr 3))))
+			      (l (dotted-length (vector-ref descr 3))))
 			  (asm-8 (+ #x80 (arithmetic-shift l -8)))
 			  (asm-8 (bitwise-and l #xff))
 			  (asm-8 (+ #x60 (arithmetic-shift obj-enc -8)))
@@ -3132,7 +3145,7 @@
 
 (define main
   (lambda (filename)
-    (current-exception-handler (lambda (e) (pp e) (##repl))) ;; TODO wow, that's useful
+;;;     (current-exception-handler (lambda (e) (pp e) (##repl))) ;; TODO wow, that's useful, ok, maybe not so much, since we lose the error message
     (compile filename)))
 
 ;------------------------------------------------------------------------------
