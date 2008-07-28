@@ -2485,7 +2485,6 @@
 (define max-ram-encoding 4095)
 (define min-vec-encoding 4096)
 (define max-vec-encoding 8191)
-(define max-globals 128) ;; TODO might change
 
 (define code-start #x5000)
 
@@ -2591,9 +2590,9 @@
 	  (vector-set! (cdr x) 1 (+ (vector-ref (cdr x) 1) 1))
 	  (cont globals))
         (let ((new-globals
-               (cons (cons var (vector (length globals) 1)) ;; TODO added reference counter
+               (cons (cons var (vector (length globals) 1))
                      globals)))
-          (cont new-globals)))))
+	  (cont new-globals)))))
 
 (define (sort-constants constants)
   (let ((csts
@@ -2623,7 +2622,7 @@
     (let loop ((i 0)
 	       (lst glbs))
       (if (null? lst)
-	  (if (> i max-globals) ;; TODO get rid of this check, and check for 256, since we want dynamically allocated globals, and the number will be encoded in a byte
+	  (if (> i 256) ;; the number of globals is encoded on a byte
 	      (compiler-error "too many global variables")
 	      glbs)	  
 	  (begin
@@ -2670,20 +2669,18 @@
                           labels))))
 
           (let ((constants (sort-constants constants))
-		(globals   (sort-globals   globals)))
+ 		(globals   (sort-globals   globals)))
 
             (define (label-instr label opcode)
-	      (define (short? self label) ;; TODO have this between -128 and 127 ? would be more flexible, I guess
-		(let ((dist (- (asm-label-pos label) self)))
-		  (and (< dist 256)
-		       (> dist 0))))
               (asm-at-assembly
 	       ;; if the distance from pc to the label fits in a single byte,
 	       ;; a short instruction is used, containing a relative address
 	       ;; if not, the full 16-bit label is used
 ;;; 	       (lambda (self)
-;;; 		 (and (short? self label)
-;;; 		      2))
+;;; 		 (let ((dist (- (asm-label-pos label) self)))
+;;; 		   (and (< dist 256) ;; TODO have this between -128 and 127 ? would be more flexible, I guess
+;;; 			(> dist 0)
+;;; 			2)))
 ;;; 	       (lambda (self)
 ;;; 		 (asm-8 (+ opcode 5))
 ;;; 		 (asm-8 (- (asm-label-pos label) self)))
@@ -2807,7 +2804,7 @@
             (asm-8 #xfb)
             (asm-8 #xd7)
             (asm-8 (length constants))
-            (asm-8 0) ;; TODO use for length globals ?
+            (asm-8 (length globals)) ;; TODO was 0
 
             (pp (list constants: constants globals: globals)) ;; TODO debug
 
@@ -2875,7 +2872,7 @@
                                  (rest? (caddr instr)))
                              (asm-8 (if rest? (- np) np))))
 
-                          ((eq? (car instr) 'push-constant) ;; TODO FOOBAR 12 bits for constants now (actually, I don't think it matters here)
+                          ((eq? (car instr) 'push-constant)
                            (let ((n (encode-constant (cadr instr) constants)))
                              (push-constant n)))
 
@@ -2888,7 +2885,7 @@
 					 0)))
 
                           ((eq? (car instr) 'set-global)
-                           (set-global (vector-ref
+			   (set-global (vector-ref
 					(cdr (assq (cadr instr) globals))
 					0)))
 

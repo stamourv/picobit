@@ -78,10 +78,6 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #define CODE_START 0x5000
 
-#define GLOVARS 128
-// TODO was 16, and might change
-// TODO should this be read from the file like constants or statically allocated ? if read, it might cause problems because of dynamic allocation
-
 #ifdef DEBUG
 #define IF_TRACE(x) x
 #define IF_GC_TRACE(x) x
@@ -225,8 +221,6 @@ uint8 rom_get (rom_addr a)
 }
 
 #endif
-
-obj globals[GLOVARS];
 
 /*---------------------------------------------------------------------------*/
 
@@ -452,13 +446,20 @@ obj rom_get_entry (obj o)
 }
 
 obj get_global (uint8 i)
+// globals occupy the beginning of ram, with 2 globals per word
 {
-  return globals[i];
+  if (i & 1)
+    return ram_get_cdr (MIN_RAM_ENCODING + (i / 2));
+  else
+    return ram_get_car (MIN_RAM_ENCODING + (i / 2));
 }
 
 void set_global (uint8 i, obj o)
 {
-  globals[i] = o;
+  if (i & 1)
+    ram_set_cdr (MIN_RAM_ENCODING + (i / 2), o);
+  else
+    ram_set_car (MIN_RAM_ENCODING + (i / 2), o);
 }
 
 #ifdef WORKSTATION
@@ -528,6 +529,7 @@ obj env;
 
 uint8 na; /* interpreter variables */
 rom_addr pc;
+uint8 glovars;
 rom_addr entry;
 uint8 bytecode;
 uint8 bytecode_hi4;
@@ -543,7 +545,9 @@ void init_ram_heap (void)
 
   free_list = 0;
 
-  while (o >= MIN_RAM_ENCODING)
+  while (o > (MIN_RAM_ENCODING + (glovars + 1) / 2))
+    // we don't want to add globals to the free list, and globals occupy the
+    // beginning of memory at the rate of 2 globals per word (car and cdr)
     {
       ram_set_gc_tags (o, GC_TAG_UNMARKED);
       ram_set_car (o, free_list);
@@ -559,7 +563,7 @@ void init_ram_heap (void)
   ram_set_cdr (free_list_vec, VEC_BYTES / 4);
   // TODO so, at the start, we have only 1 node that says the whole space is free
   
-  for (i=0; i<GLOVARS; i++)
+  for (i=0; i<glovars; i++)
     set_global (i, OBJ_FALSE);
 
   arg1 = OBJ_FALSE;
@@ -713,7 +717,8 @@ void sweep (void)
 
   free_list = 0;
 
-  while (visit >= MIN_RAM_ENCODING)
+  while (visit >= (MIN_RAM_ENCODING + ((glovars + 1) / 2)))
+    // we don't want to sweep the global variables area
     {
       if ((RAM_COMPOSITE(visit)
 	   && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) // 2 mark bit
@@ -760,7 +765,7 @@ void gc (void)
 {
   uint8 i;
 
-  IF_GC_TRACE(printf("\nGC BEGINS\n"));
+  IF_TRACE(printf("\nGC BEGINS\n"));
 
   IF_GC_TRACE(printf("arg1\n"));
   mark (arg1);
@@ -775,7 +780,7 @@ void gc (void)
   IF_GC_TRACE(printf("env\n"));
   mark (env); // TODO do we mark the free list or do we rebuild it every time ? what about vectors ?
 
-  for (i=0; i<GLOVARS; i++)
+  for (i=0; i<glovars; i++)
     mark (get_global (i));
 
   sweep ();
@@ -799,7 +804,7 @@ obj alloc_ram_cell (void)
     }
 
   o = free_list;
-
+  
   free_list = ram_get_car (o);
 
   return o;
@@ -2160,10 +2165,12 @@ void save_cont (void)
 
 void interpreter (void)
 {
-  init_ram_heap ();
-
   pc = (CODE_START + 4) + ((rom_addr)rom_get (CODE_START+2) << 2);
 
+  glovars = rom_get (CODE_START+3); // number of global variables
+
+  init_ram_heap ();
+  
   BEGIN_DISPATCH();
 
   /***************************************************************************/
@@ -2243,7 +2250,7 @@ void interpreter (void)
 
   IF_TRACE(printf("  (set-global %d)\n", bytecode_lo4));
 
-  set_global (bytecode_lo4, POP());
+  set_global (bytecode_lo4, POP()); // TODO debug
 
   DISPATCH();
 
@@ -2481,7 +2488,7 @@ void interpreter (void)
       break;
 #endif
     case 14: // push_global [long]
-      FETCH_NEXT_BYTECODE(); // TODO doesn't work yet
+      FETCH_NEXT_BYTECODE();
       
       IF_TRACE(printf("  (push-global [long] %d)\n", bytecode));
       
