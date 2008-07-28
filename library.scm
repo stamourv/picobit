@@ -1,5 +1,22 @@
 ; File: "library.scm"
 
+(define-macro (cond . a)
+  (if (null? a) '(if #f #f)
+      (cond ((eq? (caar a) 'else) `(begin . ,(cdar a)))
+            ((and (not (null? (cdar a))) (eq? (cadar a) '=>))
+             (let ((x (gensym)))
+               `(let ((,x ,(caar a)))
+                  (if ,x (,(caddar a) ,x) (cond . ,(cdr a))))))
+            (else `(if ,(caar a) (begin . ,(cdar a)) (cond . ,(cdr a)))))))
+
+(define-macro (case a . cs)
+  (let ((x (gensym)))
+    `(let ((,x ,a))
+       (cond . ,(map (lambda (c)
+                       (if (eq? (car c) 'else) c
+                           `((memv ,x ',(car c)) . ,(cdr c))))
+                     cs)))))
+
 (define number?
   (lambda (x)
     (#%number? x)))
@@ -161,6 +178,12 @@
   (lambda (x y)
     (#%remainder x y)))
 
+(define #%box (lambda (a) (#%cons a '())))
+
+(define #%unbox (lambda (a) (#%car a)))
+
+(define #%box-set! (lambda (a b) (#%set-car! a b)))
+
 (define string
   (lambda chars
     (#%list->string chars)))
@@ -190,7 +213,7 @@
 
 (define #%substring-aux1
   (lambda (lst n)
-    (if (>= n 1) ;; TODO had an off-by-one
+    (if (>= n 1)
         (#%substring-aux1 (#%cdr lst) (#%- n 1))
         lst)))
 
@@ -323,35 +346,34 @@
 
 (define write
   (lambda (x)
-    (if (#%string? x)
-        (begin
-          (#%putchar #\" 3)
-          (display x)
-          (#%putchar #\" 3))
-        (if (#%number? x)
-            (display (number->string x))
-            (if (#%pair? x)
-                (begin
-                  (#%putchar #\( 3)
+    (cond ((#%string? x)
+	   (begin (#%putchar #\" 3)
+		  (display x)
+		  (#%putchar #\" 3)))
+	  ((#%number? x)
+	   (display (number->string x)))
+	  ((#%pair? x)
+	   (begin (#%putchar #\( 3)
                   (write (#%car x))
-                  (#%write-list (#%cdr x)))
-                (if (#%symbol? x)
-                    (display "#<symbol>")
-                    (display "#<object>")))))))
+                  (#%write-list (#%cdr x))))
+	  ((#%symbol? x)
+	   (display "#<symbol>"))
+	  (else
+	   (display "#<object>")))))
+;; TODO have vectors and co ?
 
 (define #%write-list
   (lambda (lst)
-    (if (#%null? lst)
-        (#%putchar #\) 3)
-        (if (#%pair? lst)
-            (begin
-              (#%putchar #\space 3)
-              (write (#%car lst))
-              (#%write-list (#%cdr lst)))
-            (begin
-              (display " . ")
-              (write lst)
-              (#%putchar #\) 3))))))
+    (cond ((#%null? lst)
+	   (#%putchar #\) 3))
+	  ((#%pair? lst)
+	   (begin (#%putchar #\space 3)
+		  (write (#%car lst))
+		  (#%write-list (#%cdr lst))))
+	  (else
+	   (begin (display " . ")
+		  (write lst)
+		  (#%putchar #\) 3))))))
 
 (define number->string
   (lambda (n)
@@ -410,15 +432,16 @@
     (#%cdr (#%cdr (#%cdr p)))))
 
 (define equal?
-  (lambda (x y) ;; TODO rewrite once we have cond, also add vectors, actually, we do have cond, but I don't really trust it
-    (if (#%eq? x y)
-	#t
-	(if (and (#%pair? x) (#%pair? y))
-	    (and (equal? (#%car x) (#%car y))
-		 (equal? (#%cdr x) (#%cdr y)))
-	    (if (and (#%u8vector? x) (#%u8vector? y))
-		(u8vector-equal? x y)
-		#f))))) ;; TODO could this have a problem ?
+  (lambda (x y)
+    (cond ((#%eq? x y)
+	   #t)
+	  ((and (#%pair? x) (#%pair? y))
+	   (and (equal? (#%car x) (#%car y))
+		(equal? (#%cdr x) (#%cdr y))))
+	  ((and (#%u8vector? x) (#%u8vector? y))
+	   (u8vector-equal? x y))
+	  (else
+	   #f))))
 
 (define u8vector-equal?
   (lambda (x y)
@@ -434,12 +457,13 @@
 	     (u8vector-equal?-loop x y (#%- l 1)))))) ;; TODO test this
 
 (define assoc
-  (lambda (t l) ;; TODO rewrite once we have cond
-    (if (#%null? l)
-	#f
-	(if (equal? t (caar l))
-	    (#%car l)
-	    (assoc t (#%cdr l))))))
+  (lambda (t l)
+    (cond ((#%null? l)
+	   #f)
+	  ((equal? t (caar l))
+	   (#%car l))
+	  (else
+	   (assoc t (#%cdr l))))))
 
 ;; TODO ordinary vectors are never more that 6 elements long in the stack, so implementing them as lists is acceptable
 (define vector list)
@@ -452,8 +476,6 @@
 
 (define current-time (lambda () (#%clock)))
 (define time->seconds (lambda (t) (#%quotient t 100))) ;; TODO no floats, is that a problem ?
-
-(define else #t) ; for cond, among others
 
 (define u8vector
   (lambda x
