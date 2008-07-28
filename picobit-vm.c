@@ -92,7 +92,7 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 #ifdef PICOBOARD2
 
 #define ERROR(msg) halt_with_error()
-#define TYPE_ERROR(type) halt_with_error()
+#define TYPE_ERROR(prim, type) halt_with_error()
 
 #endif
 
@@ -100,7 +100,7 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 #ifdef WORKSTATION
 
 #define ERROR(msg) error (msg)
-#define TYPE_ERROR(type) type_error (type)
+#define TYPE_ERROR(prim, type) type_error (prim, type)
 
 void error (char *msg)
 {
@@ -108,9 +108,9 @@ void error (char *msg)
   exit (1);
 }
 
-void type_error (char *type)
+void type_error (char *prim, char *type)
 {
-  printf ("ERROR: An argument of type %s was expected\n", type);
+  printf ("ERROR: %s: An argument of type %s was expected\n", prim, type);
   exit (1);
 }
 
@@ -886,7 +886,7 @@ int32 decode_int (obj o)
   uint8 l;
 
   if (o < MIN_FIXNUM_ENCODING)
-    TYPE_ERROR("integer");
+    TYPE_ERROR("decode_int", "integer");
 
   if (o <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM)))
     return DECODE_FIXNUM(o);
@@ -894,7 +894,7 @@ int32 decode_int (obj o)
   if (IN_RAM(o))
     {
       if (!RAM_BIGNUM(o))
-        TYPE_ERROR("integer");
+        TYPE_ERROR("decode_int", "integer");
 
       u = ram_get_field1 (o);
       h = ram_get_field2 (o);
@@ -903,14 +903,14 @@ int32 decode_int (obj o)
   else if (IN_ROM(o))
     {
       if (!ROM_BIGNUM(o))
-        TYPE_ERROR("integer");
+        TYPE_ERROR("decode_int", "integer");
 
       u = rom_get_field1 (o);
       h = rom_get_field2 (o);
       l = rom_get_field3 (o);
     }
   else
-    TYPE_ERROR("integer");
+    TYPE_ERROR("decode_int", "integer");
 
   if (u >= 128)
     return ((int32)((((int16)u - 256) << 8) + h) << 8) + l;
@@ -1207,18 +1207,18 @@ void prim_car (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("pair");
+        TYPE_ERROR("car", "pair");
       arg1 = ram_get_car (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_PAIR(arg1))
-        TYPE_ERROR("pair");
+        TYPE_ERROR("car", "pair");
       arg1 = rom_get_car (arg1);
     }
   else
     {
-      TYPE_ERROR("pair");
+      TYPE_ERROR("car", "pair");
     }
 }
 
@@ -1227,18 +1227,18 @@ void prim_cdr (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("pair");
+        TYPE_ERROR("cdr", "pair");
       arg1 = ram_get_cdr (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_PAIR(arg1))
-        TYPE_ERROR("pair");
+        TYPE_ERROR("cdr", "pair");
       arg1 = rom_get_cdr (arg1);
     }
   else
     {
-      TYPE_ERROR("pair");
+      TYPE_ERROR("cdr", "pair");
     }
 }
 
@@ -1247,7 +1247,7 @@ void prim_set_car (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("pair");
+        TYPE_ERROR("set-car!", "pair");
 
       ram_set_car (arg1, arg2);
       arg1 = OBJ_FALSE;
@@ -1255,7 +1255,7 @@ void prim_set_car (void)
     }
   else
     {
-      TYPE_ERROR("pair");
+      TYPE_ERROR("set-car!", "pair");
     }
 }
 
@@ -1264,7 +1264,7 @@ void prim_set_cdr (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("pair");
+        TYPE_ERROR("set-cdr!", "pair");
 
       ram_set_cdr (arg1, arg2);
       arg1 = OBJ_FALSE;
@@ -1272,7 +1272,7 @@ void prim_set_cdr (void)
     }
   else
     {
-      TYPE_ERROR("pair");
+      TYPE_ERROR("set-cdr!", "pair");
     }
 }
 
@@ -1313,7 +1313,7 @@ void prim_u8vector_ref (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("vector");
+	TYPE_ERROR("u8vector-ref", "vector");
       if (ram_get_car (arg1) < arg2)
 	ERROR("vector index too large");
       arg1 = ram_get_cdr (arg1);
@@ -1321,13 +1321,13 @@ void prim_u8vector_ref (void)
   else if (IN_ROM(arg1))
     {
       if (!ROM_VECTOR(arg1))
-	TYPE_ERROR("vector");
+	TYPE_ERROR("u8vector-ref", "vector");
       if (rom_get_car (arg1) < arg2)
 	ERROR("vector index too large");
       arg1 = rom_get_cdr (arg1);
     }
   else
-    TYPE_ERROR("vector");
+    TYPE_ERROR("u8vector-ref", "vector");
 
   if (IN_VEC(arg1))
     {
@@ -1370,14 +1370,13 @@ void prim_u8vector_set (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("vector");
+	TYPE_ERROR("u8vector-set!", "vector");
       if (ram_get_car (arg1) < arg2)
 	ERROR("vector index too large");
       arg1 = ram_get_cdr (arg1);
     }
-  // TODO no rom vector header can point to vector space, right ?
   else
-    TYPE_ERROR("vector");
+    TYPE_ERROR("u8vector-set!", "vector");
   
   arg1 += (arg2 / 4);
   arg2 %= 4;
@@ -1404,17 +1403,17 @@ void prim_u8vector_length (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("vector");
+	TYPE_ERROR("u8vector-length", "vector");
       arg1 = encode_int (ram_get_car (arg1));
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_VECTOR(arg1))
-	TYPE_ERROR("vector");
+	TYPE_ERROR("u8vector-length", "vector");
       arg1 = rom_get_car (arg1);
     }
   else
-    TYPE_ERROR("vector");
+    TYPE_ERROR("u8vector-length", "vector");
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1457,19 +1456,19 @@ void prim_string2list (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_STRING(arg1))
-        TYPE_ERROR("string");
+        TYPE_ERROR("string->list", "string");
 
       arg1 = ram_get_car (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_STRING(arg1))
-        TYPE_ERROR("string");
+        TYPE_ERROR("string->list", "string");
 
       arg1 = rom_get_car (arg1);
     }
   else
-    TYPE_ERROR("string");
+    TYPE_ERROR("string->list", "string");
 }
 
 void prim_list2string (void)
@@ -2085,19 +2084,19 @@ void pop_procedure (void)
   if (IN_RAM(arg1))
     {      
       if (!RAM_CLOSURE(arg1))
-	TYPE_ERROR("procedure");
+	TYPE_ERROR("pop_procedure", "procedure");
       
       entry = ram_get_entry (arg1) + CODE_START; // FOO all addresses in the bytecode should be from 0, not from CODE_START, should be fixed everywhere, but might not be
     }
   else if (IN_ROM(arg1))
     {      
       if (!ROM_CLOSURE(arg1))
-        TYPE_ERROR("procedure");
+        TYPE_ERROR("pop_procedure", "procedure");
 
       entry = rom_get_entry (arg1) + CODE_START;
     }
   else
-    TYPE_ERROR("procedure");
+    TYPE_ERROR("pop_procedure", "procedure");
 }
 
 void handle_arity_and_rest_param (void)

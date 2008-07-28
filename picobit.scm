@@ -323,6 +323,8 @@
   (lambda (env renamings)
     (cons (make-renaming renamings) env)))
 
+(define *macros* '())
+
 ;-----------------------------------------------------------------------------
 
 ;; Parsing.
