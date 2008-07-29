@@ -254,7 +254,7 @@ uint8 rom_get (rom_addr a)
 
   vector       1GG***** *elems** 01100000 00000000 TODO old
   vector       1GGxxxxx xxxxxxxx 011yyyyy yyyyyyyy
-  x is length of the vector, in bytes
+  x is length of the vector, in bytes (stored raw, not encoded as an object)
   y is pointer to the elements themselves (stored in vector space)
   TODO pointer could be shorter since it always points in vector space, same for length, will never be this long
   TODO show how vectors are represented in vector space
@@ -1326,8 +1326,8 @@ void prim_u8vector_ref (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("u8vector-ref", "vector"); // ARGH pourquoi encoder ? 13 bits pour la longueur, c'est bien assez
-      if (decode_int (ram_get_car (arg1)) <= a2) // ARGH rien marche
+	TYPE_ERROR("u8vector-ref", "vector");
+      if (ram_get_car (arg1) <= a2)
 	ERROR("vector index too large");
       arg1 = ram_get_cdr (arg1);
     }
@@ -1335,8 +1335,8 @@ void prim_u8vector_ref (void)
     {
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
-      a3 = decode_int (rom_get_car (arg1)); // we'll need the length later
-      if (a3 < a2) // FREH is it encoded as an int or not ? if so in rom, ram or both ?!
+      a3 = rom_get_car (arg1); // we'll need the length later
+      if (a3 <= a2)
 	ERROR("vector index too large");
       arg1 = rom_get_cdr (arg1);
     }
@@ -1364,13 +1364,13 @@ void prim_u8vector_ref (void)
     }
   else // rom vector, stored as a list
     { // TODO since these are stored as lists, nothing prevents us from having ordinary vectors, and not just byte vectors. in rom, both are lists so they are the same. in ram, byte vectors are in vector space, while ordinary vectors are still lists (the functions are already in the library)
-      arg4 = a2; // we save the index
-      
+      a1 = a2; // we save the index
+
       while (a2--)
 	arg1 = rom_get_cdr (arg1);
       
       // since rom vectors are dotted pairs, the last element is in cdr
-      if (arg4 < (a3 - 1))
+      if (a1 < (a3 - 1))
 	arg1 = rom_get_car (arg1);
     }
 
@@ -1391,7 +1391,7 @@ void prim_u8vector_set (void)
     {
       if (!RAM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-set!", "vector");
-      if (ram_get_car (arg1) < a2)
+      if (ram_get_car (arg1) <= a2)
 	ERROR("vector index too large");
       arg1 = ram_get_cdr (arg1);
     }
@@ -1430,7 +1430,7 @@ void prim_u8vector_length (void)
     {
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-length", "vector");
-      arg1 = rom_get_car (arg1); // the length is already encoded, as a fixnum BREGG is it ok ?
+      arg1 = encode_int (rom_get_car (arg1));
     }
   else
     TYPE_ERROR("u8vector-length", "vector");
