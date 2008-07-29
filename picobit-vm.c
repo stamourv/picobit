@@ -854,9 +854,9 @@ obj alloc_vec_cell (uint16 n) // TODO add a init version ?
   // case 1 : the new vector fills every free word advertized, we remove the
   //  node from the free list
   // TODO mettre le cdr de o dans une var temporaire ?
-  if ((n - (ram_get_cdr(o) * 4)) < 4) // TODO is there a better way ?
+  if (((ram_get_cdr(o) * 4) - n) < 4) // TODO is there a better way ?
     {
-      if (prec)
+      if (prec) // TODO does this mean that the free list nodes are in the same order as they are in memory ?
 	ram_set_car (prec, ram_get_car (o));
       else
 	free_list_vec = ram_get_car (o);
@@ -1159,7 +1159,7 @@ void prim_gt (void)
 
 void prim_ior (void)
 {
-  a1 = decode_int (arg1);
+  a1 = decode_int (arg1); // TODO use decode_2_int_args ? can't see why not
   a2 = decode_int (arg2);
   arg1 = encode_int (a1 | a2);
   arg2 = OBJ_FALSE;
@@ -1297,24 +1297,37 @@ void prim_u8vectorp (void)
 
 void prim_make_u8vector (void)
 {
-  obj elems = alloc_vec_cell (arg1); // arg1 is length
-  arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | (arg1 >> 8),
-			      arg1 & 0xff,
-			      VECTOR_FIELD2 | (elems >> 8),
-			      elems & 0xff);
-  // the contents of the vector are intentionally left as they were.
-  // it is up to the library functions to set them accordingly
+  decode_2_int_args (); // arg1 is length, arg2 is contents
+
+  if (a2 > 255)
+    ERROR("byte vectors can only contain bytes");
+    
+  arg3 = alloc_vec_cell (a1);
+  arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | (a1 >> 8),
+			      a1 & 0xff,
+			      VECTOR_FIELD2 | (arg3 >> 8),
+			      arg3 & 0xff);
+
+  a1 = (a1 + 3) / 4; // actual length, in words
+  while (a1--)
+    {
+      ram_set_field0 (arg3, a2);
+      ram_set_field1 (arg3, a2);
+      ram_set_field2 (arg3, a2);
+      ram_set_field3 (arg3, a2);
+      arg3++;
+    }
 }
 
 void prim_u8vector_ref (void)
 { // TODO how do we deal with rom vectors ? as lists ? they're never all that long
-  arg2 = decode_int (arg2);
+  a2 = decode_int (arg2);
 
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
-      if (ram_get_car (arg1) < arg2)
+      if (ram_get_car (arg1) < a2)
 	ERROR("vector index too large");
       arg1 = ram_get_cdr (arg1);
     }
@@ -1323,7 +1336,7 @@ void prim_u8vector_ref (void)
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
       arg3 = rom_get_car (arg1); // we'll need the length later
-      if (arg3 < arg2)
+      if (arg3 < a2)
 	ERROR("vector index too large");
       arg1 = rom_get_cdr (arg1);
     }
@@ -1332,10 +1345,10 @@ void prim_u8vector_ref (void)
 
   if (IN_VEC(arg1))
     {
-      arg1 += (arg2 / 4);
-      arg2 %= 4;
+      arg1 += (a2 / 4);
+      a2 %= 4;
       
-      switch (arg2)
+      switch (a2)
 	{
 	case 0:
 	  arg1 = ram_get_field0 (arg1); break;
@@ -1351,9 +1364,9 @@ void prim_u8vector_ref (void)
     }
   else // rom vector, stored as a list
     { // TODO since these are stored as lists, nothing prevents us from having ordinary vectors, and not just byte vectors. in rom, both are lists so they are the same. in ram, byte vectors are in vector space, while ordinary vectors are still lists (the functions are already in the library)
-      arg4 = arg2; // we save the index
+      arg4 = a2; // we save the index
       
-      while (arg2--)	
+      while (a2--)	
 	arg1 = rom_get_cdr (arg1);
 
       // since rom vectors are dotted pairs, the last element is in cdr
@@ -1368,36 +1381,36 @@ void prim_u8vector_ref (void)
 
 void prim_u8vector_set (void)
 { // TODO a lot in common with ref, abstract that
-  arg2 = decode_int (arg2);
-  arg3 = decode_int (arg3);
+  a2 = decode_int (arg2);
+  a3 = decode_int (arg3);
 
-  if (arg3 > 255)
+  if (a3 > 255)
     ERROR("byte vectors can only contain bytes");
   
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-set!", "vector");
-      if (ram_get_car (arg1) < arg2)
+      if (ram_get_car (arg1) < a2)
 	ERROR("vector index too large");
       arg1 = ram_get_cdr (arg1);
     }
   else
     TYPE_ERROR("u8vector-set!", "vector");
   
-  arg1 += (arg2 / 4);
-  arg2 %= 4;
+  arg1 += (a2 / 4);
+  a2 %= 4;
 
-  switch (arg2)
+  switch (a2)
     {
     case 0:
-      ram_set_field0 (arg1, arg3); break;
+      ram_set_field0 (arg1, a3); break;
     case 1:
-      ram_set_field1 (arg1, arg3); break;
+      ram_set_field1 (arg1, a3); break;
     case 2:
-      ram_set_field2 (arg1, arg3); break;
+      ram_set_field2 (arg1, a3); break;
     case 3:
-      ram_set_field3 (arg1, arg3); break;
+      ram_set_field3 (arg1, a3); break;
     }
 
   arg1 = OBJ_FALSE;
@@ -1417,7 +1430,7 @@ void prim_u8vector_length (void)
     {
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-length", "vector");
-      arg1 = rom_get_car (arg1);
+      arg1 = encode_int (rom_get_car (arg1));
     }
   else
     TYPE_ERROR("u8vector-length", "vector");
@@ -2664,7 +2677,7 @@ void interpreter (void)
       arg1 = POP();  prim_list2string ();  PUSH_ARG1();  break;
     case 13:
       /* prim #%make-u8vector */
-      arg1 = POP(); prim_make_u8vector (); PUSH_ARG1(); break;
+      arg2 = POP(); arg1 = POP(); prim_make_u8vector (); PUSH_ARG1(); break;
     case 14:
       /* prim #%u8vector-ref */
       arg2 = POP(); arg1 = POP(); prim_u8vector_ref (); PUSH_ARG1(); break;

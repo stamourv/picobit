@@ -232,7 +232,7 @@
           (make-var '#%string->list #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%list->string #t '() '() '() #f (make-primitive 1 #f #f))
 
-	  (make-var '#%make-u8vector #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
+	  (make-var '#%make-u8vector #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
 	  (make-var '#%u8vector-ref #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
 	  (make-var '#%u8vector-set! #t '() '() '() #f (make-primitive 3 #f #t)) ;; ADDED
 	  
@@ -291,6 +291,7 @@
     (u8vector-length . #%u8vector-length)
     (u8vector-ref . #%u8vector-ref)
     (u8vector-set! . #%u8vector-set!)
+    (make-u8vector . #%make-u8vector)
     ))
 
 (define env-lookup
@@ -416,12 +417,7 @@
 		   (node-parent-set! r app)
 		   (node-parent-set! unbox app)
 		   app)
-		 r)) ;; TODO Etienne's code for boxing
-;;; 	   (let* ((var (env-lookup env expr))
-;;;                   (r (make-ref #f '() var)))
-;;;              (var-refs-set! var (cons r (var-refs var)))
-;;;              r)
-	   )
+		 r)))
 	  ((and (pair? expr)
                 (assq (car expr) *macros*))
            => (lambda (p) (parse use (apply (cdr p) (cdr expr)) env)))
@@ -434,7 +430,6 @@
                    (node-parent-set! val r)
                    (var-sets-set! var (cons r (var-sets var)))
                    r)
-		 ;; (compiler-error "set! is only permitted on global variables")
 		 (let* ((body (parse 'value (caddr expr) env))
                         (ref (make-ref #f '() var))
                         (bs (make-ref #f '() (env-lookup env '#%box-set!)))
@@ -443,8 +438,7 @@
                    (node-parent-set! ref r)
                    (node-parent-set! bs r)
                    (var-sets-set! var (cons r (var-sets var)))
-                   r) ;; TODO Etienne's code for boxing
-		 )))
+                   r))))
           ((and (pair? expr)
                 (eq? (car expr) 'quote))
            (make-cst #f '() (cadr expr)))
@@ -462,45 +456,51 @@
              r))
           ((and (pair? expr)
                 (eq? (car expr) 'lambda))
-;;;            (let* ((pattern (cadr expr))
-;;;                   (ids (extract-ids pattern))
-;;;                   (r (make-prc #f '() #f (has-rest-param? pattern) #f))
-;;;                   (new-env (env-extend env ids r))
-;;;                   (body (parse-body (cddr expr) new-env)))
-;;;              (prc-params-set! r (map (lambda (id) (env-lookup new-env id)) ids))
-;;;              (node-children-set! r (list body))
-;;;              (node-parent-set! body r)
-;;;              r)
 	   (let* ((pattern (cadr expr))
                   (ids (extract-ids pattern))
-                  (r (make-prc #f '() #f (has-rest-param? pattern) #f)) ; parent children params rest? entry-label
+		  ;; parent children params rest? entry-label
+                  (r (make-prc #f '() #f (has-rest-param? pattern) #f))
                   (new-env (env-extend env ids r))
                   (body (parse-body (cddr expr) new-env))
-                  (mut-vars (apply append (map (lambda (id)
-                                                 (let ((v (env-lookup new-env id)))
-                                                   (if (mutable-var? v) (list v) '())))
-                                               ids))))
+                  (mut-vars
+		   (apply append
+			  (map (lambda (id)
+				 (let ((v (env-lookup new-env id)))
+				   (if (mutable-var? v) (list v) '())))
+			       ids))))
              (if (null? mut-vars)
                  (begin
-                   (prc-params-set! r (map (lambda (id) (env-lookup new-env id)) ids))
+                   (prc-params-set! r
+				    (map (lambda (id) (env-lookup new-env id))
+					 ids))
                    (node-children-set! r (list body))
                    (node-parent-set! body r)
                    r)
                  (let* ((prc (make-prc #f (list body) mut-vars #f #f))
                         (new-vars (map var-id mut-vars))
                         (tmp-env (env-extend env new-vars r))
-                        (app (make-call r (cons prc (map (lambda (id) (parse 'value (cons '#%box (cons id '())) tmp-env)) new-vars)))))
-                   ;; (lambda (a b) (set! a b)) => (lambda (_a b) ((lambda (a) (box-set! a b)) (box _a)))
-                   (for-each (lambda (var)
-                               (var-defs-set! var (list prc)))
+                        (app
+			 (make-call
+			  r
+			  (cons prc
+				(map (lambda (id)
+				       (parse 'value
+					      (cons '#%box (cons id '()))
+					      tmp-env))
+				     new-vars)))))
+                   ;; (lambda (a b) (set! a b))
+		   ;; => (lambda (_a b) ((lambda (a) (box-set! a b)) (box _a)))
+                   (for-each (lambda (var) (var-defs-set! var (list prc)))
                              mut-vars)
-                   (for-each (lambda (n) (node-parent-set! n app)) (cdr (node-children app)))
+                   (for-each (lambda (n) (node-parent-set! n app))
+			     (cdr (node-children app)))
                    (node-parent-set! prc app)
-                   (prc-params-set! r (map (lambda (id) (env-lookup tmp-env id)) ids))
+                   (prc-params-set! r
+				    (map (lambda (id) (env-lookup tmp-env id))
+					 ids))
                    (node-children-set! r (list app))
                    (node-parent-set! body prc)
-                   r))) ;; TODO Etienne's code for boxing
-	   )
+                   r))))
 	  ((and (pair? expr)
                 (eq? (car expr) 'letrec))
            (let ((ks (map car (cadr expr)))
@@ -663,10 +663,13 @@
       (let* ((parent (node-parent node)) (child (cadr (node-children node))))
         (node-parent-set! child parent)
         (if parent
-            (node-children-set! parent (map (lambda (c) (if (eq? c node) child c)) (node-children parent))))
+            (node-children-set! parent
+				(map (lambda (c) (if (eq? c node) child c))
+				     (node-children parent))))
         child)
-      (begin (for-each (lambda (n) (adjust-unmutable-references! n)) (node-children node))
-             node))) ;; TODO Etienne's code for boxing
+      (begin (for-each (lambda (n) (adjust-unmutable-references! n))
+		       (node-children node))
+             node)))
 
 ;-----------------------------------------------------------------------------
 
@@ -1897,12 +1900,13 @@
         (reorder! bbs)))))
 
 
-(define expand-loads
+(define expand-includes
   (lambda (exprs)
     (map (lambda (e)
-	   (if (eq? (car e) 'load)
+	   (if (eq? (car e) 'include)
 	       (cons 'begin
-		     (expand-loads (with-input-from-file (cadr e) read-all)))
+		     (expand-includes
+		      (with-input-from-file (cadr e) read-all)))
 	       e))
 	 exprs)))
 
@@ -1911,8 +1915,9 @@
     (let* ((library
             (with-input-from-file "library.scm" read-all))
            (toplevel-exprs
-            (expand-loads (append library
-				  (with-input-from-file filename read-all))))
+            (expand-includes
+	     (append library
+		     (with-input-from-file filename read-all))))
            (global-env
             (make-global-env))
            (parsed-prog
@@ -3132,7 +3137,7 @@
              (path-strip-extension filename)
              ".hex")))
       
-      (adjust-unmutable-references! node) ;; TODO Etienne's code for boxing
+      (adjust-unmutable-references! node)
 
 ;      (pp (node->expr node))
 

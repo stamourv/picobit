@@ -483,7 +483,7 @@
 (define list->u8vector ;; TODO not used except for server
   (lambda (x)
     (let* ((n (length x))
-	   (v (#%make-u8vector n)))
+	   (v (#%make-u8vector n 0)))
       (list->u8vector-loop v 0 x)
       v)))
 (define list->u8vector-loop
@@ -494,10 +494,21 @@
 (define u8vector-length (lambda (x) (#%u8vector-length x)))
 (define u8vector-ref (lambda (x y) (#%u8vector-ref x y)))
 (define u8vector-set! (lambda (x y z) (#%u8vector-set! x y z)))
+;; (define make-u8vector
+;;   (lambda (n x)
+;;     (let ((v (#%make-u8vector n)))
+;;       (make-u8vector-loop v (#%- n 1) x)
+;;       v)))
 (define make-u8vector
   (lambda (n x)
-    (make-u8vector-loop (#%make-u8vector n) n x)))
-(define make-u8vector-loop
-  (lambda (v n x)
-    (#%u8vector-set! v n x)
-    (if (#%> n 0) (make-u8vector-loop v (#%- n 1) x))))
+    (#%make-u8vector n x)))
+;; (define make-u8vector-loop
+;;   (lambda (v n x)
+;; ;;;     (display "ok:")
+;; ;;;     (display n)
+;; ;;;     (display "\n")
+;;     (if (>= n 0) (#%u8vector-set! v n x)) ;; TODO safety, should not be needed
+;;     (if (#%> n 0)
+;; 	(begin ;; (display "loop\n")
+;; 	       (make-u8vector-loop v (#%- n 1) x)))))
+;; ;; TODO with named lets ?
