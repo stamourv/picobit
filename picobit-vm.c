@@ -465,7 +465,7 @@ void set_global (uint8 i, obj o)
 #ifdef WORKSTATION
 void show_type (obj o) // for debugging purposes
   {
-    printf("%x : ", o);
+    printf("%d : ", o);
     if (o == OBJ_FALSE) printf("#f");
     else if (o == OBJ_TRUE) printf("#t");
     else if (o == OBJ_NULL) printf("()");
@@ -1326,8 +1326,8 @@ void prim_u8vector_ref (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("u8vector-ref", "vector");
-      if (ram_get_car (arg1) < a2)
+	TYPE_ERROR("u8vector-ref", "vector"); // ARGH pourquoi encoder ? 13 bits pour la longueur, c'est bien assez
+      if (decode_int (ram_get_car (arg1)) <= a2) // ARGH rien marche
 	ERROR("vector index too large");
       arg1 = ram_get_cdr (arg1);
     }
@@ -1335,8 +1335,8 @@ void prim_u8vector_ref (void)
     {
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
-      arg3 = rom_get_car (arg1); // we'll need the length later
-      if (arg3 < a2)
+      a3 = decode_int (rom_get_car (arg1)); // we'll need the length later
+      if (a3 < a2) // FREH is it encoded as an int or not ? if so in rom, ram or both ?!
 	ERROR("vector index too large");
       arg1 = rom_get_cdr (arg1);
     }
@@ -1366,11 +1366,11 @@ void prim_u8vector_ref (void)
     { // TODO since these are stored as lists, nothing prevents us from having ordinary vectors, and not just byte vectors. in rom, both are lists so they are the same. in ram, byte vectors are in vector space, while ordinary vectors are still lists (the functions are already in the library)
       arg4 = a2; // we save the index
       
-      while (a2--)	
-	arg1 = rom_get_cdr (arg1); // dummy
-
+      while (a2--)
+	arg1 = rom_get_cdr (arg1);
+      
       // since rom vectors are dotted pairs, the last element is in cdr
-      if (arg4 < (arg3 - 1))
+      if (arg4 < (a3 - 1))
 	arg1 = rom_get_car (arg1);
     }
 
@@ -1430,7 +1430,7 @@ void prim_u8vector_length (void)
     {
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-length", "vector");
-      arg1 = encode_int (rom_get_car (arg1));
+      arg1 = rom_get_car (arg1); // the length is already encoded, as a fixnum BREGG is it ok ?
     }
   else
     TYPE_ERROR("u8vector-length", "vector");

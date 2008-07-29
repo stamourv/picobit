@@ -2957,7 +2957,8 @@
 		       ((u8vector? obj) ;; NEW, lists for now (internal representation same as ordinary vectors, who don't actually exist)
 			(let ((obj-enc (encode-constant (vector-ref descr 3)
 							constants))
-			      (l (dotted-length (vector-ref descr 3))))
+			      (l (encode-direct ;; TODO if we want rom vectors longer than 255 bytes, we'd have to find a way to store their lengths as constants
+				  (dotted-length (vector-ref descr 3)))))
 			  (asm-8 (+ #x80 (arithmetic-shift l -8)))
 			  (asm-8 (bitwise-and l #xff))
 			  (asm-8 (+ #x60 (arithmetic-shift obj-enc -8)))
