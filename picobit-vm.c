@@ -1367,7 +1367,7 @@ void prim_u8vector_ref (void)
       arg4 = a2; // we save the index
       
       while (a2--)	
-	arg1 = rom_get_cdr (arg1);
+	arg1 = rom_get_cdr (arg1); // dummy
 
       // since rom vectors are dotted pairs, the last element is in cdr
       if (arg4 < (arg3 - 1))
