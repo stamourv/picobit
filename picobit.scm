@@ -258,7 +258,6 @@
 ;; this saves the calls to the primitive wrapper functions, which are still
 ;; needed if a program needs the value of a "primitive", for example in :
 ;; (define foo car)
-;; TODO have the arg length ?
 (define substitute-primitives
   '((number? . #%number?)
     (quotient . #%quotient)
@@ -1689,21 +1688,28 @@
                                       (null? (cdr jump-then-replacement))
                                       jump-else-replacement
                                       (null? (cdr jump-else-replacement))
-                                      (or (eq? (caar jump-then-replacement) 'goto)
-                                          (eq? (caar jump-else-replacement) 'goto)))
+                                      (or (eq? (caar jump-then-replacement)
+					       'goto)
+                                          (eq? (caar jump-else-replacement)
+					       'goto)))
                                  (begin
                                    (vector-set!
                                     bbs
                                     i
-                                    (make-bb (bb-label bb)
-                                             (cons (list 'goto-if-false
-                                                         (if (eq? (caar jump-then-replacement) 'goto)
-                                                             (cadar jump-then-replacement)
-                                                             label-then)
-                                                         (if (eq? (caar jump-else-replacement) 'goto)
-                                                             (cadar jump-else-replacement)
-                                                             label-else))
-                                                   (cdr rev-instrs))))
+                                    (make-bb
+				     (bb-label bb)
+				     (cons
+				      (list
+				       'goto-if-false
+				       (if (eq? (caar jump-then-replacement)
+						'goto)
+					   (cadar jump-then-replacement)
+					   label-then)
+				       (if (eq? (caar jump-else-replacement)
+						'goto)
+					   (cadar jump-else-replacement)
+					   label-else))
+				      (cdr rev-instrs))))
                                    (loop2 (+ i 1)
                                           #t))
                                  (loop2 (+ i 1)
@@ -1955,7 +1961,11 @@
                                   (ids
                                    (extract-ids pattern))
                                   (r
-                                   (make-prc #f '() #f (has-rest-param? pattern) #f))
+                                   (make-prc #f
+					     '()
+					     #f
+					     (has-rest-param? pattern)
+					     #f))
                                   (new-env
                                    (env-extend global-env ids r))
                                   (body
@@ -2635,7 +2645,7 @@
                        (new-constants
                         (cons (cons o descr)
                               constants)))
-                  (cond ((pair? o) ;; TODO what to do in the case of a pair of, for example, fixnums, where only one object is actually used ?
+                  (cond ((pair? o)
                          (add-constants (list (car o) (cdr o))
                                         new-constants
                                         cont))
@@ -2813,7 +2823,7 @@
                   (compiler-error "stack is too deep")
                   (asm-8 (+ #x20 n))))
 
-            (define (push-global n) ;; TODO check if the numbers are good, we sorted them
+            (define (push-global n)
 	      (if (<= n 15)
 		  (asm-8 (+ #x40 n))
 		  (begin (asm-8 #x8e)
@@ -2851,7 +2861,7 @@
               (label-instr label #x84))
 
             (define (prim n)
-              (asm-8 (+ #xd0 n)))
+              (asm-8 (+ #xc0 n)))
 
             (define (prim.number?)         (prim 0))
             (define (prim.+)               (prim 1))

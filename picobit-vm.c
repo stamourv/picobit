@@ -2019,15 +2019,15 @@ int read_hex_file (char *filename)
 // TODO these are free
 #define GOTO               0xa0
 #define GOTO_IF_FALSE      0xb0
-#define CLOSURE            0xc0
 
-#define PRIM1              0xd0
-#define PRIM2              0xe0
-#define PRIM3              0xf0
+#define PRIM1              0xc0
+#define PRIM2              0xd0
+#define PRIM3              0xe0
+#define PRIM4              0xf0
 
 #ifdef WORKSTATION
 
-char *prim_name[48] =
+char *prim_name[64] =
   {
     "prim #%number?",
     "prim #%+",
@@ -2058,9 +2058,9 @@ char *prim_name[48] =
     "prim #%string?",
     "prim #%string->list",
     "prim #%list->string",
-    "prim #%make-u8vector", // TODO was prim29
-    "prim #%u8vector-ref", // TODO was prim30
-    "prim #%u8vector-set!", // TODO was prim31
+    "prim #%make-u8vector",
+    "prim #%u8vector-ref",
+    "prim #%u8vector-set!",
     "prim #%print",
     "prim #%clock",
     "prim #%motor",
@@ -2072,11 +2072,27 @@ char *prim_name[48] =
     "prim #%adc",
     "prim #%u8vector?", // TODO was dac, but it's not plugged to anything
     "prim #%sernum",
-    "prim #%u8vector-length", // TODO was prim43
+    "prim #%u8vector-length",
     "push-constant [long]",
     "shift",
     "pop",
     "return",
+    "prim 48",
+    "prim 49",
+    "prim 50",
+    "prim 51",
+    "prim 52",
+    "prim 53",
+    "prim 54",
+    "prim 55",
+    "prim 56",
+    "prim 57",
+    "prim 58",
+    "prim 59",
+    "prim 60",
+    "prim 61",
+    "prim 62",
+    "prim 63"
   };
 
 #endif
@@ -2269,7 +2285,7 @@ void interpreter (void)
 
   IF_TRACE(printf("  (set-global %d)\n", bytecode_lo4));
 
-  set_global (bytecode_lo4, POP()); // TODO debug
+  set_global (bytecode_lo4, POP());
 
   DISPATCH();
 
@@ -2554,11 +2570,6 @@ void interpreter (void)
   DISPATCH();
 
   /***************************************************************************/
-  CASE(CLOSURE); // BREGG move
-
-  DISPATCH();
-
-  /***************************************************************************/
   CASE(PRIM1);
 
   IF_TRACE(printf("  (%s)\n", prim_name[bytecode_lo4]));
@@ -2762,6 +2773,50 @@ void interpreter (void)
 
   /***************************************************************************/
 
+  CASE(PRIM4);
+
+  IF_TRACE(printf("  (%s)\n", prim_name[bytecode_lo4]));
+  
+  switch (bytecode_lo4)
+    {
+    case 0:
+      break;
+    case 1:
+      break;
+    case 2:
+      break;
+    case 3:
+      break;
+    case 4:
+      break;
+    case 5:
+      break;
+    case 6:
+      break;
+    case 7:
+      break;
+    case 8:
+      break;
+    case 9:
+      break;
+    case 10:
+      break;
+    case 11:
+      break;
+    case 12:
+      break;
+    case 13:
+      break;
+    case 14:
+      break;
+    case 15:
+      break;
+    }
+  
+  DISPATCH();
+
+  /***************************************************************************/
+  
   END_DISPATCH();
 }
 
