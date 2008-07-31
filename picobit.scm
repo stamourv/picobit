@@ -2666,11 +2666,8 @@
                                          new-constants
                                          #f
                                          cont)))
-			;; literal vectors (in rom) are stored as a dotted list
-			;; (the last 2 elements are stored as (x . y) rather
-			;; than (x . (y . ()))), saves a pair by vector
 			((u8vector? o)			 
-			 (let ((elems (list->dotted (u8vector->list o))))
+			 (let ((elems (u8vector->list o)))
 			   (vector-set! descr 3 elems)
 			   (add-constant elems
 					 new-constants
@@ -2678,16 +2675,6 @@
 					 cont)))
                         (else
                          (cont new-constants))))))))))
-
-(define (list->dotted l)
-  (cons (car l) (if (= (length l) 2)
-		    (cadr l)
-		    (list->dotted (cdr l)))))
-
-(define (dotted-length l)
-  (if (pair? (cdr l))
-      (+ 1 (dotted-length (cdr l)))
-      2))
 
 (define (add-constants objs constants cont)
   (if (null? objs)
@@ -2966,8 +2953,10 @@
 		       ((u8vector? obj) ;; NEW, lists for now (internal representation same as ordinary vectors, who don't actually exist)
 			(let ((obj-enc (encode-constant (vector-ref descr 3)
 							constants))
-			      (l (dotted-length (vector-ref descr 3))))
+			      (l (length (vector-ref descr 3))))
 			  ;; length is stored raw, not encoded as an object
+			  ;; however, the bytes of content are encoded as
+			  ;; fixnums
 			  (asm-8 (+ #x80 (arithmetic-shift l -8)))
 			  (asm-8 (bitwise-and l #xff))
 			  (asm-8 (+ #x60 (arithmetic-shift obj-enc -8)))
