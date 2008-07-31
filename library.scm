@@ -512,3 +512,6 @@
 ;; 	(begin ;; (display "loop\n")
 ;; 	       (make-u8vector-loop v (#%- n 1) x)))))
 ;; ;; TODO with named lets ?
+(define u8vector-copy!
+  (lambda (source source-start target target-start n)
+    (#%u8vector-copy! source source-start target target-start n)))

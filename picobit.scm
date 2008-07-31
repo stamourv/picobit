@@ -232,9 +232,9 @@
           (make-var '#%string->list #t '() '() '() #f (make-primitive 1 #f #f))
           (make-var '#%list->string #t '() '() '() #f (make-primitive 1 #f #f))
 
-	  (make-var '#%make-u8vector #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
-	  (make-var '#%u8vector-ref #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
-	  (make-var '#%u8vector-set! #t '() '() '() #f (make-primitive 3 #f #t)) ;; ADDED
+	  (make-var '#%make-u8vector #t '() '() '() #f (make-primitive 2 #f #f))
+	  (make-var '#%u8vector-ref #t '() '() '() #f (make-primitive 2 #f #f))
+	  (make-var '#%u8vector-set! #t '() '() '() #f (make-primitive 3 #f #t))
 	  
           (make-var '#%print #t '() '() '() #f (make-primitive 1 #f #t))
           (make-var '#%clock #t '() '() '() #f (make-primitive 0 #f #f))
@@ -247,10 +247,10 @@
 	  (make-var '#%adc #t '() '() '() #f (make-primitive 1 #f #f))
 	  (make-var '#%u8vector? #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED, was dac
 	  (make-var '#%sernum #t '() '() '() #f (make-primitive 0 #f #f))
-	  (make-var '#%u8vector-length #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED
+	  (make-var '#%u8vector-length #t '() '() '() #f (make-primitive 1 #f #f))
+	  (make-var '#%u8vector-copy! #t '() '() '() #f (make-primitive 5 #f #t))
 	  
           (make-var '#%readyq #t '() '() '() #f #f)
-	  
           )))
 
 ;; list of primitives that can be safely substituted for the equivalent
@@ -291,6 +291,7 @@
     (u8vector-ref . #%u8vector-ref)
     (u8vector-set! . #%u8vector-set!)
     (make-u8vector . #%make-u8vector)
+    (u8vector-copy! . #%u8vector-copy!)
     ))
 
 (define env-lookup
@@ -2892,11 +2893,9 @@
             (define (prim.string?)         (prim 26))
             (define (prim.string->list)    (prim 27))
             (define (prim.list->string)    (prim 28))
-
 	    (define (prim.make-u8vector)   (prim 29))
 	    (define (prim.u8vector-ref)    (prim 30))
 	    (define (prim.u8vector-set!)   (prim 31))
-
             (define (prim.print)           (prim 32))
             (define (prim.clock)           (prim 33))
             (define (prim.motor)           (prim 34))
@@ -2909,7 +2908,7 @@
 	    (define (prim.u8vector?)       (prim 41)) ;; TODO was dac
 	    (define (prim.sernum)          (prim 42)) ;; TODO necessary ?
 	    (define (prim.u8vector-length) (prim 43))
-
+	    (define (prim.u8vector-copy!)  (prim 44))
             (define (prim.shift)           (prim 45))
             (define (prim.pop)             (prim 46))
             (define (prim.return)          (prim 47))
@@ -3080,6 +3079,7 @@
                              ((#%u8vector?)       (prim.u8vector?)) ;; TODO was dac
                              ((#%sernum)          (prim.sernum))
 			     ((#%u8vector-length) (prim.u8vector-length))
+			     ((#%u8vector-copy!)  (prim.u8vector-copy!))
                              (else
                               (compiler-error "unknown primitive" (cadr instr)))))
 

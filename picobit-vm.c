@@ -523,7 +523,8 @@ obj free_list_vec; /* list of unused cells in vector space */
 obj arg1; /* root set */
 obj arg2;
 obj arg3;
-obj arg4;
+obj arg4; // TODO only used once as a true arg, is swap space the rest of the time
+obj arg5; // OOPS we need that for u8vector-copy!
 obj cont;
 obj env;
 
@@ -1327,8 +1328,8 @@ void prim_u8vector_ref (void)
     {
       if (!RAM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
-      if (ram_get_car (arg1) <= a2)
-	ERROR("vector index too large");
+      if ((ram_get_car (arg1) <= a2) || (a2 < 0))
+	ERROR("vector index invalid");
       arg1 = ram_get_cdr (arg1);
     }
   else if (IN_ROM(arg1))
@@ -1336,8 +1337,8 @@ void prim_u8vector_ref (void)
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
       a3 = rom_get_car (arg1); // we'll need the length later
-      if (a3 <= a2)
-	ERROR("vector index too large");
+      if ((a3 <= a2) || (a2 < 0))
+	ERROR("vector index invalid");
       arg1 = rom_get_cdr (arg1);
     }
   else
@@ -1391,8 +1392,8 @@ void prim_u8vector_set (void)
     {
       if (!RAM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-set!", "vector");
-      if (ram_get_car (arg1) <= a2)
-	ERROR("vector index too large");
+      if ((ram_get_car (arg1) <= a2) || (a2 < 0))
+	ERROR("vector index invalid");
       arg1 = ram_get_cdr (arg1);
     }
   else
@@ -1434,6 +1435,100 @@ void prim_u8vector_length (void)
     }
   else
     TYPE_ERROR("u8vector-length", "vector");
+}
+
+void prim_u8vector_copy (void)
+{
+  // arg1 is source, arg2 is source-start, arg3 is target, arg4 is target-start
+  // arg5 is number of bytes to copy
+
+  a1 = decode_int (arg2);
+  a2 = decode_int (arg4);
+  a3 = decode_int (arg5);
+
+  // case 1 : ram to ram
+  if (IN_RAM(arg1) && IN_RAM(arg3))
+    {
+      if (!RAM_VECTOR(arg1) || !RAM_VECTOR(arg3))
+	TYPE_ERROR("u8vector-copy!", "vector");
+      if ((ram_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
+	  (ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
+	ERROR("vector index invalid");
+
+      // position to the start
+      arg1 += (a1 / 4);
+      a1 %= 4;
+      arg3 += (a2 / 4);
+      a2 %= 4;
+
+      // copy
+      while (a3--)
+	{
+	  switch (a1)
+	    {
+	    case 0:
+	      arg2 = ram_get_field0 (arg1);
+	      break;
+	    case 1:
+	      arg2 = ram_get_field1 (arg1);
+	      break;
+	    case 2:
+	      arg2 = ram_get_field2 (arg1);
+	      break;
+	    case 3:
+	      arg2 = ram_get_field3 (arg1);
+	      break;
+	    }
+
+	  switch (a2)
+	    {
+	    case 0:
+	      ram_set_field0 (arg3, arg2);
+	      break;
+	    case 1:
+	      ram_set_field1 (arg3, arg2);
+	      break;
+	    case 2:
+	      ram_set_field2 (arg3, arg2);
+	      break;
+	    case 3:
+	      ram_set_field3 (arg3, arg2);
+	      break;
+	    }
+	  
+	  a1++;
+	  arg1 += (a1 / 4);
+	  a1 %= 4; // TODO any way to merge with the previous similar block ?
+	  a2++;
+	  arg3 += (a2 / 4);
+	  a2 %= 4;
+	}
+    }
+  // case 2 : rom to ram
+  else if (IN_ROM(arg1) && IN_RAM(arg3))
+    {
+      if (!ROM_VECTOR(arg1) || !RAM_VECTOR(arg3))
+	TYPE_ERROR("u8vector-copy!", "vector");
+      if ((rom_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
+	  (ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
+	ERROR("vector index invalid");
+
+      while (a1--)
+	arg1 = rom_get_cdr (arg1); // TODO get rid of pointed lists for vectors ? pain in the ass
+	
+      // TODO position the rom vector
+      arg3 += (a2 / 4);
+      a2 %= 4;
+      // TODO do ACTUAL copy
+    }
+  else
+    TYPE_ERROR("u8vector-copy!", "vector");
+    
+  arg1 = OBJ_FALSE;
+  arg2 = OBJ_FALSE;
+  arg3 = OBJ_FALSE;
+  arg4 = OBJ_FALSE;
+  arg5 = OBJ_FALSE;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -2073,7 +2168,7 @@ char *prim_name[64] =
     "prim #%u8vector?", // TODO was dac, but it's not plugged to anything
     "prim #%sernum",
     "prim #%u8vector-length",
-    "push-constant [long]",
+    "prim #%u8vector-copy!",
     "shift",
     "pop",
     "return",
@@ -2745,7 +2840,9 @@ void interpreter (void)
       /* prim #%u8vector-length */
       arg1 = POP(); prim_u8vector_length (); PUSH_ARG1(); break;
     case 12:
-      // FREE find something to do with this
+      /* prim #%u8vector-copy! */
+      arg5 = POP(); arg4 = POP(); arg3 = POP(); arg2 = POP(); arg1 = POP();
+      prim_u8vector_copy (); break;
       break;
     case 13:
       /* shift */
