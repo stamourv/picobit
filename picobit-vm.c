@@ -1594,6 +1594,11 @@ void prim_list2string (void)
 			      0);
 }
 
+void prim_booleanp (void)
+{
+  arg1 = encode_bool (arg1 < 2);
+}
+
 
 /*---------------------------------------------------------------------------*/
 
@@ -2172,7 +2177,7 @@ char *prim_name[64] =
     "shift",
     "pop",
     "return",
-    "prim 48",
+    "prim #%boolean?",
     "prim 49",
     "prim 50",
     "prim 51",
@@ -2877,6 +2882,8 @@ void interpreter (void)
   switch (bytecode_lo4)
     {
     case 0:
+      /* prim #%boolean? */
+      arg1 = POP(); prim_booleanp (); PUSH_ARG1(); break;
       break;
     case 1:
       break;

@@ -202,56 +202,57 @@
 
 (define make-global-env
   (lambda ()
-    (list (make-var '#%number? #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%+ #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%- #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%* #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%quotient #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%remainder #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%neg #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%= #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%< #t '() '() '() #f (make-primitive 2 #f #f))
-	  (make-var '#%ior #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
-          (make-var '#%> #t '() '() '() #f (make-primitive 2 #f #f))
-	  (make-var '#%xor #t '() '() '() #f (make-primitive 2 #f #f)) ;; ADDED
-          (make-var '#%pair? #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%cons #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%car #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%cdr #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%set-car! #t '() '() '() #f (make-primitive 2 #f #t))
-          (make-var '#%set-cdr! #t '() '() '() #f (make-primitive 2 #f #t))
-          (make-var '#%null? #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%eq? #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%not #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%get-cont #t '() '() '() #f (make-primitive 0 #f #f))
-          (make-var '#%graft-to-cont #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%return-to-cont #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%halt #t '() '() '() #f (make-primitive 0 #f #t))
-          (make-var '#%symbol? #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%string? #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%string->list #t '() '() '() #f (make-primitive 1 #f #f))
-          (make-var '#%list->string #t '() '() '() #f (make-primitive 1 #f #f))
-
-	  (make-var '#%make-u8vector #t '() '() '() #f (make-primitive 2 #f #f))
-	  (make-var '#%u8vector-ref #t '() '() '() #f (make-primitive 2 #f #f))
-	  (make-var '#%u8vector-set! #t '() '() '() #f (make-primitive 3 #f #t))
-	  
-          (make-var '#%print #t '() '() '() #f (make-primitive 1 #f #t))
-          (make-var '#%clock #t '() '() '() #f (make-primitive 0 #f #f))
-          (make-var '#%motor #t '() '() '() #f (make-primitive 2 #f #t))
-          (make-var '#%led #t '() '() '() #f (make-primitive 3 #f #t))
-	  (make-var '#%led2-color #t '() '() '() #f (make-primitive 1 #f #t))
-          (make-var '#%getchar-wait #t '() '() '() #f (make-primitive 2 #f #f))
-          (make-var '#%putchar #t '() '() '() #f (make-primitive 2 #f #t))
-	  (make-var '#%beep #t '() '() '() #f (make-primitive 2 #f #f))
-	  (make-var '#%adc #t '() '() '() #f (make-primitive 1 #f #f))
-	  (make-var '#%u8vector? #t '() '() '() #f (make-primitive 1 #f #f)) ;; ADDED, was dac
-	  (make-var '#%sernum #t '() '() '() #f (make-primitive 0 #f #f))
-	  (make-var '#%u8vector-length #t '() '() '() #f (make-primitive 1 #f #f))
-	  (make-var '#%u8vector-copy! #t '() '() '() #f (make-primitive 5 #f #t))
-	  
-          (make-var '#%readyq #t '() '() '() #f #f)
-          )))
+    (list
+     (make-var '#%number? #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%+ #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%- #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%* #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%quotient #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%remainder #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%neg #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%= #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%< #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%ior #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%> #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%xor #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%pair? #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%cons #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%car #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%cdr #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%set-car! #t '() '() '() #f (make-primitive 2 #f #t))
+     (make-var '#%set-cdr! #t '() '() '() #f (make-primitive 2 #f #t))
+     (make-var '#%null? #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%eq? #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%not #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%get-cont #t '() '() '() #f (make-primitive 0 #f #f))
+     (make-var '#%graft-to-cont #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%return-to-cont #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%halt #t '() '() '() #f (make-primitive 0 #f #t))
+     (make-var '#%symbol? #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%string? #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%string->list #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%list->string #t '() '() '() #f (make-primitive 1 #f #f))     
+     (make-var '#%make-u8vector #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%u8vector-ref #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%u8vector-set! #t '() '() '() #f (make-primitive 3 #f #t))
+     (make-var '#%print #t '() '() '() #f (make-primitive 1 #f #t))
+     (make-var '#%clock #t '() '() '() #f (make-primitive 0 #f #f))
+     (make-var '#%motor #t '() '() '() #f (make-primitive 2 #f #t))
+     (make-var '#%led #t '() '() '() #f (make-primitive 3 #f #t))
+     (make-var '#%led2-color #t '() '() '() #f (make-primitive 1 #f #t))
+     (make-var '#%getchar-wait #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%putchar #t '() '() '() #f (make-primitive 2 #f #t))
+     (make-var '#%beep #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%adc #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%u8vector? #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%sernum #t '() '() '() #f (make-primitive 0 #f #f))
+     (make-var '#%u8vector-length #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%u8vector-copy! #t '() '() '() #f (make-primitive 5 #f #t))
+     (make-var '#%boolean? #t '() '() '() #f (make-primitive 1 #f #f))
+          
+     (make-var '#%readyq #t '() '() '() #f #f)
+     ;; TODO put in a meaningful order
+     )))
 
 ;; list of primitives that can be safely substituted for the equivalent
 ;; function when it is called.
@@ -275,6 +276,8 @@
     (eq? . #%eq?)
     (not . #%not)
     (modulo . #%remainder)
+    (symbol? . #%symbol?)
+    (string? . #%string?)
     (string->list . #%string->list)
     (list->string . #%list->string)
     (clock . #%clock)
@@ -292,6 +295,7 @@
     (u8vector-set! . #%u8vector-set!)
     (make-u8vector . #%make-u8vector)
     (u8vector-copy! . #%u8vector-copy!)
+    (boolean? . #%boolean?)
     ))
 
 (define env-lookup
@@ -600,7 +604,6 @@
 		    (cons (cdr prim) (cdr expr))
 		    env)))
 	  ;; binary arthimetic operations can use primitives directly
-	  ;; TODO if more than one arg, unroll ? would save calls
 	  ((and (pair? expr)
 		(= (length (cdr expr)) 2)
 		(assoc (car expr) '((+ . #%+) (- . #%-) (* . #%*))))
@@ -858,7 +861,9 @@
       (if (>= i 0)
           (gen-push-stack i ctx)
           (gen-push-stack
-	   (+ 1 ;; TODO the +1 was added because closures are not really pairs anymore, they only have a cdr
+	   ;; this +1 is needed because closures are in the environment, but
+	   ;; don't contain a value, and must therefore be skipped
+	   (+ 1
 	      (- -1 i)
 	      (length (stack-slots (env-local (context-env ctx))))) ctx)))))
 
@@ -1105,7 +1110,7 @@
 				(cst? val)) ;; immutable global, counted as cst
 			   (gen-push-constant (cst-val val) ctx)
 			   (gen-push-global (var-id var) ctx))))
-                 (gen-push-local-var (var-id var) ctx)))) ;; TODO globals as csts seem to work (but only for constant-values ones, like it probably should)
+                 (gen-push-local-var (var-id var) ctx))))
 
           ((or (def? node)
                (set? node))
@@ -1196,7 +1201,6 @@
                    (gen-push-constant '() ctx))
       (gen-closure label-entry
                    (build vars ctx))))
-;; TODO the last branch was changed because since pointers are now larger, there is not a pointer-sized free space in each closure, which could make it behave like a pair. now, everything is in the env, and closures only have a cdr
 
 (define comp-prc
   (lambda (node closure? ctx)
@@ -1267,17 +1271,21 @@
                      (use-result
                       (if (primitive-inliner primitive)
                           ((primitive-inliner primitive) ctx)
-                          (if (not (= nargs prim-nargs))
-                              (compiler-error "primitive called with wrong number of arguments" id)
-                              (gen-prim
-                               id
-                               prim-nargs
-                               (primitive-unspecified-result? primitive)
-                               ctx))))))
-
-
+                          (if
+			   (not (= nargs prim-nargs))
+			   (compiler-error
+			    "primitive called with wrong number of arguments"
+			    id)
+			   (gen-prim
+			    id
+			    prim-nargs
+			    (primitive-unspecified-result? primitive)
+			    ctx))))))
+		  
+		  
                   ((and (ref? op)
-                        (toplevel-prc-with-non-rest-correct-calls? (ref-var op)))
+                        (toplevel-prc-with-non-rest-correct-calls?
+			 (ref-var op)))
                    =>
                    (lambda (prc)
                      (cond ((eq? reason 'tail)
@@ -1423,7 +1431,8 @@
 		 ;; globals that obey the following conditions are considered
 		 ;; to be constants
 		 (not (and (not (mutable-var? var))
-			   (> (length (var-defs var)) 0) ;; TODO to catch errors for primitives
+			   ;; to weed out primitives, which have no definitions
+			   (> (length (var-defs var)) 0)
 			   (cst? (child1 (car (var-defs var)))))))
             (begin
               (var-needed?-set! var #t)
@@ -2622,7 +2631,7 @@
     (let ((e (encode-direct o)))
       (if e
           e
-          (let ((x (assoc o constants))) ;; TODO was assq
+          (let ((x (assoc o constants)))
             (if x
                 (vector-ref (cdr x) 0)
                 (compiler-error "unknown object" obj)))))))
@@ -2632,7 +2641,7 @@
     (let ((e (encode-direct o)))
       (if e
           (cont constants)
-          (let ((x (assoc o constants))) ;; TODO was assq
+          (let ((x (assoc o constants)))
             (if x
                 (begin
                   (if from-code?
@@ -2659,7 +2668,7 @@
                                          new-constants
                                          #f
                                          cont)))
-                        ((vector? o)
+                        ((vector? o) ; ordinary vectors are stored as lists
                          (let ((elems (vector->list o)))
                            (vector-set! descr 3 elems)
                            (add-constant elems
@@ -2892,13 +2901,14 @@
 	    (define (prim.putchar)         (prim 38))
 	    (define (prim.beep)            (prim 39))
 	    (define (prim.adc)             (prim 40))
-	    (define (prim.u8vector?)       (prim 41)) ;; TODO was dac
-	    (define (prim.sernum)          (prim 42)) ;; TODO necessary ?
+	    (define (prim.u8vector?)       (prim 41))
+	    (define (prim.sernum)          (prim 42))
 	    (define (prim.u8vector-length) (prim 43))
 	    (define (prim.u8vector-copy!)  (prim 44))
             (define (prim.shift)           (prim 45))
             (define (prim.pop)             (prim 46))
             (define (prim.return)          (prim 47))
+	    (define (prim.boolean?)        (prim 48))
 
             (define big-endian? #f)
 
@@ -2907,7 +2917,7 @@
             (asm-8 #xfb)
             (asm-8 #xd7)
             (asm-8 (length constants))
-            (asm-8 (length globals)) ;; TODO was 0
+            (asm-8 (length globals))
 
             (pp (list constants: constants globals: globals)) ;; TODO debug
 
@@ -2942,7 +2952,7 @@
 			  (asm-8 (bitwise-and obj-enc #xff))
 			  (asm-8 #x40)
 			  (asm-8 0)))
-                       ((vector? obj) ;; BREGG change this, we have no ordinary vectors
+                       ((vector? obj) ; ordinary vectors are stored as lists
 			;; TODO this is the OLD representation, NOT GOOD (but not used) BREGG
 			(let ((obj-enc (encode-constant (vector-ref descr 3)
 							constants)))
@@ -3069,6 +3079,7 @@
                              ((#%sernum)          (prim.sernum))
 			     ((#%u8vector-length) (prim.u8vector-length))
 			     ((#%u8vector-copy!)  (prim.u8vector-copy!))
+			     ((#%boolean?)        (prim.boolean?))
                              (else
                               (compiler-error "unknown primitive" (cadr instr)))))
 

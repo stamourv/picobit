@@ -184,6 +184,14 @@
 
 (define #%box-set! (lambda (a b) (#%set-car! a b)))
 
+(define symbol?
+  (lambda (x)
+    (#%symbol? x)))
+
+(define string?
+  (lambda (x)
+    (#%string? x)))
+
 (define string
   (lambda chars
     (#%list->string chars)))
@@ -196,7 +204,7 @@
   (lambda (chars)
     (#%list->string chars)))
 
-(define string-length ;; TODO are all these string operations efficient ? they all convert to lists. use true vectors when we have them ?
+(define string-length
   (lambda (str)
     (length (#%string->list str))))
 
@@ -222,6 +230,10 @@
     (if (>= n 1)
         (#%cons (#%car lst) (#%substring-aux2 (#%cdr lst) (#%- n 1)))
         '())))
+
+(define boolean?
+  (lambda (x)
+    (#%boolean? x)))
 
 (define map
   (lambda (f lst)
@@ -358,6 +370,8 @@
                   (#%write-list (#%cdr x))))
 	  ((#%symbol? x)
 	   (display "#<symbol>"))
+	  ((#%boolean? x)
+	   (display (if x "#t" "#f")))
 	  (else
 	   (display "#<object>")))))
 ;; TODO have vectors and co ?
@@ -447,14 +461,14 @@
   (lambda (x y)
     (let ((lx (#%u8vector-length x)))
       (if (#%= lx (#%u8vector-length y))
-	  (u8vector-equal?-loop x y lx)
+	  (u8vector-equal?-loop x y (- lx 1))
 	  #f))))
 (define u8vector-equal?-loop
   (lambda (x y l)
     (if (#%= l 0)
 	#t
 	(and (#%= (#%u8vector-ref x l) (#%u8vector-ref y l))
-	     (u8vector-equal?-loop x y (#%- l 1)))))) ;; TODO test this
+	     (u8vector-equal?-loop x y (#%- l 1))))))
 
 (define assoc
   (lambda (t l)
@@ -465,7 +479,6 @@
 	  (else
 	   (assoc t (#%cdr l))))))
 
-;; TODO ordinary vectors are never more that 6 elements long in the stack, so implementing them as lists is acceptable
 (define vector list)
 (define vector-ref list-ref)
 (define vector-set! list-set!)
@@ -475,12 +488,12 @@
 ;; TODO add bitwise-and ? bitwise-not ?
 
 (define current-time (lambda () (#%clock)))
-(define time->seconds (lambda (t) (#%quotient t 100))) ;; TODO no floats, is that a problem ?
+(define time->seconds (lambda (t) (#%quotient t 100)))
 
 (define u8vector
   (lambda x
     (list->u8vector x)))
-(define list->u8vector ;; TODO not used except for server
+(define list->u8vector
   (lambda (x)
     (let* ((n (length x))
 	   (v (#%make-u8vector n 0)))
@@ -494,24 +507,9 @@
 (define u8vector-length (lambda (x) (#%u8vector-length x)))
 (define u8vector-ref (lambda (x y) (#%u8vector-ref x y)))
 (define u8vector-set! (lambda (x y z) (#%u8vector-set! x y z)))
-;; (define make-u8vector
-;;   (lambda (n x)
-;;     (let ((v (#%make-u8vector n)))
-;;       (make-u8vector-loop v (#%- n 1) x)
-;;       v)))
 (define make-u8vector
   (lambda (n x)
     (#%make-u8vector n x)))
-;; (define make-u8vector-loop
-;;   (lambda (v n x)
-;; ;;;     (display "ok:")
-;; ;;;     (display n)
-;; ;;;     (display "\n")
-;;     (if (>= n 0) (#%u8vector-set! v n x)) ;; TODO safety, should not be needed
-;;     (if (#%> n 0)
-;; 	(begin ;; (display "loop\n")
-;; 	       (make-u8vector-loop v (#%- n 1) x)))))
-;; ;; TODO with named lets ?
 (define u8vector-copy!
   (lambda (source source-start target target-start n)
     (#%u8vector-copy! source source-start target target-start n)))
