@@ -2953,14 +2953,16 @@
 			  (asm-8 #x40)
 			  (asm-8 0)))
                        ((vector? obj) ; ordinary vectors are stored as lists
-			;; TODO this is the OLD representation, NOT GOOD (but not used) BREGG
-			(let ((obj-enc (encode-constant (vector-ref descr 3)
-							constants)))
-			  (asm-8 (+ #x80 (arithmetic-shift obj-enc -8)))
-			  (asm-8 (bitwise-and obj-enc #xff))
-			  (asm-8 #x60)
-			  (asm-8 0)))
-		       ((u8vector? obj) ;; NEW, lists for now (internal representation same as ordinary vectors, who don't actually exist)
+			(let* ((elems (vector-ref descr 3))
+			       (obj-car (encode-constant (car elems)
+							 constants))
+			       (obj-cdr (encode-constant (cdr elems)
+							 constants)))
+			  (asm-8 (+ #x80 (arithmetic-shift obj-car -8)))
+			  (asm-8 (bitwise-and obj-car #xff))
+			  (asm-8 (+ 0 (arithmetic-shift obj-cdr -8)))
+			  (asm-8 (bitwise-and obj-cdr #xff))))
+		       ((u8vector? obj)
 			(let ((obj-enc (encode-constant (vector-ref descr 3)
 							constants))
 			      (l (length (vector-ref descr 3))))
@@ -3065,7 +3067,6 @@
 			     ((#%make-u8vector)   (prim.make-u8vector))
 			     ((#%u8vector-ref)    (prim.u8vector-ref))
 			     ((#%u8vector-set!)   (prim.u8vector-set!))
-
                              ((#%print)           (prim.print))
                              ((#%clock)           (prim.clock))
                              ((#%motor)           (prim.motor))
@@ -3075,7 +3076,7 @@
                              ((#%putchar)         (prim.putchar))
 			     ((#%beep)            (prim.beep))
                              ((#%adc)             (prim.adc))
-                             ((#%u8vector?)       (prim.u8vector?)) ;; TODO was dac
+                             ((#%u8vector?)       (prim.u8vector?))
                              ((#%sernum)          (prim.sernum))
 			     ((#%u8vector-length) (prim.u8vector-length))
 			     ((#%u8vector-copy!)  (prim.u8vector-copy!))
@@ -3161,7 +3162,6 @@
 
 (define main
   (lambda (filename)
-;;;     (current-exception-handler (lambda (e) (pp e) (##repl))) ;; TODO wow, that's useful, ok, maybe not so much, since we lose the error message
     (compile filename)))
 
 ;------------------------------------------------------------------------------

@@ -137,7 +137,7 @@ typedef uint16 obj;
 #define VEC_BYTES ((MAX_VEC_ENCODING - MIN_VEC_ENCODING + 1)*4)
 // TODO this is new. if the pic has less than 8k of memory, start this lower
 // TODO max was 8192 for ram, would have been 1 too much (watch out, master branch still has that), now corrected
-// TODO the pic actually has 2k, so change these FOOBAR
+// TODO the pic actually has 2k, so change these
 // TODO we'd only actually need 1024 or so for ram and vectors, since we can't address more. this gives us a lot of rom space
 
 #define MAX_RAM_ENCODING 4095
@@ -252,8 +252,7 @@ uint8 rom_get (rom_addr a)
 
   string       1GG***** *chars** 01000000 00000000
 
-  vector       1GG***** *elems** 01100000 00000000 TODO old
-  vector       1GGxxxxx xxxxxxxx 011yyyyy yyyyyyyy
+  u8vector     1GGxxxxx xxxxxxxx 011yyyyy yyyyyyyy
   x is length of the vector, in bytes (stored raw, not encoded as an object)
   y is pointer to the elements themselves (stored in vector space)
   TODO pointer could be shorter since it always points in vector space, same for length, will never be this long
@@ -835,7 +834,7 @@ obj alloc_vec_cell (uint16 n) // TODO add a init version ?
 #endif
 
   while ((ram_get_cdr (o) * 4) < n) // free space too small
-    { // TODO BREGG IMPORTANT : si on atteint le fond de la free list, 0, le get_cdr foire, et on meurt avant de pouvoir faire du gc
+    { // TODO BREGG IMPORTANT : si on atteint le fond de la free list, 0, le get_cdr foire, et on meurt avant de pouvoir faire du gc (voir si ca existe encore, ce bug)
       if (o == 0) // no free space, or none big enough
 	{
 	  if (gc_done) // we gc'd, but no space is big enough for the vector
@@ -1011,7 +1010,7 @@ void show (obj o)
 	  else if ((in_ram && RAM_STRING(o)) || (!in_ram && ROM_STRING(o)))
 	    printf ("#<string>");
 	  else if ((in_ram && RAM_VECTOR(o)) || (!in_ram && ROM_VECTOR(o)))
-	    printf ("#<vector %d>", o); // TODO do better DEBUG BREGG
+	    printf ("#<vector %d>", o);
 	  else
 	    {
 	      printf ("(");
@@ -2116,9 +2115,8 @@ int read_hex_file (char *filename)
 #define LABEL_INSTR        0x80
 #define PUSH_CONSTANT_LONG 0x90
 
-// TODO these are free
-#define GOTO               0xa0
-#define GOTO_IF_FALSE      0xb0
+#define FREE1              0xa0
+#define FREE2              0xb0
 
 #define PRIM1              0xc0
 #define PRIM2              0xd0
@@ -2222,7 +2220,7 @@ void pop_procedure (void)
       if (!RAM_CLOSURE(arg1))
 	TYPE_ERROR("pop_procedure", "procedure");
       
-      entry = ram_get_entry (arg1) + CODE_START; // FOO all addresses in the bytecode should be from 0, not from CODE_START, should be fixed everywhere, but might not be
+      entry = ram_get_entry (arg1) + CODE_START;
     }
   else if (IN_ROM(arg1))
     {      
@@ -2660,12 +2658,12 @@ void interpreter (void)
   DISPATCH();
 
   /***************************************************************************/
-  CASE(GOTO); // BREGG move
+  CASE(FREE1); // FREE
 
   DISPATCH();
 
   /***************************************************************************/
-  CASE(GOTO_IF_FALSE); // BREGG move
+  CASE(FREE2); // FREE
 
   DISPATCH();
 
@@ -2960,7 +2958,7 @@ int main (int argc, char *argv[])
     }
 
 #ifdef DEBUG
-  printf ("Start address = 0x%04x\n", rom_start_addr); // TODO says 0, but should be CODE_START ?
+  printf ("Start address = 0x%04x\n", rom_start_addr + CODE_START);
 #endif
 
   if (argc != 2)
@@ -2978,7 +2976,7 @@ int main (int argc, char *argv[])
       else
         {
 #if 0
-          for (i=0; i<8192; i++) // TODO remove this ? and not the night address space, now 16 bits
+          for (i=0; i<8192; i++) // TODO remove this ? and not the right address space, now 16 bits
             if (rom_get (i) != 0xff)
               printf ("rom_mem[0x%04x] = 0x%02x\n", i, rom_get (i));
 #endif
