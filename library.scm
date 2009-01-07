@@ -14,7 +14,7 @@
     `(let ((,x ,a))
        (cond . ,(map (lambda (c)
                        (if (eq? (car c) 'else) c
-                           `((memv ,x ',(car c)) . ,(cdr c))))
+                           `((memq ,x ',(car c)) . ,(cdr c))))
                      cs)))))
 
 (define number?
@@ -479,6 +479,15 @@
 	  (else
 	   (assoc t (#%cdr l))))))
 
+(define memq
+  (lambda (t l)
+    (cond ((#%null? l)
+	   #f)
+	  ((#%eq? (#%car l) t)
+	   l)
+	  (else
+	   (memq t (#%cdr l))))))
+
 (define vector list)
 (define vector-ref list-ref)
 (define vector-set! list-set!)
@@ -513,3 +522,12 @@
 (define u8vector-copy!
   (lambda (source source-start target target-start n)
     (#%u8vector-copy! source source-start target target-start n)))
+
+(define network-init (lambda () (#%network-init)))
+(define network-cleanup (lambda () (#%network-cleanup)))
+(define receive-packet-to-u8vector
+  (lambda (x)
+    (#%receive-packet-to-u8vector x)))
+(define send-packet-from-u8vector
+  (lambda (x y)
+    (#%send-packet-from-u8vector x y)))

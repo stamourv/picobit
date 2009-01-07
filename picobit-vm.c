@@ -60,6 +60,21 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pcap.h>
+
+// for libpcap
+
+#define MAX_PACKET_SIZE BUFSIZ
+#define PROMISC 1
+#define TO_MSEC 1
+
+char errbuf[PCAP_ERRBUF_SIZE];
+pcap_t *handle;
+
+#define INTERFACE "eth0"
+
+char buf [MAX_PACKET_SIZE]; // buffer for writing
+
 
 #ifdef _WIN32
 #include <sys/types.h>
@@ -91,7 +106,7 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #ifdef PICOBOARD2
 
-#define ERROR(msg) halt_with_error()
+#define ERROR(prim, msg) halt_with_error()
 #define TYPE_ERROR(prim, type) halt_with_error()
 
 #endif
@@ -99,12 +114,12 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #ifdef WORKSTATION
 
-#define ERROR(msg) error (msg)
+#define ERROR(prim, msg) error (prim, msg)
 #define TYPE_ERROR(prim, type) type_error (prim, type)
 
-void error (char *msg)
+void error (char *prim, char *msg)
 {
-  printf ("ERROR: %s\n", msg);
+  printf ("ERROR: %s: %s\n", prim, msg);
   exit (1);
 }
 
@@ -136,7 +151,6 @@ typedef uint16 obj;
 #define MIN_VEC_ENCODING 4096
 #define VEC_BYTES ((MAX_VEC_ENCODING - MIN_VEC_ENCODING + 1)*4)
 // TODO this is new. if the pic has less than 8k of memory, start this lower
-// TODO max was 8192 for ram, would have been 1 too much (watch out, master branch still has that), now corrected
 // TODO the pic actually has 2k, so change these
 // TODO we'd only actually need 1024 or so for ram and vectors, since we can't address more. this gives us a lot of rom space
 
@@ -146,7 +160,6 @@ typedef uint16 obj;
 // TODO watch out if we address more than what the PIC actually has
 
 #if WORD_BITS == 8
-// TODO subtracts min_ram since vectors are actually in ram
 #define OBJ_TO_VEC_ADDR(o,f) (((ram_addr)((uint16)(o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_RAM_ADDR(o,f) (((ram_addr)((uint16)(o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_ROM_ADDR(o,f) (((rom_addr)((uint16)(o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
@@ -156,7 +169,6 @@ typedef uint16 obj;
 
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
-// TODO change these since we change proportion of ram and rom ?
 #endif
 
 
@@ -173,9 +185,6 @@ uint8 ram_mem[RAM_BYTES + VEC_BYTES];
 /*---------------------------------------------------------------------------*/
 
 #ifdef PICOBOARD2
-
-/* #if WORD_BITS == 8 */
-/* #endif */ // TODO useless
 
 uint8 rom_get (rom_addr a)
 {
@@ -240,7 +249,6 @@ uint8 rom_get (rom_addr a)
   G's represent mark bits used by the gc
 
   bignum n     00G00000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
-  TODO we could have 29-bit integers
   
   pair         1GGaaaaa aaaaaaaa 000ddddd dddddddd
   a is car
@@ -255,11 +263,6 @@ uint8 rom_get (rom_addr a)
   u8vector     1GGxxxxx xxxxxxxx 011yyyyy yyyyyyyy
   x is length of the vector, in bytes (stored raw, not encoded as an object)
   y is pointer to the elements themselves (stored in vector space)
-  TODO pointer could be shorter since it always points in vector space, same for length, will never be this long
-  TODO show how vectors are represented in vector space
-  TODO what kind of gc to have for vectors ? if we have a copying gc (which we argues against in the paper), we might need a header in vector space to point to the ram header, so it can update the pointer when the vector is copied
-  TODO have a header with length here that points to vector space, or have the header in vector space, for now, header is in ordinary ram
-  TODO how to deal with gc ? mayeb when we sweep a vector header, go sweep its contents in vector space ?
 
   closure      01Gaaaaa aaaaaaaa aaaxxxxx xxxxxxxx
   0x5ff<a<0x4000 is entry
@@ -304,7 +307,6 @@ uint8 rom_get (rom_addr a)
 #define IN_RAM(o) (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING))
 #define IN_ROM(o) (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
 #endif
-// TODO performance ?
 
 // bignum first byte : 00G00000
 #define BIGNUM_FIELD0 0
@@ -335,7 +337,6 @@ uint8 rom_get (rom_addr a)
 #define VECTOR_FIELD2 0x60
 #define RAM_VECTOR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
 #define ROM_VECTOR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
-// TODO this is only for headers
 
 // continuation third byte : 100xxxxx
 #define CONTINUATION_FIELD2 0x80
@@ -382,7 +383,6 @@ uint8 rom_get (rom_addr a)
 #define VEC_SET_BYTE1_MACRO(o,val) ram_set (OBJ_TO_RAM_ADDR(o,1), val)
 #define VEC_SET_BYTE2_MACRO(o,val) ram_set (OBJ_TO_RAM_ADDR(o,2), val)
 #define VEC_SET_BYTE3_MACRO(o,val) ram_set (OBJ_TO_RAM_ADDR(o,3), val)
-// TODO put these in the ifdef ? and is the ifdef necessary ? are the vec macros necessary ? use the word field instead of byte, for consistency ?
 #endif
 
 uint8 ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
@@ -395,10 +395,30 @@ uint8 ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
 word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); }
 word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
 word ram_get_field3 (obj o) { return RAM_GET_FIELD3_MACRO(o); }
+word ram_get_fieldn (obj o, uint8 n)
+{
+  switch (n)
+    {
+    case 0: return ram_get_field0 (o);
+    case 1: return ram_get_field1 (o);
+    case 2: return ram_get_field2 (o);
+    case 3: return ram_get_field3 (o);
+    }
+}
 void ram_set_field0 (obj o, uint8 val) { RAM_SET_FIELD0_MACRO(o,val); }
 void ram_set_field1 (obj o, word val) { RAM_SET_FIELD1_MACRO(o,val); }
 void ram_set_field2 (obj o, word val) { RAM_SET_FIELD2_MACRO(o,val); }
 void ram_set_field3 (obj o, word val) { RAM_SET_FIELD3_MACRO(o,val); }
+void ram_set_fieldn (obj o, uint8 n, word val)
+{
+  switch (n)
+    {
+    case 0: ram_set_field0 (o, val); break;
+    case 1: ram_set_field1 (o, val); break;
+    case 2: ram_set_field2 (o, val); break;
+    case 3: ram_set_field3 (o, val); break;
+    }  
+}
 uint8 rom_get_field0 (obj o) { return ROM_GET_FIELD0_MACRO(o); }
 word rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
 word rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
@@ -411,7 +431,6 @@ word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
 /* word vec_set_byte1 (obj o, word val) { VEC_SET_BYTE1_MACRO(o,val); } */
 /* word vec_set_byte2 (obj o, word val) { VEC_SET_BYTE2_MACRO(o,val); } */
 /* word vec_set_byte3 (obj o, word val) { VEC_SET_BYTE3_MACRO(o,val); } */
-// TODO use the word field or byte ? actually the ram functions are used, since this is in ram anyways
 
 obj ram_get_car (obj o)
 { return ((ram_get_field0 (o) & 0x1f) << 8) | ram_get_field1 (o); }
@@ -500,7 +519,6 @@ void show_type (obj o) // for debugging purposes
 
 // TODO explain what each tag means, with 1-2 mark bits
 #define GC_TAG_0_LEFT   (1<<5)
-// TODO was 3<<5, changed to play nice with procedures and bignums, but should actually set only this bit, not clear the other
 #define GC_TAG_1_LEFT   (2<<5)
 #define GC_TAG_UNMARKED (0<<5)
 
@@ -522,8 +540,8 @@ obj free_list_vec; /* list of unused cells in vector space */
 obj arg1; /* root set */
 obj arg2;
 obj arg3;
-obj arg4; // TODO only used once as a true arg, is swap space the rest of the time
-obj arg5; // OOPS we need that for u8vector-copy!
+obj arg4;
+obj arg5;
 obj cont;
 obj env;
 
@@ -556,12 +574,11 @@ void init_ram_heap (void)
     }
 
   free_list_vec = MIN_VEC_ENCODING;
-  ram_set_car (free_list_vec, 0); // TODO is ram_set_car appropriate ? now we have vector space objects that can either be a list or 4 bytes
+  ram_set_car (free_list_vec, 0);
   // each node of the free list must know the free length that follows it
   // this free length is stored in words, not in bytes
   // if we did count in bytes, the number might need more than 13 bits
   ram_set_cdr (free_list_vec, VEC_BYTES / 4);
-  // TODO so, at the start, we have only 1 node that says the whole space is free
   
   for (i=0; i<glovars; i++)
     set_global (i, OBJ_FALSE);
@@ -591,13 +608,11 @@ void mark (obj temp)
       stack = visit;
       visit = temp;
       
-      //      IF_GC_TRACE(printf ("push   stack=%d (tag=%d)  visit=%d (tag=%d)\n", stack, ram_get_gc_tags (stack)>>5, visit, ram_get_gc_tags (visit)>>5)); // TODO error here, tried to get the tag of nil
       IF_GC_TRACE(printf ("push   stack=%d  visit=%d (tag=%d)\n", stack, visit, ram_get_gc_tags (visit)>>5));
       
       if ((HAS_1_OBJECT_FIELD (visit) && ram_get_gc_tag0 (visit))
 	  || (HAS_2_OBJECT_FIELDS (visit)
 	      && (ram_get_gc_tags (visit) != GC_TAG_UNMARKED)))
-	// TODO ugly condition
 	IF_GC_TRACE(printf ("case 1\n"));
       else
         {
@@ -655,8 +670,6 @@ void mark (obj temp)
 
     pop:
 
-      /* IF_GC_TRACE(printf ("pop    stack=%d (tag=%d)  visit=%d (tag=%d)\n", stack, ram_get_gc_tags (stack)>>6, visit, ram_get_gc_tags (visit)>>6)); */
-      // TODO, like for push, getting the gc tags of nil is not great
       IF_GC_TRACE(printf ("pop    stack=%d  visit=%d (tag=%d)\n", stack, visit, ram_get_gc_tags (visit)>>6));
       
       if (stack != NIL)
@@ -733,7 +746,7 @@ void sweep (void)
 	      ram_set_car (o, free_list_vec);
 	      ram_set_cdr (o, (i + 3) / 4); // free length, in words
 	      free_list_vec = o;
-	      // TODO fuse free spaces if needed ? would be a good idea FOOBAR or maybe just fuse when we call the gc ? actually, compacting might be a better idea, but would need a second header in vector space that would point to the header in ram
+	      // TODO merge free spaces
 	    }
           ram_set_car (visit, free_list);
           free_list = visit;
@@ -778,7 +791,7 @@ void gc (void)
   IF_GC_TRACE(printf("cont\n"));
   mark (cont);
   IF_GC_TRACE(printf("env\n"));
-  mark (env); // TODO do we mark the free list or do we rebuild it every time ? what about vectors ?
+  mark (env);
 
   for (i=0; i<glovars; i++)
     mark (get_global (i));
@@ -800,7 +813,7 @@ obj alloc_ram_cell (void)
       gc ();
       if (free_list == 0)
 #endif
-        ERROR("memory is full");
+        ERROR("alloc_ram_cell", "memory is full");
     }
 
   o = free_list;
@@ -822,7 +835,7 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3)
   return o;
 }
 
-obj alloc_vec_cell (uint16 n) // TODO add a init version ?
+obj alloc_vec_cell (uint16 n)
 {
   obj o = free_list_vec;
   obj prec = 0;
@@ -834,11 +847,11 @@ obj alloc_vec_cell (uint16 n) // TODO add a init version ?
 #endif
 
   while ((ram_get_cdr (o) * 4) < n) // free space too small
-    { // TODO BREGG IMPORTANT : si on atteint le fond de la free list, 0, le get_cdr foire, et on meurt avant de pouvoir faire du gc (voir si ca existe encore, ce bug)
+    {
       if (o == 0) // no free space, or none big enough
 	{
 	  if (gc_done) // we gc'd, but no space is big enough for the vector
-	    ERROR("no room for vector");
+	    ERROR("alloc_vec_cell", "no room for vector");
 #ifndef DEBUG_GC
 	  gc ();
 	  gc_done = 1;
@@ -846,17 +859,16 @@ obj alloc_vec_cell (uint16 n) // TODO add a init version ?
 	  o = free_list_vec;
 	  prec = 0;
 	  continue;
-	} // TODO fuse adjacent free spaces, and maybe compact ? FOOBAR
+	} // TODO merge adjacent free spaces, maybe compact ?
       prec = o;
       o = ram_get_car (o);
     }
 
   // case 1 : the new vector fills every free word advertized, we remove the
   //  node from the free list
-  // TODO mettre le cdr de o dans une var temporaire ?
-  if (((ram_get_cdr(o) * 4) - n) < 4) // TODO is there a better way ?
+  if (((ram_get_cdr(o) * 4) - n) < 4)
     {
-      if (prec) // TODO does this mean that the free list nodes are in the same order as they are in memory ?
+      if (prec)
 	ram_set_car (prec, ram_get_car (o));
       else
 	free_list_vec = ram_get_car (o);
@@ -871,7 +883,7 @@ obj alloc_vec_cell (uint16 n) // TODO add a init version ?
       else
 	free_list_vec = new_free;
       ram_set_car (new_free, ram_get_car (o));
-      ram_set_cdr (new_free, ram_get_cdr (o) - (n + 3)/4); // TODO documenter structure de cette free list quelque part      
+      ram_set_cdr (new_free, ram_get_cdr (o) - (n + 3)/4);
     }
   
   return o;
@@ -944,7 +956,7 @@ void show (obj o)
     printf ("()");
   else if (o <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM)))
     printf ("%d", DECODE_FIXNUM(o));
-  else // TODO past here, everything is either in ram or in rom, until we add a 3rd space for vectors, that is
+  else
     {
       uint8 in_ram;
 
@@ -960,7 +972,7 @@ void show (obj o)
 	  obj car;
 	  obj cdr;
 
-	  if ((in_ram && RAM_PAIR(o)) || (!in_ram && ROM_PAIR(o))) // TODO not exactly efficient, fix it
+	  if ((in_ram && RAM_PAIR(o)) || (!in_ram && ROM_PAIR(o)))
 	    {	      
 	      if (in_ram)
 		{
@@ -1016,7 +1028,9 @@ void show (obj o)
 	      printf ("(");
 	      car = ram_get_car (o);
 	      cdr = ram_get_cdr (o);
-	      goto loop; // TODO ugly hack, takes advantage of the fact that pairs and continuations have the same layout
+	      // ugly hack, takes advantage of the fact that pairs and
+	      // continuations have the same layout
+	      goto loop;
 	    }
         }
       else // closure
@@ -1024,7 +1038,7 @@ void show (obj o)
           obj env;
           rom_addr pc;
 
-          if (IN_RAM(o)) // TODO can closures be in rom ? I don't think so
+          if (IN_RAM(o))
             env = ram_get_cdr (o);
           else
             env = rom_get_cdr (o);
@@ -1116,7 +1130,7 @@ void prim_div (void)
 {
   decode_2_int_args ();
   if (a2 == 0)
-    ERROR("divide by 0");
+    ERROR("quotient", "divide by 0");
   arg1 = encode_int (a1 / a2);
   arg2 = OBJ_FALSE;
 }
@@ -1125,7 +1139,7 @@ void prim_rem (void)
 {
   decode_2_int_args ();
   if (a2 == 0)
-    ERROR("divide by 0");
+    ERROR("remainder", "divide by 0");
   arg1 = encode_int (a1 % a2);
   arg2 = OBJ_FALSE;
 }
@@ -1159,7 +1173,7 @@ void prim_gt (void)
 
 void prim_ior (void)
 {
-  a1 = decode_int (arg1); // TODO use decode_2_int_args ? can't see why not
+  a1 = decode_int (arg1);
   a2 = decode_int (arg2);
   arg1 = encode_int (a1 | a2);
   arg2 = OBJ_FALSE;
@@ -1190,9 +1204,9 @@ void prim_pairp (void)
 
 obj cons (obj car, obj cdr)
 {
-  return alloc_ram_cell_init (COMPOSITE_FIELD0 | (car >> 8), // TODO was ((car & 0x1f00) >> 8), probably redundant
+  return alloc_ram_cell_init (COMPOSITE_FIELD0 | (car >> 8),
 			      car & 0xff,
-			      PAIR_FIELD2 | (cdr >> 8), // TODO was ((cdr & 0x1f00) >> 8), probably redundant
+			      PAIR_FIELD2 | (cdr >> 8),
 			      cdr & 0xff);
 }
 
@@ -1300,7 +1314,7 @@ void prim_make_u8vector (void)
   decode_2_int_args (); // arg1 is length, arg2 is contents
 
   if (a2 > 255)
-    ERROR("byte vectors can only contain bytes");
+    ERROR("make-u8vector", "byte vectors can only contain bytes");
     
   arg3 = alloc_vec_cell (a1);
   arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | (a1 >> 8),
@@ -1320,7 +1334,7 @@ void prim_make_u8vector (void)
 }
 
 void prim_u8vector_ref (void)
-{ // TODO how do we deal with rom vectors ? as lists ? they're never all that long
+{
   a2 = decode_int (arg2);
 
   if (IN_RAM(arg1))
@@ -1328,7 +1342,7 @@ void prim_u8vector_ref (void)
       if (!RAM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
       if ((ram_get_car (arg1) <= a2) || (a2 < 0))
-	ERROR("vector index invalid");
+	ERROR("u8vector-ref", "vector index invalid");
       arg1 = ram_get_cdr (arg1);
     }
   else if (IN_ROM(arg1))
@@ -1336,7 +1350,7 @@ void prim_u8vector_ref (void)
       if (!ROM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-ref", "vector");
       if ((rom_get_car (arg1) <= a2) || (a2 < 0))
-	ERROR("vector index invalid");
+	ERROR("u8vector-ref", "vector index invalid");
       arg1 = rom_get_cdr (arg1);
     }
   else
@@ -1346,23 +1360,11 @@ void prim_u8vector_ref (void)
     {
       arg1 += (a2 / 4);
       a2 %= 4;
-      
-      switch (a2)
-	{
-	case 0:
-	  arg1 = ram_get_field0 (arg1); break;
-	case 1:
-	  arg1 = ram_get_field1 (arg1); break;
-	case 2:
-	  arg1 = ram_get_field2 (arg1); break;
-	case 3:
-	  arg1 = ram_get_field3 (arg1); break;
-	}
-      
-      arg1 = encode_int (arg1);
+
+      arg1 = encode_int (ram_get_fieldn (arg1, a2));
     }
   else // rom vector, stored as a list
-    { // TODO since these are stored as lists, nothing prevents us from having ordinary vectors, and not just byte vectors. in rom, both are lists so they are the same. in ram, byte vectors are in vector space, while ordinary vectors are still lists (the functions are already in the library)
+    {
       while (a2--)
 	arg1 = rom_get_cdr (arg1);
 
@@ -1381,14 +1383,14 @@ void prim_u8vector_set (void)
   a3 = decode_int (arg3);
 
   if (a3 > 255)
-    ERROR("byte vectors can only contain bytes");
+    ERROR("u8vector-set!", "byte vectors can only contain bytes");
   
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
 	TYPE_ERROR("u8vector-set!", "vector");
       if ((ram_get_car (arg1) <= a2) || (a2 < 0))
-	ERROR("vector index invalid");
+	ERROR("u8vector-set!", "vector index invalid");
       arg1 = ram_get_cdr (arg1);
     }
   else
@@ -1397,17 +1399,7 @@ void prim_u8vector_set (void)
   arg1 += (a2 / 4);
   a2 %= 4;
 
-  switch (a2)
-    {
-    case 0:
-      ram_set_field0 (arg1, a3); break;
-    case 1:
-      ram_set_field1 (arg1, a3); break;
-    case 2:
-      ram_set_field2 (arg1, a3); break;
-    case 3:
-      ram_set_field3 (arg1, a3); break;
-    }
+  ram_set_fieldn (arg1, a2, a3);
 
   arg1 = OBJ_FALSE;
   arg2 = OBJ_FALSE;
@@ -1448,7 +1440,7 @@ void prim_u8vector_copy (void)
 	TYPE_ERROR("u8vector-copy!", "vector");
       if ((ram_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
 	  (ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
-	ERROR("vector index invalid");
+	ERROR("u8vector-copy!", "vector index invalid");
 
       // position to the start
       arg1 = ram_get_cdr (arg1);
@@ -1461,25 +1453,11 @@ void prim_u8vector_copy (void)
       // copy
       while (a3--)
 	{
-	  switch (a1)
-	    {
-	    case 0: arg2 = ram_get_field0 (arg1); break;
-	    case 1: arg2 = ram_get_field1 (arg1); break;
-	    case 2: arg2 = ram_get_field2 (arg1); break;
-	    case 3: arg2 = ram_get_field3 (arg1); break;
-	    }
-
-	  switch (a2)
-	    {
-	    case 0: ram_set_field0 (arg3, arg2); break;
-	    case 1: ram_set_field1 (arg3, arg2); break;
-	    case 2: ram_set_field2 (arg3, arg2); break;
-	    case 3: ram_set_field3 (arg3, arg2); break;
-	    }
+	  ram_set_fieldn (arg3, a2, ram_get_fieldn (arg1, a1));
 	  
 	  a1++;
 	  arg1 += (a1 / 4);
-	  a1 %= 4; // TODO any way to merge with the previous similar block ?
+	  a1 %= 4; // TODO merge with the previous similar block ?
 	  a2++;
 	  arg3 += (a2 / 4);
 	  a2 %= 4;
@@ -1492,7 +1470,7 @@ void prim_u8vector_copy (void)
 	TYPE_ERROR("u8vector-copy!", "vector");
       if ((rom_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
 	  (ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
-	ERROR("vector index invalid");
+	ERROR("u8vector-copy!", "vector index invalid");
 
       arg1 = rom_get_cdr (arg1);
       while (a1--)
@@ -1504,15 +1482,7 @@ void prim_u8vector_copy (void)
 
       while (a3--)
 	{
-	  arg2 = decode_int (rom_get_car (arg1));
-	  
-	  switch (a2)
-	    {
-	    case 0: ram_set_field0 (arg3, arg2); break;
-	    case 1: ram_set_field1 (arg3, arg2); break;
-	    case 2: ram_set_field2 (arg3, arg2); break;
-	    case 3: ram_set_field3 (arg3, arg2); break;
-	    }
+	  ram_set_fieldn (arg3, a2, decode_int (rom_get_car (arg1)));
 
 	  arg1 = rom_get_cdr (arg1);
 	  a2++;
@@ -1675,11 +1645,11 @@ void prim_motor (void)
   decode_2_int_args ();
 
   if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100)
-    ERROR("argument out of range to procedure \"motor\"");
+    ERROR("motor", "argument out of range");
 
 #ifdef PICOBOARD2
 
-  fw_motor ();
+  MOTOR_set( a1, a2 );
 
 #endif
 
@@ -1701,7 +1671,7 @@ void prim_led (void)
   a3 = decode_int (arg3);
 
   if (a1 < 1 || a1 > 3 || a2 < 0 || a3 < 0)
-    ERROR("argument out of range to procedure \"led\"");
+    ERROR("led", "argument out of range");
 
 #ifdef PICOBOARD2
 
@@ -1727,7 +1697,7 @@ void prim_led2_color (void)
   a1 = decode_int (arg1);
 
   if (a1 < 0 || a1 > 1)
-    ERROR("argument out of range to procedure \"led2-color\"");
+    ERROR("led2-colors", "argument out of range");
 
 #ifdef PICOBOARD2
 
@@ -1752,7 +1722,7 @@ void prim_getchar_wait (void)
   a1 = read_clock () + a1;
 
   if (a1 < 0 || a2 < 1 || a2 > 3)
-    ERROR("argument out of range to procedure \"getchar-wait\"");
+    ERROR("getchar-wait", "argument out of range");
 
 #ifdef PICOBOARD2
 
@@ -1798,7 +1768,7 @@ void prim_putchar (void)
   decode_2_int_args ();
 
   if (a1 < 0 || a1 > 255 || a2 < 1 || a2 > 3)
-    ERROR("argument out of range to procedure \"putchar\"");
+    ERROR("putchar", "argument out of range");
 
 #ifdef PICOBOARD2
 
@@ -1823,7 +1793,7 @@ void prim_beep (void)
   decode_2_int_args ();
 
   if (a1 < 1 || a1 > 255 || a2 < 0)
-    ERROR("argument out of range to procedure \"beep\"");
+    ERROR("beep", "argument out of range");
 
 #ifdef PICOBOARD2
 
@@ -1850,7 +1820,7 @@ void prim_adc (void)
   a1 = decode_int (arg1);
 
   if (a1 < 1 || a1 > 3)
-    ERROR("argument out of range to procedure \"adc\"");
+    ERROR("adc", "argument out of range");
 
 #ifdef PICOBOARD2
 
@@ -1872,12 +1842,12 @@ void prim_adc (void)
 }
 
 
-void prim_dac (void)
+void prim_dac (void) // TODO not used
 {
   a1 = decode_int (arg1);
 
   if (a1 < 0 || a1 > 255)
-    ERROR("argument out of range to procedure \"dac\"");
+    ERROR("dac", "argument out of range");
 
 #ifdef PICOBOARD2
 
@@ -1915,6 +1885,91 @@ void prim_sernum (void)
   arg1 = encode_int (x);
 }
 
+
+/*---------------------------------------------------------------------------*/
+// networking, currently works only on workstations
+
+#ifdef WORKSTATION
+
+void prim_network_init (void)
+{ // TODO maybe put in the initialization of the vm
+  handle= pcap_open_live(INTERFACE, MAX_PACKET_SIZE, PROMISC, TO_MSEC, errbuf);
+  if (handle == NULL)
+    ERROR("network-init", "interface not responding");
+}
+
+void prim_network_cleanup (void)
+{ // TODO maybe put in halt ?
+  pcap_close(handle);
+}
+
+void prim_receive_packet_to_u8vector (void)
+{
+  // arg1 is the vector in which to put the received packet
+  if (!RAM_VECTOR(arg1))
+    TYPE_ERROR("u8vector-copy!", "vector");
+  
+  // receive the packet in the buffer
+  struct pcap_pkthdr header;
+  const u_char *packet;
+
+  packet = pcap_next(handle, &header);
+
+  if (packet == NULL)
+    header.len = 0;
+
+  if (ram_get_car (arg1) < header.len)
+    ERROR("receive-packet-to-u8vector", "packet longer than vector");
+    
+  if (header.len > 0) // we have received a packet, write it in the vector
+    {
+      arg2 = rom_get_cdr (arg1);
+      arg1 = header.len; // we return the length of the received packet
+      a1 = 0;
+
+      while (a1 < arg1)
+	{
+	  ram_set_fieldn (arg2, a1 % 4, (char)packet[a1]);
+	  a1++;
+	  arg2 += (a1 % 4) ? 0 : 1;
+	}
+
+      arg2 = OBJ_FALSE;
+    }
+  else // no packet to be read
+    arg1 = OBJ_FALSE;
+}
+
+void prim_send_packet_from_u8vector (void)
+{
+  // arg1 is the vector which contains the packet to be sent
+  // arg2 is the length of the packet
+  // TODO only works with ram vectors for now
+  if (!RAM_VECTOR(arg1))
+    TYPE_ERROR("u8vector-copy!", "vector");
+  a2 = decode_int (arg2);
+  a1 = 0; 
+  
+  // TODO test if the length of the packet is longer than the length of the vector
+  if (ram_get_car (arg1) < a2)
+    ERROR("send-packet-from-u8vector", "packet cannot be longer than vector");
+
+  arg1 = ram_get_cdr (arg1);
+  
+  // copy the packet to the output buffer
+  while (a1 < a2)
+    buf[a1] = ram_get_fieldn (arg1, a1 % 4);
+  // TODO maybe I could just give pcap the pointer to the memory BREGG
+
+  if (pcap_sendpacket(handle, buf, a2) < 0) // TODO an error has occurred, can we reuse the interface ?
+    arg1 = OBJ_FALSE;
+  else
+    arg1 = OBJ_TRUE;
+
+  arg2 = OBJ_FALSE;
+}
+
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -2168,7 +2223,7 @@ char *prim_name[64] =
     "prim #%putchar",
     "prim #%beep",
     "prim #%adc",
-    "prim #%u8vector?", // TODO was dac, but it's not plugged to anything
+    "prim #%u8vector?",
     "prim #%sernum",
     "prim #%u8vector-length",
     "prim #%u8vector-copy!",
@@ -2176,10 +2231,10 @@ char *prim_name[64] =
     "pop",
     "return",
     "prim #%boolean?",
-    "prim 49",
-    "prim 50",
-    "prim 51",
-    "prim 52",
+    "prim #%network-init",
+    "prim #%network-cleanup",
+    "prim #%receive-packet-to-u8vector",
+    "prim #%send-packet-from-u8vector",
     "prim 53",
     "prim 54",
     "prim 55",
@@ -2242,14 +2297,14 @@ void handle_arity_and_rest_param (void)
   if ((np & 0x80) == 0)
     {
       if (na != np)
-        ERROR("wrong number of arguments");
+        ERROR("handle_arity_and_rest_param", "wrong number of arguments");
     }
   else
     {
       np = ~np;
 
       if (na < np)
-        ERROR("wrong number of arguments");
+        ERROR("handle_arity_and_rest_param", "wrong number of arguments");
 
       arg3 = OBJ_NULL;
 
@@ -2350,7 +2405,7 @@ void interpreter (void)
   CASE(PUSH_STACK2);
 
   IF_TRACE(printf("  (push-stack %d)\n", bytecode_lo4+16));
-  // TODO does this ever happens ?
+
   bytecode_lo4 += 16;
 
   arg1 = env;
@@ -2429,7 +2484,7 @@ void interpreter (void)
 
   switch (bytecode_lo4)
     {
-    case 0: // call-toplevel TODO put these in separate functions ?
+    case 0: // call-toplevel
       FETCH_NEXT_BYTECODE();  
       arg2 = bytecode;
       
@@ -2463,7 +2518,7 @@ void interpreter (void)
       IF_TRACE(printf("  (jump-toplevel 0x%04x)\n",
 		      ((arg2 << 8) | bytecode) + CODE_START));
       
-      entry = (arg2 << 8) + bytecode + CODE_START; // TODO this is a common pattern
+      entry = (arg2 << 8) + bytecode + CODE_START;
       arg1 = OBJ_NULL;
       
       na = rom_get (entry++);
@@ -2530,7 +2585,7 @@ void interpreter (void)
       break;
 
     case 5: // call-toplevel-short
-      FETCH_NEXT_BYTECODE(); // TODO the sort version have a lot in common with the long ones, abstract ?
+      FETCH_NEXT_BYTECODE(); // TODO the short version have a lot in common with the long ones, abstract ?
       // TODO short instructions don't work at the moment
       IF_TRACE(printf("  (call-toplevel-short 0x%04x)\n",
 		      pc + bytecode + CODE_START));
@@ -2590,14 +2645,14 @@ void interpreter (void)
       
       break;
       
-    case 9: // closure-short TODO I doubt these short instrs will have great effect, and this is the one I doubt the most about
+    case 9: // closure-short
       FETCH_NEXT_BYTECODE();
       
       IF_TRACE(printf("  (closure-short 0x%04x)\n", pc + bytecode));
       
       arg3 = POP(); // env
       
-      entry = pc + bytecode; // TODO makes sense for a closure ?
+      entry = pc + bytecode;
       
       arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
 				  ((arg2 & 0x07) << 5) | (bytecode >> 3),
@@ -2882,15 +2937,19 @@ void interpreter (void)
     case 0:
       /* prim #%boolean? */
       arg1 = POP(); prim_booleanp (); PUSH_ARG1(); break;
-      break;
     case 1:
-      break;
+      /* prim #%network-init */
+      prim_network_init (); break;
     case 2:
-      break;
+      /* prim #%network-cleanup */
+      prim_network_cleanup (); break;
     case 3:
-      break;
+      /* prim #%receive-packet-to-u8vector */
+      arg1 = POP(); prim_receive_packet_to_u8vector (); PUSH_ARG1(); break;
     case 4:
-      break;
+      /* prim #%send-packet-from-u8vector */
+      arg2 = POP(); arg1 = POP(); prim_send_packet_from_u8vector ();
+      PUSH_ARG1(); break;
     case 5:
       break;
     case 6:
@@ -2976,7 +3035,7 @@ int main (int argc, char *argv[])
       else
         {
 #if 0
-          for (i=0; i<8192; i++) // TODO remove this ? and not the right address space, now 16 bits
+          for (i=0; i<8192; i++)
             if (rom_get (i) != 0xff)
               printf ("rom_mem[0x%04x] = 0x%02x\n", i, rom_get (i));
 #endif

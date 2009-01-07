@@ -249,7 +249,11 @@
      (make-var '#%u8vector-length #t '() '() '() #f (make-primitive 1 #f #f))
      (make-var '#%u8vector-copy! #t '() '() '() #f (make-primitive 5 #f #t))
      (make-var '#%boolean? #t '() '() '() #f (make-primitive 1 #f #f))
-          
+     (make-var '#%network-init #t '() '() '() #f (make-primitive 0 #f #t))
+     (make-var '#%network-cleanup #t '() '() '() #f (make-primitive 0 #f #t))
+     (make-var '#%receive-packet-to-u8vector #t '() '() '() #f (make-primitive 1 #f #f))
+     (make-var '#%send-packet-from-u8vector #t '() '() '() #f (make-primitive 2 #f #f))
+     
      (make-var '#%readyq #t '() '() '() #f #f)
      ;; TODO put in a meaningful order
      )))
@@ -296,6 +300,10 @@
     (make-u8vector . #%make-u8vector)
     (u8vector-copy! . #%u8vector-copy!)
     (boolean? . #%boolean?)
+    (network-init . #%network-init)
+    (network-cleanup . #%network-cleanup)
+    (receive-packet-to-u8vector . #%receive-packet-to-u8vector)
+    (send-packet-from-u8vector . #%send-packet-from-u8vector)
     ))
 
 (define env-lookup
@@ -1928,8 +1936,8 @@
 
 (define parse-file
   (lambda (filename)
-    (let* ((library
-            (with-input-from-file "library.scm" read-all))
+    (let* ((library ;; TODO do not hard-code path
+            (with-input-from-file "/home/vincent/research/picobit/picobit-v1/library.scm" read-all))
            (toplevel-exprs
             (expand-includes
 	     (append library
@@ -2909,7 +2917,11 @@
             (define (prim.pop)             (prim 46))
             (define (prim.return)          (prim 47))
 	    (define (prim.boolean?)        (prim 48))
-
+	    (define (prim.network-init)    (prim 49))
+	    (define (prim.network-cleanup) (prim 50))
+	    (define (prim.receive-packet-to-u8vector) (prim 51))
+	    (define (prim.send-packet-from-u8vector)  (prim 52))
+	    
             (define big-endian? #f)
 
             (asm-begin! code-start #f)
@@ -3081,6 +3093,10 @@
 			     ((#%u8vector-length) (prim.u8vector-length))
 			     ((#%u8vector-copy!)  (prim.u8vector-copy!))
 			     ((#%boolean?)        (prim.boolean?))
+			     ((#%network-init)    (prim.network-init))
+			     ((#%network-cleanup) (prim.network-cleanup))
+			     ((#%receive-packet-to-u8vector) (prim.receive-packet-to-u8vector))
+			     ((#%send-packet-from-u8vector)  (prim.send-packet-from-u8vector))
                              (else
                               (compiler-error "unknown primitive" (cadr instr)))))
 
