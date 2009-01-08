@@ -1,17 +1,19 @@
 /* file: "picobit-vm.c" */
 
 /*
- * Copyright 2004 by Marc Feeley, All Rights Reserved.
+ * Copyright 2008 by Marc Feeley and Vincent St-Amour, All Rights Reserved.
  *
  * History:
  *
  *   15/08/2004  Release of version 1
  *   06/07/2008  Modified for PICOBOARD2_R3
- *   07/18/2008  Modified to use new object representation
+ *   18/07/2008  Modified to use new object representation
+ *   17/12/2008  Release of version 2
  */
 
 #define DEBUG_not
 #define DEBUG_GC_not
+#define INFINITE_PRECISION_BIGNUMS
 
 /*---------------------------------------------------------------------------*/
 
@@ -145,6 +147,16 @@ typedef uint16 rom_addr;
 
 typedef uint16 obj;
 
+#ifdef INFINITE_PRECISION_BIGNUMS
+
+#define digit_width 16
+
+typedef obj integer;
+typedef uint16 digit;
+typedef uint32 two_digit;
+
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 #define MAX_VEC_ENCODING 8191
@@ -242,14 +254,19 @@ uint8 rom_get (rom_addr a)
   fixnum n     MIN_FIXNUM -> 3 ... MAX_FIXNUM -> 3 + (MAX_FIXNUM-MIN_FIXNUM)
   rom object   4 + (MAX_FIXNUM-MIN_FIXNUM) ... MIN_RAM_ENCODING-1
   ram object   MIN_RAM_ENCODING ... MAX_RAM_ENCODING
-  vector       MIN_VEC_ENCODING ... 8191
+  u8vector     MIN_VEC_ENCODING ... 8191
 
   layout of memory allocated objects:
 
   G's represent mark bits used by the gc
 
-  bignum n     00G00000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
-  
+  ifdef INFINITE_PRECISION_BIGNUMS
+  bignum n     000***** **next** hhhhhhhh llllllll  (16 bit digit)
+  TODO make sure this works with the "new" object representation, that the first 3 bits are enough to spot bignums, quick check of the bignum predicate indicates this would work, not implement this pointer FOOBIGNUM
+
+  ifndef INFINITE_PRECISION_BIGNUMS
+  bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
+
   pair         1GGaaaaa aaaaaaaa 000ddddd dddddddd
   a is car
   d is cdr
@@ -291,9 +308,12 @@ uint8 rom_get (rom_addr a)
 
 #define OBJ_FALSE 0
 #define OBJ_TRUE  1
+#define encode_bool(x) ((obj)(x))
+
 #define OBJ_NULL  2
 
 #define MIN_FIXNUM_ENCODING 3
+// TODO change these ? were -5 and 40, with the new bignums, the needs for these might change
 #define MIN_FIXNUM 0
 #define MAX_FIXNUM 255
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING+MAX_FIXNUM-MIN_FIXNUM+1)
@@ -308,7 +328,7 @@ uint8 rom_get (rom_addr a)
 #define IN_ROM(o) (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
 #endif
 
-// bignum first byte : 00G00000
+// bignum first byte : 00Gxxxxx
 #define BIGNUM_FIELD0 0
 #define RAM_BIGNUM(o) ((ram_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
 #define ROM_BIGNUM(o) ((rom_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
@@ -432,6 +452,36 @@ word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
 /* word vec_set_byte2 (obj o, word val) { VEC_SET_BYTE2_MACRO(o,val); } */
 /* word vec_set_byte3 (obj o, word val) { VEC_SET_BYTE3_MACRO(o,val); } */
 
+obj get_field0 (obj o) // TODO these are not used yet, will they be useful at all ?
+{
+  if (IN_RAM(o))
+    return ram_get_field0 (o);
+  else
+    return rom_get_field0 (o);
+}
+obj get_field1 (obj o)
+{
+  if (IN_RAM(o))
+    return ram_get_field1 (o);
+  else
+    return rom_get_field1 (o);
+}
+obj get_field2 (obj o)
+{
+  if (IN_RAM(o))
+    return ram_get_field2 (o);
+  else
+    return rom_get_field2 (o);
+}
+obj get_field3 (obj o)
+{
+  if (IN_RAM(o))
+    return ram_get_field3 (o);
+  else
+    return rom_get_field3 (o);
+}
+
+
 obj ram_get_car (obj o)
 { return ((ram_get_field0 (o) & 0x1f) << 8) | ram_get_field1 (o); }
 obj rom_get_car (obj o)
@@ -440,6 +490,21 @@ obj ram_get_cdr (obj o)
 { return ((ram_get_field2 (o) & 0x1f) << 8) | ram_get_field3 (o); }
 obj rom_get_cdr (obj o)
 { return ((rom_get_field2 (o) & 0x1f) << 8) | rom_get_field3 (o); }
+obj get_car (obj o)
+{
+  if (IN_RAM(o))
+    return ram_get_car (o);
+  else
+    return rom_get_car (o);
+}
+obj get_cdr (obj o)
+{
+  if (IN_RAM(o))
+    return ram_get_cdr (o);
+  else
+    return rom_get_cdr (o);
+}
+
 void ram_set_car (obj o, obj val)
 {
   ram_set_field0 (o, (val >> 8) | (ram_get_field0 (o) & 0xe0));
@@ -450,6 +515,7 @@ void ram_set_cdr (obj o, obj val)
   ram_set_field2 (o, (val >> 8) | (ram_get_field2 (o) & 0xe0));
   ram_set_field3 (o, val & 0xff);
 }
+
 obj ram_get_entry (obj o)
 {
   return (((ram_get_field0 (o) & 0x1f) << 11)
@@ -462,6 +528,14 @@ obj rom_get_entry (obj o)
 	  | (rom_get_field1 (o) << 3)
 	  | (rom_get_field2 (o) >> 5));
 }
+obj get_entry (obj o)
+{
+  if (IN_RAM(o))
+    return ram_get_entry (o);
+  else
+    return rom_get_entry (o);
+}
+
 
 obj get_global (uint8 i)
 // globals occupy the beginning of ram, with 2 globals per word
@@ -524,9 +598,13 @@ void show_type (obj o) // for debugging purposes
 
 /* Number of object fields of objects in ram */
 #define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR(visit) || RAM_CONTINUATION(visit))
+#ifdef INFINITE_PRECISION_BIGNUMS
+#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) \
+				    || RAM_CLOSURE(visit) || RAM_BIGNUM(visit))
+#else
 #define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit))
+#endif
 // all composites except pairs and continuations have 1 object field
-// TODO if we ever have true bignums, bignums will have 1 object field
 
 #define NIL OBJ_FALSE
 
@@ -618,7 +696,7 @@ void mark (obj temp)
         {
           if (HAS_2_OBJECT_FIELDS(visit)) // pairs and continuations
             {
-              IF_GC_TRACE(printf ("case 5\n"));
+              IF_GC_TRACE(printf ("case 2\n"));
 
             visit_field2:
 
@@ -626,20 +704,20 @@ void mark (obj temp)
 
               if (IN_RAM(temp))
                 {
-                  IF_GC_TRACE(printf ("case 6\n"));
+                  IF_GC_TRACE(printf ("case 3\n"));
                   ram_set_gc_tags (visit, GC_TAG_1_LEFT);
                   ram_set_cdr (visit, stack);
                   goto push;
                 }
 
-              IF_GC_TRACE(printf ("case 7\n"));
+              IF_GC_TRACE(printf ("case 4\n"));
 
               goto visit_field1;
             }
 
           if (HAS_1_OBJECT_FIELD(visit))
             {
-              IF_GC_TRACE(printf ("case 8\n"));
+              IF_GC_TRACE(printf ("case 5\n"));
 
             visit_field1:
 
@@ -650,7 +728,7 @@ void mark (obj temp)
 
               if (IN_RAM(temp))
                 {
-                  IF_GC_TRACE(printf ("case 9\n"));
+                  IF_GC_TRACE(printf ("case 6\n"));
                   ram_set_gc_tag0 (visit, GC_TAG_0_LEFT);
 		  if (RAM_CLOSURE(visit))
 		    ram_set_cdr (visit, stack);
@@ -660,10 +738,10 @@ void mark (obj temp)
                   goto push;
                 }
 
-              IF_GC_TRACE(printf ("case 10\n"));
+              IF_GC_TRACE(printf ("case 7\n"));
             }
           else
-            IF_GC_TRACE(printf ("case 11\n"));
+            IF_GC_TRACE(printf ("case 8\n"));
 
           ram_set_gc_tag0 (visit, GC_TAG_0_LEFT);
         }
@@ -676,7 +754,7 @@ void mark (obj temp)
         {
 	  if (HAS_2_OBJECT_FIELDS(stack) && ram_get_gc_tag1 (stack))
 	    {
-              IF_GC_TRACE(printf ("case 13\n"));
+              IF_GC_TRACE(printf ("case 9\n"));
 	      
               temp = ram_get_cdr (stack);  /* pop through cdr */
               ram_set_cdr (stack, visit);
@@ -692,7 +770,7 @@ void mark (obj temp)
 	  if (RAM_CLOSURE(stack))
 	    // closures have one object field, but it's in the cdr
 	    {
-	      IF_GC_TRACE(printf ("case 13.5\n")); // TODO renumber cases
+	      IF_GC_TRACE(printf ("case 10\n"));
 
               temp = ram_get_cdr (stack);  /* pop through cdr */
               ram_set_cdr (stack, visit);
@@ -702,7 +780,7 @@ void mark (obj temp)
               goto pop;
 	    }
 
-          IF_GC_TRACE(printf ("case 14\n"));
+          IF_GC_TRACE(printf ("case 11\n"));
 
           temp = ram_get_car (stack);  /* pop through car */
           ram_set_car (stack, visit);
@@ -788,11 +866,14 @@ void gc (void)
   mark (arg3);
   IF_GC_TRACE(printf("arg4\n"));
   mark (arg4);
+  IF_GC_TRACE(printf("arg5\n"));
+  mark (arg5);
   IF_GC_TRACE(printf("cont\n"));
   mark (cont);
   IF_GC_TRACE(printf("env\n"));
   mark (env);
 
+  IF_GC_TRACE(printf("globals\n"));
   for (i=0; i<glovars; i++)
     mark (get_global (i));
 
@@ -891,6 +972,55 @@ obj alloc_vec_cell (uint16 n)
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef INFINITE_PRECISION_BIGNUMS
+
+// TODO FOOBIGNUMS this was taken from the bignum code, see if it works
+int8 decode_int8 (obj o)
+{
+  int8 result;
+
+  if (o < MIN_FIXNUM_ENCODING)
+    TYPE_ERROR("decode_int8", "integer");
+
+  if (o <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM)))
+    return DECODE_FIXNUM(o);
+
+  if (IN_RAM(o))
+    {
+      if (!RAM_BIGNUM(o))
+	TYPE_ERROR("decode_int8", "integer");
+
+      return ram_get_field3 (o);
+    }
+  else if (IN_ROM(o))
+    {
+      if (!ROM_BIGNUM(o))
+	TYPE_ERROR("decode_int8", "integer");
+
+      return rom_get_field3 (o);
+    }
+  else
+    TYPE_ERROR("decode_int8", "integer");
+}
+// TODO how could this possibly work ? it does not consider other fields, same for encoding, get to the bottom of this
+
+int32 decode_int (obj o)
+{
+  return decode_int8 (o);
+}
+
+
+obj encode_int (int32 n)
+{
+  if (n >= MIN_FIXNUM && n <= MAX_FIXNUM)
+    return ENCODE_FIXNUM(n);
+  
+  // TODO FOOBIGNUMS since we encode 0 here, and it's 00..0 we don't need to or with the 1st byte for the pointer, what happens with negative numbers, however ?
+  return alloc_ram_cell_init (BIGNUM_FIELD0, ENCODE_FIXNUM(0), n >> 8, n);
+}
+
+#else
+
 int32 decode_int (obj o)
 {
   uint8 u;
@@ -924,7 +1054,7 @@ int32 decode_int (obj o)
   else
     TYPE_ERROR("decode_int", "integer");
 
-  if (u >= 128)
+  if (u >= 128) // TODO FOOBIGNUMS uhh, what's that again ? is here since the beginning
     return ((int32)((((int16)u - 256) << 8) + h) << 8) + l;
 
   return ((int32)(((int16)u << 8) + h) << 8) + l;
@@ -937,6 +1067,8 @@ obj encode_int (int32 n)
 
   return alloc_ram_cell_init (BIGNUM_FIELD0, n >> 16, n >> 8, n);
 }
+
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -1081,7 +1213,588 @@ void print (obj o)
 
 /* Integer operations */
 
-#define encode_bool(x) ((obj)(x))
+// TODO FOOBIGNUMS big pasted and NOT CHECKED section here
+#ifdef INFINITE_PRECISION_BIGNUMS
+
+#define obj_eq(x,y) ((x) == (y))
+
+#define integer_hi_set(x,y) ram_set_field1 (x, y)
+
+#define ZERO ENCODE_FIXNUM(0)
+#define NEG1 (ZERO-1)
+#define POS1 (ZERO+1)
+
+integer fixnum (int8 n)
+{
+  return ENCODE_FIXNUM (n);
+}
+
+integer make_integer (digit lo, integer hi)
+{
+  return alloc_ram_cell_init (BIGNUM_FIELD0, hi, lo >> 8, lo);
+}
+
+integer integer_hi (integer x)
+{
+  if (IN_RAM(x))
+    return ram_get_field1 (x);
+  else if (IN_ROM(x))
+    return rom_get_field1 (x);
+  else if (x < (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
+    return NEG1; /* negative fixnum */
+  else
+    return ZERO; /* nonnegative fixnum */
+}
+
+digit integer_lo (integer x)
+{
+  if (IN_RAM(x))
+    return (((digit)ram_get_field2 (x)) << 8) + ram_get_field3 (x);
+  else if (IN_ROM(x))
+    return (((digit)rom_get_field2 (x)) << 8) + rom_get_field3 (x);
+  else
+    return DECODE_FIXNUM(x);
+}
+
+integer norm (obj prefix, integer n)
+{
+  /* norm(prefix,n) returns a normalized integer whose value is the
+     integer n prefixed with the digits in prefix (a list of digits) */
+
+  while (prefix != NIL)
+    {
+      digit d = integer_lo (prefix);
+      obj temp = prefix;
+
+      prefix = integer_hi (temp);
+
+      if (obj_eq (n, ZERO))
+        {
+          if (d <= MAX_FIXNUM)
+            {
+              n = fixnum ((int8)d);
+              continue;
+            }
+        }
+      else if (obj_eq (n, NEG1))
+        {
+          if (d >= (1<<digit_width) + MIN_FIXNUM)
+            {
+              n = fixnum ((int8)(d - (1<<digit_width)));
+              continue;
+            }
+        }
+
+      integer_hi_set (temp, n);
+      n = temp;
+    }
+
+  return n;
+}
+
+boolean negp (integer x)
+{
+  /* negp(x) returns true iff x is negative */
+
+  do
+    {
+      x = integer_hi (x);
+      if (obj_eq (x, ZERO)) return false;
+     } while (!obj_eq (x, NEG1));
+
+  return true;
+}
+
+int8 cmp (integer x, integer y)
+{
+  /* cmp(x,y) return -1 when x<y, 1 when x>y, and 0 when x=y */
+
+  int8 result = 0;
+  digit xlo;
+  digit ylo;
+
+  for (;;)
+    {
+      if (obj_eq (x, ZERO) || obj_eq (x, NEG1))
+        {
+          if (!obj_eq (x, y))
+            { if (negp (y)) result = 1; else result = -1; }
+          break;
+        }
+
+      if (obj_eq (y, ZERO) || obj_eq (y, NEG1))
+        {
+          if (negp (x)) result = -1; else result = 1;
+          break;
+        }
+
+      xlo = integer_lo (x);
+      ylo = integer_lo (y);
+      x = integer_hi (x);
+      y = integer_hi (y);
+      if (xlo != ylo)
+        { if (xlo < ylo) result = -1; else result = 1; }
+    }
+
+  return result;
+}
+
+uint16 integer_length (integer x)
+{
+  /* integer_length(x) returns the number of bits in the binary
+     representation of the nonnegative integer x */
+
+  uint16 result = 0;
+  integer next;
+  digit d;
+
+  while (!obj_eq ((next = integer_hi (x)), ZERO))
+    {
+      result += digit_width;
+      x = next;
+    }
+
+  d = integer_lo (x);
+
+  while (d > 0)
+    {
+      result++;
+      d >>= 1;
+    }
+
+  return result;
+}
+
+integer shr (integer x)
+{
+  /* shr(x) returns the integer x shifted one bit to the right */
+
+  obj result = NIL;
+  digit d;
+
+  for (;;)
+    {
+      if (obj_eq (x, ZERO) || obj_eq (x, NEG1))
+        {
+          result = norm (result, x);
+          break;
+        }
+
+      d = integer_lo (x);
+      x = integer_hi (x);
+      result = make_integer ((d >> 1) |
+                             ((integer_lo (x) & 1) ? (1<<(digit_width-1)) : 0),
+                             result);
+    }
+
+  return result;
+}
+
+integer negative_carry (boolean carry)
+{
+  if (carry)
+    return NEG1;
+  else
+    return ZERO;
+}
+
+integer shl (integer x)
+{
+  /* shl(x) returns the integer x shifted one bit to the left */
+
+  integer negc = ZERO; /* negative carry */
+  integer temp;
+  obj result = NIL;
+  digit d;
+
+  for (;;)
+    {
+      if (obj_eq (x, negc))
+        {
+          result = norm (result, x);
+          break;
+        }
+
+      d = integer_lo (x);
+      x = integer_hi (x);
+      temp = negc;
+      negc = negative_carry (d & (1<<(digit_width-1)));
+      result = make_integer ((d << 1) | obj_eq (temp, NEG1), result);
+    }
+
+  return result;
+}
+
+integer shift_left (integer x, uint16 n)
+{
+  /* shift_left(x,n) returns the integer x shifted n bits to the left */
+
+  if (obj_eq (x, ZERO))
+    return x;
+
+  while (n & (digit_width-1))
+    {
+      x = shl (x);
+      n--;
+    }
+
+  while (n > 0)
+    {
+      x = make_integer (0, x);
+      n -= digit_width;
+    }
+
+  return x;
+}
+
+integer add (integer x, integer y)
+{
+  /* add(x,y) returns the sum of the integers x and y */
+
+  integer negc = ZERO; /* negative carry */
+  obj result = NIL;
+  digit dx;
+  digit dy;
+
+  for (;;)
+    {
+      if (obj_eq (x, negc))
+        {
+          result = norm (result, y);
+          break;
+        }
+
+      if (obj_eq (y, negc))
+        {
+          result = norm (result, x);
+          break;
+        }
+
+      dx = integer_lo (x);
+      dy = integer_lo (y);
+      dx = dx + dy; /* may wrap around */
+
+      if (obj_eq (negc, ZERO))
+        negc = negative_carry (dx < dy);
+      else
+        {
+          dx++; /* may wrap around */
+          negc = negative_carry (dx <= dy);
+        }
+
+      x = integer_hi (x);
+      y = integer_hi (y);
+
+      result = make_integer (dx, result);
+    }
+
+  return result;
+}
+
+integer invert (integer x)
+{
+  if (obj_eq (x, ZERO))
+    return NEG1;
+  else
+    return ZERO;
+}
+
+integer sub (integer x, integer y)
+{
+  /* sub(x,y) returns the difference of the integers x and y */
+
+  integer negc = NEG1; /* negative carry */
+  obj result = NIL;
+  digit dx;
+  digit dy;
+
+  for (;;)
+    {
+      if (obj_eq (x, negc) && (obj_eq (y, ZERO) || obj_eq (y, NEG1)))
+        {
+          result = norm (result, invert (y));
+          break;
+        }
+
+      if (obj_eq (y, invert (negc)))
+        {
+          result = norm (result, x);
+          break;
+        }
+
+      dx = integer_lo (x);
+      dy = ~integer_lo (y);
+      dx = dx + dy; /* may wrap around */
+
+      if (obj_eq (negc, ZERO))
+        negc = negative_carry (dx < dy);
+      else
+        {
+          dx++; /* may wrap around */
+          negc = negative_carry (dx <= dy);
+        }
+
+      x = integer_hi (x);
+      y = integer_hi (y);
+
+      result = make_integer (dx, result);
+    }
+
+  return result;
+}
+
+integer neg (integer x)
+{
+  /* neg(x) returns the integer -x */
+
+  return sub (ZERO, x);
+}
+
+integer scale (digit n, integer x)
+{
+  /* scale(n,x) returns the integer n*x */
+
+  obj result;
+  digit carry;
+  two_digit m;
+
+  if ((n == 0) || obj_eq (x, ZERO))
+    return ZERO;
+
+  if (n == 1)
+    return x;
+
+  result = NIL;
+  carry = 0;
+
+  for (;;)
+    {
+      if (obj_eq (x, ZERO))
+        {
+          if (carry <= MAX_FIXNUM)
+            result = norm (result, fixnum ((int8)carry));
+          else
+            result = norm (result, make_integer (carry, ZERO));
+          break;
+        }
+
+      if (obj_eq (x, NEG1))
+        {
+          carry = carry - n;
+          if (carry >= ((1<<digit_width) + MIN_FIXNUM))
+            result = norm (result, fixnum ((int8)carry));
+          else
+            result = norm (result, make_integer (carry, NEG1));
+          break;
+        }
+
+      m = (two_digit)integer_lo (x) * n + carry;
+
+      x = integer_hi (x);
+      carry = m >> digit_width;
+      result = make_integer ((digit)m, result);
+    }
+
+  return result;
+}
+
+integer mulnonneg (integer x, integer y)
+{
+  /* mulnonneg(x,y) returns the product of the integers x and y
+     where x is nonnegative */
+
+  obj result = NIL;
+  integer s = scale (integer_lo (x), y);
+
+  for (;;)
+    {
+      result = make_integer (integer_lo (s), result);
+      s = integer_hi (s);
+      x = integer_hi (x);
+
+      if (obj_eq (x, ZERO))
+        break;
+
+      s = add (s, scale (integer_lo (x), y));
+    }
+
+  return norm (result, s);
+}
+
+integer mul (integer x, integer y)
+{
+  /* mul(x,y) returns the product of the integers x and y */
+
+  if (negp (x))
+    return neg (mulnonneg (neg (x), y));
+  else
+    return mulnonneg (x, y);
+}
+
+integer divnonneg (integer x, integer y)
+{
+  /* divnonneg(x,y) returns the quotient and remainder of
+     the integers x and y where x and y are nonnegative */
+
+  integer result = ZERO;
+  uint16 lx = integer_length (x);
+  uint16 ly = integer_length (y);
+
+  if (lx >= ly)
+    {
+      lx = lx - ly;
+
+      y = shift_left (y, lx);
+
+      do
+        {
+          result = shl (result);
+          if (cmp (x, y) >= 0)
+            {
+              x = sub (x, y);
+              result = add (POS1, result);
+            }
+          y = shr (y);
+        } while (lx-- != 0);
+    }
+
+  return result;
+}
+
+
+void p (integer n)
+{
+  long long x;
+  x = ((long long)integer_lo (integer_hi (integer_hi (integer_hi (n))))<<48)+
+      ((long long)integer_lo (integer_hi (integer_hi (n)))<<32)+
+      ((long long)integer_lo (integer_hi (n))<<16)+
+      (long long)integer_lo (n);
+  printf ("%lld ", x);
+}
+
+integer enc (long long n)
+{
+  integer result = NIL;
+
+  while (n != 0 && n != -1)
+    {
+      result = make_integer ((digit)n, result);
+      n >>= digit_width;
+    }
+
+  if (n < 0)
+    return norm (result, NEG1);
+  else
+    return norm (result, ZERO);
+}
+
+void test (void)
+{
+  integer min2;
+  integer min1;
+  integer zero;
+  integer one;
+  integer two;
+  integer three;
+  integer four;
+
+  zero = make_integer (0x0000, 0);
+  min1 = make_integer (0xffff, 0);
+  integer_hi_set (zero, ZERO);
+  integer_hi_set (min1, NEG1);
+
+  min2 = make_integer (0xfffe, NEG1);
+  one  = make_integer (0x0001, ZERO);
+  two  = make_integer (0x0002, ZERO);
+  three= make_integer (0x0003, ZERO);
+  four = make_integer (0x0004, ZERO);
+
+#if 0
+  if (negp (ZERO)) printf ("zero is negp\n");
+  if (negp (NEG1)) printf ("min1 is negp\n");
+
+  printf ("cmp(5,5) = %d\n",cmp (make_integer (5, ZERO), make_integer (5, ZERO)));
+  printf ("cmp(2,5) = %d\n",cmp (make_integer (2, ZERO), make_integer (5, ZERO)));
+  printf ("cmp(5,2) = %d\n",cmp (make_integer (5, ZERO), make_integer (2, ZERO)));
+
+  printf ("cmp(-5,-5) = %d\n",cmp (make_integer (-5, NEG1), make_integer (-5, NEG1)));
+  printf ("cmp(-2,-5) = %d\n",cmp (make_integer (-2, NEG1), make_integer (-5, NEG1)));
+  printf ("cmp(-5,-2) = %d\n",cmp (make_integer (-5, NEG1), make_integer (-2, NEG1)));
+
+  printf ("cmp(-5,65533) = %d\n",cmp (make_integer (-5, NEG1), make_integer (65533, ZERO)));
+  printf ("cmp(-5,2)     = %d\n",cmp (make_integer (-5, NEG1), make_integer (2, ZERO)));
+  printf ("cmp(5,-65533) = %d\n",cmp (make_integer (5, ZERO), make_integer (-65533, NEG1)));
+  printf ("cmp(5,-2)     = %d\n",cmp (make_integer (5, ZERO), make_integer (-2, NEG1)));
+
+  printf ("integer_length(0) = %d\n", integer_length (ZERO));
+  printf ("integer_length(1) = %d\n", integer_length (make_integer (1, ZERO)));
+  printf ("integer_length(2) = %d\n", integer_length (make_integer (2, ZERO)));
+  printf ("integer_length(3) = %d\n", integer_length (make_integer (3, ZERO)));
+  printf ("integer_length(4) = %d\n", integer_length (make_integer (4, ZERO)));
+  printf ("integer_length(65536 + 4) = %d\n", integer_length (make_integer (4, make_integer (1, ZERO))));
+
+
+  printf ("1 = %d\n", one);
+  printf ("2 = %d\n", two);
+  printf ("4 = %d\n", four);
+  printf ("norm(2) = %d\n", norm (make_integer (0, make_integer (2, NIL)), ZERO));
+  printf ("norm(2) = %d\n", norm (make_integer (0, make_integer (2, NIL)), ZERO));
+  printf ("norm(3) = %d\n", norm (make_integer (0, make_integer (3, NIL)), ZERO));
+  printf ("norm(3) = %d\n", norm (make_integer (0, make_integer (3, NIL)), ZERO));
+
+  printf ("shl(1) = %d\n", shl (one));
+  printf ("shl(2) = %d\n", shl (two));
+
+  {
+    integer n = one;
+    int i;
+    for (i=1; i<=34; i++)
+      {
+        p (n);
+        n = shl(n);
+      }
+    for (i=1; i<=35; i++)
+      {
+        p (n);
+        n = shr(n);
+      }
+  }
+
+  {
+    integer n = shift_left (four, 5);
+    int i;
+
+    for (i=0; i<=14; i++)
+      {
+        p (shift_left (n, i*4));
+      }
+  }
+
+  p (add (enc (32768), enc (32768)));
+  p (add (enc (32768+(65536*65535LL)), enc (32768)));
+
+  p (sub (enc (32768), enc (-32768)));
+  p (sub (enc (32768+(65536*65535LL)), enc (-32768)));
+
+  p (sub (enc (32768), enc (32769)));
+
+  p (mul (enc (123456789), enc (1000000000)));
+  p (mul (enc (123456789), enc (-1000000000)));
+  p (mul (enc (-123456789), enc (1000000000)));
+  p (mul (enc (-123456789), enc (-1000000000)));
+
+#endif
+
+  p (divnonneg (enc (10000000-1), enc (500000)));
+
+  printf ("done\n");
+
+  exit (0);
+}
+
+#endif
+
+// TODO FOOBIGNUMS end pasted section
 
 void prim_numberp (void)
 {
@@ -1108,21 +1821,33 @@ void decode_2_int_args (void)
 void prim_add (void)
 {
   decode_2_int_args ();
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = add (arg1, arg2);
+#else
   arg1 = encode_int (a1 + a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
 void prim_sub (void)
 {
   decode_2_int_args ();
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = sub (arg1, arg2);
+#else
   arg1 = encode_int (a1 - a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
 void prim_mul (void)
 {
   decode_2_int_args ();
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = mul (arg1, arg2);
+#else
   arg1 = encode_int (a1 * a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
@@ -1131,7 +1856,11 @@ void prim_div (void)
   decode_2_int_args ();
   if (a2 == 0)
     ERROR("quotient", "divide by 0");
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = ZERO;
+#else
   arg1 = encode_int (a1 / a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
@@ -1140,38 +1869,58 @@ void prim_rem (void)
   decode_2_int_args ();
   if (a2 == 0)
     ERROR("remainder", "divide by 0");
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = ZERO;
+#else
   arg1 = encode_int (a1 % a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
 void prim_neg (void)
 {
   a1 = decode_int (arg1);
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = neg (arg1);
+#else
   arg1 = encode_int (- a1);
+#endif
 }
 
 void prim_eq (void)
 {
   decode_2_int_args ();
-  arg1 = encode_bool (a1 == a2);
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = encode_bool(cmp (arg1, arg2) == 0);
+#else
+  arg1 = encode_bool(a1 == a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
 void prim_lt (void)
 {
   decode_2_int_args ();
-  arg1 = encode_bool (a1 < a2);
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = encode_bool(cmp (arg1, arg2) < 0);
+#else
+  arg1 = encode_bool(a1 < a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
 void prim_gt (void)
 {
   decode_2_int_args ();
-  arg1 = encode_bool (a1 > a2);
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = encode_bool(cmp (arg1, arg2) > 0);
+#else
+  arg1 = encode_bool(a1 > a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
-void prim_ior (void)
+void prim_ior (void) // TODO FOOBIGNUMS these have not been implemented with bignums, do it
 {
   a1 = decode_int (arg1);
   a2 = decode_int (arg2);

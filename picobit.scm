@@ -1,6 +1,6 @@
 ; File: "picobit.scm", Time-stamp: <2006-05-08 16:04:37 feeley>
 
-; Copyright (C) 2006 by Marc Feeley, All Rights Reserved.
+; Copyright (C) 2008 by Marc Feeley and Vincent St-Amour, All Rights Reserved.
 
 (define-macro (dummy)
   (proper-tail-calls-set! #f)
@@ -403,12 +403,10 @@
     (append
      (parse-top-list body
                      (env-extend-renamings env renamings))
-#|
-     (parse-top-list
-      (map (lambda (x) (list 'define (car x) (cadr x))) renamings)
-      env)
-|#
-)))
+     ;; (parse-top-list
+     ;;       (map (lambda (x) (list 'define (car x) (cadr x))) renamings)
+     ;;       env)
+     )))
 
 (define parse-top-rename
   (lambda (renamings body env)
@@ -1937,7 +1935,7 @@
 (define parse-file
   (lambda (filename)
     (let* ((library ;; TODO do not hard-code path
-            (with-input-from-file "/home/vincent/research/picobit/picobit-v1/library.scm" read-all))
+            (with-input-from-file "/home/vincent/research/picobit/dev/library.scm" read-all))
            (toplevel-exprs
             (expand-includes
 	     (append library
@@ -2931,7 +2929,7 @@
             (asm-8 (length constants))
             (asm-8 (length globals))
 
-            (pp (list constants: constants globals: globals)) ;; TODO debug
+            '(pp (list constants: constants globals: globals))
 
             (for-each
              (lambda (x)
