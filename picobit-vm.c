@@ -13,7 +13,8 @@
 
 #define DEBUG_not
 #define DEBUG_GC_not
-#define INFINITE_PRECISION_BIGNUMS
+// TODO once this is stable, put as default
+#define INFINITE_PRECISION_BIGNUMS_not
 
 /*---------------------------------------------------------------------------*/
 
@@ -23,6 +24,12 @@ typedef long int32;
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned long uint32;
+
+#define true  1
+#define false 0
+
+typedef uint8 boolean;
+// TODO was signed, preventive change
 
 /*---------------------------------------------------------------------------*/
 
@@ -152,7 +159,7 @@ typedef uint16 obj;
 #define digit_width 16
 
 typedef obj integer;
-typedef uint16 digit;
+typedef uint16 digit; // TODO why this ? adds to the confusion
 typedef uint32 two_digit;
 
 #endif
@@ -261,11 +268,12 @@ uint8 rom_get (rom_addr a)
   G's represent mark bits used by the gc
 
   ifdef INFINITE_PRECISION_BIGNUMS
-  bignum n     000***** **next** hhhhhhhh llllllll  (16 bit digit)
-  TODO make sure this works with the "new" object representation, that the first 3 bits are enough to spot bignums, quick check of the bignum predicate indicates this would work, not implement this pointer FOOBIGNUM
-
+  bignum n     0GG***** **next** hhhhhhhh llllllll  (16 bit digit)
+  TODO make sure this works with the "new" object representation, that the first 3 bits are enough to spot bignums, quick check of the bignum predicate indicates this would work, now implement this pointer FOOBIGNUM
+  TODO what to do with the gc tags for the bignums ? will this work ?
+  
   ifndef INFINITE_PRECISION_BIGNUMS
-  bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
+  bignum n     0000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
 
   pair         1GGaaaaa aaaaaaaa 000ddddd dddddddd
   a is car
@@ -314,7 +322,8 @@ uint8 rom_get (rom_addr a)
 
 #define MIN_FIXNUM_ENCODING 3
 // TODO change these ? were -5 and 40, with the new bignums, the needs for these might change
-#define MIN_FIXNUM 0
+#define MIN_FIXNUM -1
+// TODO FOOBIGNUMS, was 0, but -1 needed to be a fixnum for the algos to work
 #define MAX_FIXNUM 255
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING+MAX_FIXNUM-MIN_FIXNUM+1)
 
@@ -975,12 +984,11 @@ obj alloc_vec_cell (uint16 n)
 #ifdef INFINITE_PRECISION_BIGNUMS
 
 // TODO FOOBIGNUMS this was taken from the bignum code, see if it works
-int8 decode_int8 (obj o)
-{
+int8 decode_int8 (obj o) // TODO never used except in decode_int
+{ // TODO really fishy, to use only 8 bits this way...
   int8 result;
-
   if (o < MIN_FIXNUM_ENCODING)
-    TYPE_ERROR("decode_int8", "integer");
+    TYPE_ERROR("decode_int8.0", "integer");
 
   if (o <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM)))
     return DECODE_FIXNUM(o);
@@ -988,32 +996,31 @@ int8 decode_int8 (obj o)
   if (IN_RAM(o))
     {
       if (!RAM_BIGNUM(o))
-	TYPE_ERROR("decode_int8", "integer");
-
+	TYPE_ERROR("decode_int8.1", "integer");
       return ram_get_field3 (o);
     }
   else if (IN_ROM(o))
     {
       if (!ROM_BIGNUM(o))
-	TYPE_ERROR("decode_int8", "integer");
-
+	TYPE_ERROR("decode_int8.2", "integer");
       return rom_get_field3 (o);
     }
   else
-    TYPE_ERROR("decode_int8", "integer");
+    TYPE_ERROR("decode_int8.3", "integer");
 }
 // TODO how could this possibly work ? it does not consider other fields, same for encoding, get to the bottom of this
 
 int32 decode_int (obj o)
 {
-  return decode_int8 (o);
+  return decode_int8 (o); // TODO FOOBAR clearly wrong, is it used ?
 }
 
 
-obj encode_int (int32 n)
+obj encode_int (int32 n) // TODO never used in the bignum code
 {
-  if (n >= MIN_FIXNUM && n <= MAX_FIXNUM)
+  if (n >= MIN_FIXNUM && n <= MAX_FIXNUM){
     return ENCODE_FIXNUM(n);
+  }
   
   // TODO FOOBIGNUMS since we encode 0 here, and it's 00..0 we don't need to or with the 1st byte for the pointer, what happens with negative numbers, however ?
   return alloc_ram_cell_init (BIGNUM_FIELD0, ENCODE_FIXNUM(0), n >> 8, n);
@@ -1028,7 +1035,7 @@ int32 decode_int (obj o)
   uint8 l;
 
   if (o < MIN_FIXNUM_ENCODING)
-    TYPE_ERROR("decode_int", "integer");
+    TYPE_ERROR("decode_int.0", "integer");
 
   if (o <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM)))
     return DECODE_FIXNUM(o);
@@ -1036,7 +1043,7 @@ int32 decode_int (obj o)
   if (IN_RAM(o))
     {
       if (!RAM_BIGNUM(o))
-        TYPE_ERROR("decode_int", "integer");
+        TYPE_ERROR("decode_int.1", "integer");
 
       u = ram_get_field1 (o);
       h = ram_get_field2 (o);
@@ -1045,14 +1052,14 @@ int32 decode_int (obj o)
   else if (IN_ROM(o))
     {
       if (!ROM_BIGNUM(o))
-        TYPE_ERROR("decode_int", "integer");
+        TYPE_ERROR("decode_int.2", "integer");
 
       u = rom_get_field1 (o);
       h = rom_get_field2 (o);
       l = rom_get_field3 (o);
     }
   else
-    TYPE_ERROR("decode_int", "integer");
+    TYPE_ERROR("decode_int.3", "integer");
 
   if (u >= 128) // TODO FOOBIGNUMS uhh, what's that again ? is here since the beginning
     return ((int32)((((int16)u - 256) << 8) + h) << 8) + l;
@@ -1097,7 +1104,7 @@ void show (obj o)
       else
         in_ram = 0;
 
-      if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o)))
+      if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o))) // TODO FIX for new bignums
 	printf ("%d", decode_int (o));
       else if ((in_ram && RAM_COMPOSITE(o)) || (!in_ram && ROM_COMPOSITE(o)))
         {
@@ -1218,28 +1225,34 @@ void print (obj o)
 
 #define obj_eq(x,y) ((x) == (y))
 
-#define integer_hi_set(x,y) ram_set_field1 (x, y)
+#define integer_hi_set(x,y) ram_set_car (x, y)
+ // TODO FOOBIGNUMS won't work, I think, will erase next pointer (or set it only in part) ACTUALLY, this is probably supposed to change the pointer. changed field1, npw changes the whole car
 
 #define ZERO ENCODE_FIXNUM(0)
 #define NEG1 (ZERO-1)
 #define POS1 (ZERO+1)
 
-integer fixnum (int8 n)
+/* integer fixnum (uint8 n) // TODO this used to be a signed int, but broke everything. probably should be removed */
+/* { */
+/*   return ENCODE_FIXNUM (n); */
+/* } */ // TODO if no ill effect is detected without this, remove it
+
+// TODO this integer type is a mess, it should be obj, for clarity
+integer make_integer (digit lo, integer hi) // TODO BAD, should use encode_int instead
 {
-  return ENCODE_FIXNUM (n);
+  // TODO could this be fixed by a call to encode_int ?
+  /*   if(!hi && lo <= MAX_FIXNUM) // TODO dependent on the current fixnum range, which starts at 0, fix this */ // TODO would this even be useful ? don't the math routines already revert to fixnums if needed ? or norm does it ?
+/*     return ENCODE_FIXNUM(lo); */
+  // TODO won't work, and the bignum functions are unaware of fixnums
+  return alloc_ram_cell_init (BIGNUM_FIELD0 | (hi >> 8), hi, lo >> 8, lo); // TODO hi should always be a 13-bit pointer, to avoid clobbering the bignum field
 }
 
-integer make_integer (digit lo, integer hi)
-{
-  return alloc_ram_cell_init (BIGNUM_FIELD0, hi, lo >> 8, lo);
-}
-
-integer integer_hi (integer x)
+integer integer_hi (integer x) // TODO should be used for decoding
 {
   if (IN_RAM(x))
-    return ram_get_field1 (x);
+    return ram_get_car (x); // TODO was field1
   else if (IN_ROM(x))
-    return rom_get_field1 (x);
+    return rom_get_car (x); // TODO was field1
   else if (x < (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
     return NEG1; /* negative fixnum */
   else
@@ -1272,15 +1285,15 @@ integer norm (obj prefix, integer n)
         {
           if (d <= MAX_FIXNUM)
             {
-              n = fixnum ((int8)d);
-              continue;
+              n = ENCODE_FIXNUM ((uint8)d); // TODO was fixnum, but was useless and broke stuff
+              continue; // TODO with cast to unsigned, will it work for negative numbers ?
             }
         }
       else if (obj_eq (n, NEG1))
         {
           if (d >= (1<<digit_width) + MIN_FIXNUM)
             {
-              n = fixnum ((int8)(d - (1<<digit_width)));
+              n = ENCODE_FIXNUM ((uint8)(d - (1<<digit_width))); // TODO same
               continue;
             }
         }
@@ -1335,7 +1348,6 @@ int8 cmp (integer x, integer y)
       if (xlo != ylo)
         { if (xlo < ylo) result = -1; else result = 1; }
     }
-
   return result;
 }
 
@@ -1348,7 +1360,7 @@ uint16 integer_length (integer x)
   integer next;
   digit d;
 
-  while (!obj_eq ((next = integer_hi (x)), ZERO))
+  while (!obj_eq ((next = integer_hi (x)), ZERO)) // TODO what happens if it ends with -1 ?
     {
       result += digit_width;
       x = next;
@@ -1390,7 +1402,7 @@ integer shr (integer x)
   return result;
 }
 
-integer negative_carry (boolean carry)
+integer negative_carry (integer carry)
 {
   if (carry)
     return NEG1;
@@ -1407,25 +1419,48 @@ integer shl (integer x)
   obj result = NIL;
   digit d;
 
+  // TODO problem seems to occur when we pass from i=16 to i=17
+/*   printf("SHL-before: lo=%d ; hi=%d ", integer_lo(x), integer_hi(x)); // TODO seems everything becomes 0 when we'd need 2 blocks... */
+/*   p(x); */
+/*   printf("\n"); */
+  
   for (;;)
     {
+      // TODO lo for 1st iteration is what's at address 0, not important
+/*       printf("SHL-loop: negc : %d ; lo-r : %d ; hi-r : %d ; result ", negc, integer_lo(result), integer_hi(result)); // TODO qqch devient negaif, prob de signed, je crois, on a -262144, trouver ce que c'est en unsigned */
+/*       p(result); */
+/*       printf(" ; lo-x : %d ; hi-x : %d ; x ", integer_lo(x), integer_hi(x)); */
+/*       p(x); */
+      // TODO ok, both x and result are 0 (result point to NIL, x to 0), find which is supposed to be the msb, and give it its right value
+
       if (obj_eq (x, negc))
         {
-          result = norm (result, x);
+          result = norm (result, x); // TODO see what happens in here, might be the cause of our problems
           break;
         }
+      // TODO ok, so norm does nothing in the 1st iteration, for the case i from 16 to 17
+/*       printf("SHL-loop2: lo-r : %d ; hi-r : %d ; result ", integer_lo(result), integer_hi(result)); // TODO qqch devient negaif, prob de signed, je crois, on a -262144, trouver ce que c'est en unsigned */
+/*       p(result); */
+/*       printf(" ; lo-x : %d ; hi-x : %d ; x ", integer_lo(x), integer_hi(x)); */
+/*       p(x); */
 
       d = integer_lo (x);
       x = integer_hi (x);
       temp = negc;
-      negc = negative_carry (d & (1<<(digit_width-1)));
+      negc = negative_carry (d & (1<<(digit_width-1))); // TODO right side is constant, and sixpic has no constant folding
+      //      printf("negc = %d\ntemp = %d (3 is NEG1, 4 is ZERO)\nd = %d\nmask = %d\ncarry = %d\n", negc, temp, d, (1 << (digit_width-1)), (d & (1<<(digit_width-1))));
       result = make_integer ((d << 1) | obj_eq (temp, NEG1), result);
+      // TODO OK, we shift left because this is shl, it is supposed to... but the high bit is junked ?
     }
 
+/*   printf("SHL-end: lo-r : %d ; hi-r : %d ; result ", integer_lo(result), integer_hi(result)); */
+/*   p(result); */
+/*   printf("\n"); */
+  
   return result;
 }
 
-integer shift_left (integer x, uint16 n)
+integer shift_left (integer x, uint16 n) // TODO have the primitves been changed for this and right ?
 {
   /* shift_left(x,n) returns the integer x shifted n bits to the left */
 
@@ -1452,7 +1487,7 @@ integer add (integer x, integer y)
   /* add(x,y) returns the sum of the integers x and y */
 
   integer negc = ZERO; /* negative carry */
-  obj result = NIL;
+  obj result = NIL; /* nil terminated for the norm function */
   digit dx;
   digit dy;
 
@@ -1502,7 +1537,6 @@ integer invert (integer x)
 integer sub (integer x, integer y)
 {
   /* sub(x,y) returns the difference of the integers x and y */
-
   integer negc = NEG1; /* negative carry */
   obj result = NIL;
   digit dx;
@@ -1572,7 +1606,7 @@ integer scale (digit n, integer x)
       if (obj_eq (x, ZERO))
         {
           if (carry <= MAX_FIXNUM)
-            result = norm (result, fixnum ((int8)carry));
+            result = norm (result, ENCODE_FIXNUM ((uint8)carry)); // TODO was fixnum, and int8 (signed)
           else
             result = norm (result, make_integer (carry, ZERO));
           break;
@@ -1582,7 +1616,7 @@ integer scale (digit n, integer x)
         {
           carry = carry - n;
           if (carry >= ((1<<digit_width) + MIN_FIXNUM))
-            result = norm (result, fixnum ((int8)carry));
+            result = norm (result, ENCODE_FIXNUM ((uint8)carry)); // TODO was fixnum, and int8 (signed)
           else
             result = norm (result, make_integer (carry, NEG1));
           break;
@@ -1664,15 +1698,21 @@ integer divnonneg (integer x, integer y)
 
 void p (integer n)
 {
-  long long x;
+  long long x; // TODO long long is 32 bits here, what about on a 64 bit machine ?
   x = ((long long)integer_lo (integer_hi (integer_hi (integer_hi (n))))<<48)+
-      ((long long)integer_lo (integer_hi (integer_hi (n)))<<32)+
-      ((long long)integer_lo (integer_hi (n))<<16)+
-      (long long)integer_lo (n);
+    ((long long)integer_lo (integer_hi (integer_hi (n)))<<32)+
+    ((long long)integer_lo (integer_hi (n))<<16)+
+    (long long)integer_lo (n);
   printf ("%lld ", x);
+  // TODO test for hex output, to avoid signedness problems
+/*   printf("%x%x%x%x\n", // TODO prob, if a lower part is 0, will show 0, not 0000 */
+/* 	 integer_lo (integer_hi (integer_hi (integer_hi (n)))), */
+/* 	 integer_lo (integer_hi (integer_hi (n))), */
+/* 	 integer_lo (integer_hi (n)), */
+/* 	 integer_lo (n)); */
 }
 
-integer enc (long long n)
+integer enc (long long n) // TODO used only for debugging
 {
   integer result = NIL;
 
@@ -1688,7 +1728,7 @@ integer enc (long long n)
     return norm (result, ZERO);
 }
 
-void test (void)
+void test (void) // TODO still in use ? no, but useful for tests
 {
   integer min2;
   integer min1;
@@ -1709,8 +1749,8 @@ void test (void)
   three= make_integer (0x0003, ZERO);
   four = make_integer (0x0004, ZERO);
 
-#if 0
-  if (negp (ZERO)) printf ("zero is negp\n");
+  //#if 0
+  if (negp (ZERO)) printf ("zero is negp\n"); // should not show
   if (negp (NEG1)) printf ("min1 is negp\n");
 
   printf ("cmp(5,5) = %d\n",cmp (make_integer (5, ZERO), make_integer (5, ZERO)));
@@ -1726,7 +1766,7 @@ void test (void)
   printf ("cmp(5,-65533) = %d\n",cmp (make_integer (5, ZERO), make_integer (-65533, NEG1)));
   printf ("cmp(5,-2)     = %d\n",cmp (make_integer (5, ZERO), make_integer (-2, NEG1)));
 
-  printf ("integer_length(0) = %d\n", integer_length (ZERO));
+  printf ("integer_length(0) = %d\n", integer_length (ZERO)); // these return the number of bits necessary to encode
   printf ("integer_length(1) = %d\n", integer_length (make_integer (1, ZERO)));
   printf ("integer_length(2) = %d\n", integer_length (make_integer (2, ZERO)));
   printf ("integer_length(3) = %d\n", integer_length (make_integer (3, ZERO)));
@@ -1734,15 +1774,15 @@ void test (void)
   printf ("integer_length(65536 + 4) = %d\n", integer_length (make_integer (4, make_integer (1, ZERO))));
 
 
-  printf ("1 = %d\n", one);
+  printf ("1 = %d\n", one); // TODO these show the address, useful ?
   printf ("2 = %d\n", two);
   printf ("4 = %d\n", four);
-  printf ("norm(2) = %d\n", norm (make_integer (0, make_integer (2, NIL)), ZERO));
+  printf ("norm(2) = %d\n", norm (make_integer (0, make_integer (2, NIL)), ZERO)); // TODO these show the fixnum address (6 and 7), so it seems to be working
   printf ("norm(2) = %d\n", norm (make_integer (0, make_integer (2, NIL)), ZERO));
   printf ("norm(3) = %d\n", norm (make_integer (0, make_integer (3, NIL)), ZERO));
   printf ("norm(3) = %d\n", norm (make_integer (0, make_integer (3, NIL)), ZERO));
 
-  printf ("shl(1) = %d\n", shl (one));
+  printf ("shl(1) = %d\n", shl (one)); // TODO fixnums, again
   printf ("shl(2) = %d\n", shl (two));
 
   {
@@ -1750,42 +1790,43 @@ void test (void)
     int i;
     for (i=1; i<=34; i++)
       {
+	printf("\nloop-1 : i=%d len=%d ", i, integer_length(n));
         p (n);
         n = shl(n);
       }
-    for (i=1; i<=35; i++)
-      {
-        p (n);
-        n = shr(n);
-      }
+/*     for (i=1; i<=35; i++) */
+/*       { */
+/*         p (n); */
+/*         n = shr(n); */
+/*       } */ // TODO later
   }
 
   {
     integer n = shift_left (four, 5);
     int i;
 
-    for (i=0; i<=14; i++)
-      {
-        p (shift_left (n, i*4));
-      }
+/*     for (i=0; i<=14; i++) */
+/*       { */
+/*         p (shift_left (n, i*4)); */
+/*       } */ // TODO later
   }
 
-  p (add (enc (32768), enc (32768)));
-  p (add (enc (32768+(65536*65535LL)), enc (32768)));
+/*   p (add (enc (32768), enc (32768))); */
+/*   p (add (enc (32768+(65536*65535LL)), enc (32768))); */
 
-  p (sub (enc (32768), enc (-32768)));
-  p (sub (enc (32768+(65536*65535LL)), enc (-32768)));
+/*   p (sub (enc (32768), enc (-32768))); */
+/*   p (sub (enc (32768+(65536*65535LL)), enc (-32768))); */
 
-  p (sub (enc (32768), enc (32769)));
+/*   p (sub (enc (32768), enc (32769))); */
 
-  p (mul (enc (123456789), enc (1000000000)));
-  p (mul (enc (123456789), enc (-1000000000)));
-  p (mul (enc (-123456789), enc (1000000000)));
-  p (mul (enc (-123456789), enc (-1000000000)));
+/*   p (mul (enc (123456789), enc (1000000000))); */
+/*   p (mul (enc (123456789), enc (-1000000000))); */
+/*   p (mul (enc (-123456789), enc (1000000000))); */
+/*   p (mul (enc (-123456789), enc (-1000000000))); */
 
-#endif
+/*   //#endif */
 
-  p (divnonneg (enc (10000000-1), enc (500000)));
+/*   p (divnonneg (enc (10000000-1), enc (500000))); */ // TODO later
 
   printf ("done\n");
 
@@ -1812,18 +1853,18 @@ void prim_numberp (void)
     }
 }
 
-void decode_2_int_args (void)
+void decode_2_int_args (void) // TODO fix for bignums ?
 {
-  a1 = decode_int (arg1);
+  a1 = decode_int (arg1); // TODO all math primitives call it, even for bignums, this is probably what causes problems, maybe not, since the primitives don't use a1 or a2, but rather arg1 and arg2
   a2 = decode_int (arg2);
 }
 
 void prim_add (void)
 {
-  decode_2_int_args ();
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = add (arg1, arg2);
 #else
+  decode_2_int_args ();
   arg1 = encode_int (a1 + a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -1831,10 +1872,10 @@ void prim_add (void)
 
 void prim_sub (void)
 {
-  decode_2_int_args ();
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = sub (arg1, arg2);
 #else
+  decode_2_int_args ();
   arg1 = encode_int (a1 - a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -1842,10 +1883,10 @@ void prim_sub (void)
 
 void prim_mul (void)
 {
-  decode_2_int_args ();
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = mul (arg1, arg2);
 #else
+  decode_2_int_args ();
   arg1 = encode_int (a1 * a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -1853,7 +1894,7 @@ void prim_mul (void)
 
 void prim_div (void)
 {
-  decode_2_int_args ();
+  decode_2_int_args (); // TODO useless work in the case of bignums, move in the else, but make sure that an error message is written even with bignums
   if (a2 == 0)
     ERROR("quotient", "divide by 0");
 #ifdef INFINITE_PRECISION_BIGNUMS
@@ -1866,7 +1907,7 @@ void prim_div (void)
 
 void prim_rem (void)
 {
-  decode_2_int_args ();
+  decode_2_int_args (); // TODO same as div
   if (a2 == 0)
     ERROR("remainder", "divide by 0");
 #ifdef INFINITE_PRECISION_BIGNUMS
@@ -1879,20 +1920,20 @@ void prim_rem (void)
 
 void prim_neg (void)
 {
-  a1 = decode_int (arg1);
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = neg (arg1);
 #else
+  a1 = decode_int (arg1);
   arg1 = encode_int (- a1);
 #endif
 }
 
 void prim_eq (void)
 {
-  decode_2_int_args ();
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) == 0);
 #else
+  decode_2_int_args ();
   arg1 = encode_bool(a1 == a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -1900,10 +1941,10 @@ void prim_eq (void)
 
 void prim_lt (void)
 {
-  decode_2_int_args ();
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) < 0);
 #else
+  decode_2_int_args ();
   arg1 = encode_bool(a1 < a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -1911,10 +1952,10 @@ void prim_lt (void)
 
 void prim_gt (void)
 {
-  decode_2_int_args ();
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) > 0);
 #else
+  decode_2_int_args ();
   arg1 = encode_bool(a1 > a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -1922,16 +1963,14 @@ void prim_gt (void)
 
 void prim_ior (void) // TODO FOOBIGNUMS these have not been implemented with bignums, do it
 {
-  a1 = decode_int (arg1);
-  a2 = decode_int (arg2);
+  decode_2_int_args (); // TODO is the function call overhead worth it ?
   arg1 = encode_int (a1 | a2);
   arg2 = OBJ_FALSE;
 }
 
 void prim_xor (void)
 {
-  a1 = decode_int (arg1);
-  a2 = decode_int (arg2);
+  decode_2_int_args (); // TODO is the function call overhead worth it ?
   arg1 = encode_int (a1 ^ a2);
   arg2 = OBJ_FALSE;
 }
@@ -1970,18 +2009,18 @@ void prim_car (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("car", "pair");
+        TYPE_ERROR("car.0", "pair");
       arg1 = ram_get_car (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_PAIR(arg1))
-        TYPE_ERROR("car", "pair");
+        TYPE_ERROR("car.1", "pair");
       arg1 = rom_get_car (arg1);
     }
   else
     {
-      TYPE_ERROR("car", "pair");
+      TYPE_ERROR("car.2", "pair");
     }
 }
 
@@ -1990,18 +2029,18 @@ void prim_cdr (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("cdr", "pair");
+        TYPE_ERROR("cdr.0", "pair");
       arg1 = ram_get_cdr (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_PAIR(arg1))
-        TYPE_ERROR("cdr", "pair");
+        TYPE_ERROR("cdr.1", "pair");
       arg1 = rom_get_cdr (arg1);
     }
   else
     {
-      TYPE_ERROR("cdr", "pair");
+      TYPE_ERROR("cdr.2", "pair");
     }
 }
 
@@ -2010,7 +2049,7 @@ void prim_set_car (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("set-car!", "pair");
+        TYPE_ERROR("set-car!.0", "pair");
 
       ram_set_car (arg1, arg2);
       arg1 = OBJ_FALSE;
@@ -2018,7 +2057,7 @@ void prim_set_car (void)
     }
   else
     {
-      TYPE_ERROR("set-car!", "pair");
+      TYPE_ERROR("set-car!.1", "pair");
     }
 }
 
@@ -2027,7 +2066,7 @@ void prim_set_cdr (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_PAIR(arg1))
-        TYPE_ERROR("set-cdr!", "pair");
+        TYPE_ERROR("set-cdr!.0", "pair");
 
       ram_set_cdr (arg1, arg2);
       arg1 = OBJ_FALSE;
@@ -2035,7 +2074,7 @@ void prim_set_cdr (void)
     }
   else
     {
-      TYPE_ERROR("set-cdr!", "pair");
+      TYPE_ERROR("set-cdr!.1", "pair");
     }
 }
 
@@ -2061,7 +2100,7 @@ void prim_u8vectorp (void)
 void prim_make_u8vector (void)
 {
   decode_2_int_args (); // arg1 is length, arg2 is contents
-
+  // TODO adapt for the new bignums
   if (a2 > 255)
     ERROR("make-u8vector", "byte vectors can only contain bytes");
     
@@ -2085,25 +2124,25 @@ void prim_make_u8vector (void)
 void prim_u8vector_ref (void)
 {
   a2 = decode_int (arg2);
-
+  // TODO adapt for the new bignums
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("u8vector-ref", "vector");
+	TYPE_ERROR("u8vector-ref.0", "vector");
       if ((ram_get_car (arg1) <= a2) || (a2 < 0))
-	ERROR("u8vector-ref", "vector index invalid");
+	ERROR("u8vector-ref.0", "vector index invalid");
       arg1 = ram_get_cdr (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_VECTOR(arg1))
-	TYPE_ERROR("u8vector-ref", "vector");
+	TYPE_ERROR("u8vector-ref.1", "vector");
       if ((rom_get_car (arg1) <= a2) || (a2 < 0))
-	ERROR("u8vector-ref", "vector index invalid");
+	ERROR("u8vector-ref.1", "vector index invalid");
       arg1 = rom_get_cdr (arg1);
     }
   else
-    TYPE_ERROR("u8vector-ref", "vector");
+    TYPE_ERROR("u8vector-ref.2", "vector");
 
   if (IN_VEC(arg1))
     {
@@ -2128,7 +2167,7 @@ void prim_u8vector_ref (void)
 
 void prim_u8vector_set (void)
 { // TODO a lot in common with ref, abstract that
-  a2 = decode_int (arg2);
+  a2 = decode_int (arg2); // TODO adapt for bignums
   a3 = decode_int (arg3);
 
   if (a3 > 255)
@@ -2137,13 +2176,13 @@ void prim_u8vector_set (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("u8vector-set!", "vector");
+	TYPE_ERROR("u8vector-set!.0", "vector");
       if ((ram_get_car (arg1) <= a2) || (a2 < 0))
 	ERROR("u8vector-set!", "vector index invalid");
       arg1 = ram_get_cdr (arg1);
     }
   else
-    TYPE_ERROR("u8vector-set!", "vector");
+    TYPE_ERROR("u8vector-set!.1", "vector");
   
   arg1 += (a2 / 4);
   a2 %= 4;
@@ -2160,17 +2199,17 @@ void prim_u8vector_length (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_VECTOR(arg1))
-	TYPE_ERROR("u8vector-length", "vector");
+	TYPE_ERROR("u8vector-length.0", "vector");
       arg1 = encode_int (ram_get_car (arg1));
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_VECTOR(arg1))
-	TYPE_ERROR("u8vector-length", "vector");
+	TYPE_ERROR("u8vector-length.1", "vector");
       arg1 = encode_int (rom_get_car (arg1));
     }
   else
-    TYPE_ERROR("u8vector-length", "vector");
+    TYPE_ERROR("u8vector-length.2", "vector");
 }
 
 void prim_u8vector_copy (void)
@@ -2178,7 +2217,7 @@ void prim_u8vector_copy (void)
   // arg1 is source, arg2 is source-start, arg3 is target, arg4 is target-start
   // arg5 is number of bytes to copy
 
-  a1 = decode_int (arg2);
+  a1 = decode_int (arg2); // TODO adapt for bignums
   a2 = decode_int (arg4);
   a3 = decode_int (arg5);
 
@@ -2186,10 +2225,10 @@ void prim_u8vector_copy (void)
   if (IN_RAM(arg1) && IN_RAM(arg3))
     {
       if (!RAM_VECTOR(arg1) || !RAM_VECTOR(arg3))
-	TYPE_ERROR("u8vector-copy!", "vector");
+	TYPE_ERROR("u8vector-copy!.0", "vector");
       if ((ram_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
 	  (ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
-	ERROR("u8vector-copy!", "vector index invalid");
+	ERROR("u8vector-copy!.0", "vector index invalid");
 
       // position to the start
       arg1 = ram_get_cdr (arg1);
@@ -2216,10 +2255,10 @@ void prim_u8vector_copy (void)
   else if (IN_ROM(arg1) && IN_RAM(arg3))
     {
       if (!ROM_VECTOR(arg1) || !RAM_VECTOR(arg3))
-	TYPE_ERROR("u8vector-copy!", "vector");
+	TYPE_ERROR("u8vector-copy!.1", "vector");
       if ((rom_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
 	  (ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
-	ERROR("u8vector-copy!", "vector index invalid");
+	ERROR("u8vector-copy!.1", "vector index invalid");
 
       arg1 = rom_get_cdr (arg1);
       while (a1--)
@@ -2240,7 +2279,7 @@ void prim_u8vector_copy (void)
 	}
     }
   else
-    TYPE_ERROR("u8vector-copy!", "vector");
+    TYPE_ERROR("u8vector-copy!.2", "vector");
     
   arg1 = OBJ_FALSE;
   arg2 = OBJ_FALSE;
@@ -2289,19 +2328,19 @@ void prim_string2list (void)
   if (IN_RAM(arg1))
     {
       if (!RAM_STRING(arg1))
-        TYPE_ERROR("string->list", "string");
+        TYPE_ERROR("string->list.0", "string");
 
       arg1 = ram_get_car (arg1);
     }
   else if (IN_ROM(arg1))
     {
       if (!ROM_STRING(arg1))
-        TYPE_ERROR("string->list", "string");
+        TYPE_ERROR("string->list.1", "string");
 
       arg1 = rom_get_car (arg1);
     }
   else
-    TYPE_ERROR("string->list", "string");
+    TYPE_ERROR("string->list.2", "string");
 }
 
 void prim_list2string (void)
@@ -2391,7 +2430,7 @@ void prim_clock (void)
 
 void prim_motor (void)
 {
-  decode_2_int_args ();
+  decode_2_int_args (); // TODO fix for bignums
 
   if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100)
     ERROR("motor", "argument out of range");
@@ -2416,7 +2455,7 @@ void prim_motor (void)
 
 void prim_led (void)
 {
-  decode_2_int_args ();
+  decode_2_int_args (); // TODO fix for bignums
   a3 = decode_int (arg3);
 
   if (a1 < 1 || a1 > 3 || a2 < 0 || a3 < 0)
@@ -2443,7 +2482,7 @@ void prim_led (void)
 
 void prim_led2_color (void)
 {
-  a1 = decode_int (arg1);
+  a1 = decode_int (arg1); // TODO fix for bignums
 
   if (a1 < 0 || a1 > 1)
     ERROR("led2-colors", "argument out of range");
@@ -2467,7 +2506,7 @@ void prim_led2_color (void)
 
 void prim_getchar_wait (void)
 {
-  decode_2_int_args();
+  decode_2_int_args(); // TODO fix for bignums
   a1 = read_clock () + a1;
 
   if (a1 < 0 || a2 < 1 || a2 > 3)
@@ -2539,7 +2578,7 @@ void prim_putchar (void)
 
 void prim_beep (void)
 {
-  decode_2_int_args ();
+  decode_2_int_args (); // TODO fix for bignums
 
   if (a1 < 1 || a1 > 255 || a2 < 0)
     ERROR("beep", "argument out of range");
@@ -2566,7 +2605,7 @@ void prim_adc (void)
 {
   short x;
 
-  a1 = decode_int (arg1);
+  a1 = decode_int (arg1); // TODO fix for bignums
 
   if (a1 < 1 || a1 > 3)
     ERROR("adc", "argument out of range");
@@ -2593,7 +2632,7 @@ void prim_adc (void)
 
 void prim_dac (void) // TODO not used
 {
-  a1 = decode_int (arg1);
+  a1 = decode_int (arg1); // TODO fix for bignums
 
   if (a1 < 0 || a1 > 255)
     ERROR("dac", "argument out of range");
@@ -2656,7 +2695,7 @@ void prim_receive_packet_to_u8vector (void)
 {
   // arg1 is the vector in which to put the received packet
   if (!RAM_VECTOR(arg1))
-    TYPE_ERROR("u8vector-copy!", "vector");
+    TYPE_ERROR("receive-packet-to-u8vector", "vector");
   
   // receive the packet in the buffer
   struct pcap_pkthdr header;
@@ -2695,8 +2734,8 @@ void prim_send_packet_from_u8vector (void)
   // arg2 is the length of the packet
   // TODO only works with ram vectors for now
   if (!RAM_VECTOR(arg1))
-    TYPE_ERROR("u8vector-copy!", "vector");
-  a2 = decode_int (arg2);
+    TYPE_ERROR("send-packet-from-vector!", "vector");
+  a2 = decode_int (arg2); // TODO fix for bignums
   a1 = 0; 
   
   // TODO test if the length of the packet is longer than the length of the vector
@@ -3022,19 +3061,19 @@ void pop_procedure (void)
   if (IN_RAM(arg1))
     {      
       if (!RAM_CLOSURE(arg1))
-	TYPE_ERROR("pop_procedure", "procedure");
+	TYPE_ERROR("pop_procedure.0", "procedure");
       
       entry = ram_get_entry (arg1) + CODE_START;
     }
   else if (IN_ROM(arg1))
     {      
       if (!ROM_CLOSURE(arg1))
-        TYPE_ERROR("pop_procedure", "procedure");
+        TYPE_ERROR("pop_procedure.1", "procedure");
 
       entry = rom_get_entry (arg1) + CODE_START;
     }
   else
-    TYPE_ERROR("pop_procedure", "procedure");
+    TYPE_ERROR("pop_procedure.2", "procedure");
 }
 
 void handle_arity_and_rest_param (void)
@@ -3046,14 +3085,14 @@ void handle_arity_and_rest_param (void)
   if ((np & 0x80) == 0)
     {
       if (na != np)
-        ERROR("handle_arity_and_rest_param", "wrong number of arguments");
+        ERROR("handle_arity_and_rest_param.0", "wrong number of arguments");
     }
   else
     {
       np = ~np;
 
       if (na < np)
-        ERROR("handle_arity_and_rest_param", "wrong number of arguments");
+        ERROR("handle_arity_and_rest_param.1", "wrong number of arguments");
 
       arg3 = OBJ_NULL;
 
@@ -3745,6 +3784,8 @@ int main (int argc, char *argv[])
   int errcode = 1;
   rom_addr rom_start_addr = 0;
 
+  test(); // TODO arithmetic test
+  
   if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 's')
     {
       int h1;
