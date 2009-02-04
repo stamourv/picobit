@@ -1285,15 +1285,15 @@ integer norm (obj prefix, integer n)
         {
           if (d <= MAX_FIXNUM)
             {
-              n = ENCODE_FIXNUM ((uint8)d); // TODO was fixnum, but was useless and broke stuff
-              continue; // TODO with cast to unsigned, will it work for negative numbers ?
+              n = ENCODE_FIXNUM ((uint8)d); // TODO is this cast needed at all ?
+              continue; // TODO with cast to unsigned, will it work for negative numbers ? or is it only handled in the next branch ?
             }
         }
       else if (obj_eq (n, NEG1))
         {
           if (d >= (1<<digit_width) + MIN_FIXNUM)
             {
-              n = ENCODE_FIXNUM ((uint8)(d - (1<<digit_width))); // TODO same
+              n = ENCODE_FIXNUM (d - (1<<digit_width)); // TODO had a cast, origianlly to int8, changed to uint8 which didn't work (obviously, we use -1 here), is a cast necessary at all ?
               continue;
             }
         }
@@ -1419,44 +1419,21 @@ integer shl (integer x)
   obj result = NIL;
   digit d;
 
-  // TODO problem seems to occur when we pass from i=16 to i=17
-/*   printf("SHL-before: lo=%d ; hi=%d ", integer_lo(x), integer_hi(x)); // TODO seems everything becomes 0 when we'd need 2 blocks... */
-/*   p(x); */
-/*   printf("\n"); */
-  
   for (;;)
     {
-      // TODO lo for 1st iteration is what's at address 0, not important
-/*       printf("SHL-loop: negc : %d ; lo-r : %d ; hi-r : %d ; result ", negc, integer_lo(result), integer_hi(result)); // TODO qqch devient negaif, prob de signed, je crois, on a -262144, trouver ce que c'est en unsigned */
-/*       p(result); */
-/*       printf(" ; lo-x : %d ; hi-x : %d ; x ", integer_lo(x), integer_hi(x)); */
-/*       p(x); */
-      // TODO ok, both x and result are 0 (result point to NIL, x to 0), find which is supposed to be the msb, and give it its right value
-
       if (obj_eq (x, negc))
         {
-          result = norm (result, x); // TODO see what happens in here, might be the cause of our problems
+          result = norm (result, x);
           break;
         }
-      // TODO ok, so norm does nothing in the 1st iteration, for the case i from 16 to 17
-/*       printf("SHL-loop2: lo-r : %d ; hi-r : %d ; result ", integer_lo(result), integer_hi(result)); // TODO qqch devient negaif, prob de signed, je crois, on a -262144, trouver ce que c'est en unsigned */
-/*       p(result); */
-/*       printf(" ; lo-x : %d ; hi-x : %d ; x ", integer_lo(x), integer_hi(x)); */
-/*       p(x); */
 
       d = integer_lo (x);
       x = integer_hi (x);
       temp = negc;
       negc = negative_carry (d & (1<<(digit_width-1))); // TODO right side is constant, and sixpic has no constant folding
-      //      printf("negc = %d\ntemp = %d (3 is NEG1, 4 is ZERO)\nd = %d\nmask = %d\ncarry = %d\n", negc, temp, d, (1 << (digit_width-1)), (d & (1<<(digit_width-1))));
       result = make_integer ((d << 1) | obj_eq (temp, NEG1), result);
-      // TODO OK, we shift left because this is shl, it is supposed to... but the high bit is junked ?
     }
 
-/*   printf("SHL-end: lo-r : %d ; hi-r : %d ; result ", integer_lo(result), integer_hi(result)); */
-/*   p(result); */
-/*   printf("\n"); */
-  
   return result;
 }
 
@@ -1695,7 +1672,7 @@ integer divnonneg (integer x, integer y)
   return result;
 }
 
-
+#ifdef WORKSTATION
 void p (integer n)
 {
   long long x; // TODO long long is 32 bits here, what about on a 64 bit machine ?
@@ -1749,7 +1726,6 @@ void test (void) // TODO still in use ? no, but useful for tests
   three= make_integer (0x0003, ZERO);
   four = make_integer (0x0004, ZERO);
 
-  //#if 0
   if (negp (ZERO)) printf ("zero is negp\n"); // should not show
   if (negp (NEG1)) printf ("min1 is negp\n");
 
@@ -1788,54 +1764,58 @@ void test (void) // TODO still in use ? no, but useful for tests
   {
     integer n = one;
     int i;
+    // should show powers of 2 incerasing, then decreasing
     for (i=1; i<=34; i++)
       {
 	printf("\nloop-1 : i=%d len=%d ", i, integer_length(n));
         p (n);
         n = shl(n);
       }
-/*     for (i=1; i<=35; i++) */
-/*       { */
-/*         p (n); */
-/*         n = shr(n); */
-/*       } */ // TODO later
+    for (i=1; i<=35; i++)
+      {
+	printf("\nloop-2 : i=%d len=%d ", i, integer_length(n));
+        p (n);
+        n = shr(n);
+      }
   }
 
   {
     integer n = shift_left (four, 5);
     int i;
 
-/*     for (i=0; i<=14; i++) */
-/*       { */
-/*         p (shift_left (n, i*4)); */
-/*       } */ // TODO later
+    for (i=0; i<=14; i++)
+      {
+	printf("\nloop-3 : i=%d len=%d ", i);
+        p (shift_left (n, i*4));
+      }
   }
 
-/*   p (add (enc (32768), enc (32768))); */
-/*   p (add (enc (32768+(65536*65535LL)), enc (32768))); */
+  printf("\n");
+  p (add (enc (32768), enc (32768))); printf("\n"); // 65536
+  p (add (enc (32768+(65536*65535LL)), enc (32768))); printf("\n"); // 4294967296
 
-/*   p (sub (enc (32768), enc (-32768))); */
-/*   p (sub (enc (32768+(65536*65535LL)), enc (-32768))); */
+  p (sub (enc (32768), enc (-32768))); printf("\n"); // 65536
+  p (sub (enc (32768+(65536*65535LL)), enc (-32768))); printf("\n"); // 4294967296
 
-/*   p (sub (enc (32768), enc (32769))); */
+  p (sub (enc (32768), enc (32769))); printf("\n"); // -1
+  p (sub (enc (32768), enc (132768))); printf("\n"); // -100000
+  p (add(sub (enc (32768), enc (32769)), enc(1000))); printf("\n"); // 999
+  
+  p (mul (enc (123456789), enc (1000000000))); printf("\n");
+  p (mul (enc (123456789), enc (-1000000000))); printf("\n");
+  p (mul (enc (-123456789), enc (1000000000))); printf("\n");
+  p (mul (enc (-123456789), enc (-1000000000))); printf("\n");
 
-/*   p (mul (enc (123456789), enc (1000000000))); */
-/*   p (mul (enc (123456789), enc (-1000000000))); */
-/*   p (mul (enc (-123456789), enc (1000000000))); */
-/*   p (mul (enc (-123456789), enc (-1000000000))); */
-
-/*   //#endif */
-
-/*   p (divnonneg (enc (10000000-1), enc (500000))); */ // TODO later
+  p (divnonneg (enc (10000000-1), enc (500000))); printf("\n");
 
   printf ("done\n");
 
   exit (0);
 }
+#endif
 
 #endif
 
-// TODO FOOBIGNUMS end pasted section
 
 void prim_numberp (void)
 {
