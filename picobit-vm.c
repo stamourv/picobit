@@ -269,11 +269,10 @@ uint8 rom_get (rom_addr a)
 
   ifdef INFINITE_PRECISION_BIGNUMS
   bignum n     0GG***** **next** hhhhhhhh llllllll  (16 bit digit)
-  TODO make sure this works with the "new" object representation, that the first 3 bits are enough to spot bignums, quick check of the bignum predicate indicates this would work, now implement this pointer FOOBIGNUM
   TODO what to do with the gc tags for the bignums ? will this work ?
   
   ifndef INFINITE_PRECISION_BIGNUMS
-  bignum n     0000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
+  bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
 
   pair         1GGaaaaa aaaaaaaa 000ddddd dddddddd
   a is car
@@ -323,7 +322,6 @@ uint8 rom_get (rom_addr a)
 #define MIN_FIXNUM_ENCODING 3
 // TODO change these ? were -5 and 40, with the new bignums, the needs for these might change
 #define MIN_FIXNUM -1
-// TODO FOOBIGNUMS, was 0, but -1 needed to be a fixnum for the algos to work
 #define MAX_FIXNUM 255
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING+MAX_FIXNUM-MIN_FIXNUM+1)
 
@@ -983,8 +981,7 @@ obj alloc_vec_cell (uint16 n)
 
 #ifdef INFINITE_PRECISION_BIGNUMS
 
-// TODO FOOBIGNUMS this was taken from the bignum code, see if it works
-int8 decode_int8 (obj o) // TODO never used except in decode_int
+int8 decode_int8 (obj o) // TODO never used except in decode_int, clean useless functions
 { // TODO really fishy, to use only 8 bits this way...
   int8 result;
   if (o < MIN_FIXNUM_ENCODING)
@@ -1022,7 +1019,6 @@ obj encode_int (int32 n) // TODO never used in the bignum code
     return ENCODE_FIXNUM(n);
   }
   
-  // TODO FOOBIGNUMS since we encode 0 here, and it's 00..0 we don't need to or with the 1st byte for the pointer, what happens with negative numbers, however ?
   return alloc_ram_cell_init (BIGNUM_FIELD0, ENCODE_FIXNUM(0), n >> 8, n);
 }
 
@@ -1061,7 +1057,7 @@ int32 decode_int (obj o)
   else
     TYPE_ERROR("decode_int.3", "integer");
 
-  if (u >= 128) // TODO FOOBIGNUMS uhh, what's that again ? is here since the beginning
+  if (u >= 128) // negative
     return ((int32)((((int16)u - 256) << 8) + h) << 8) + l;
 
   return ((int32)(((int16)u << 8) + h) << 8) + l;
@@ -1220,22 +1216,16 @@ void print (obj o)
 
 /* Integer operations */
 
-// TODO FOOBIGNUMS big pasted and NOT CHECKED section here
 #ifdef INFINITE_PRECISION_BIGNUMS
 
 #define obj_eq(x,y) ((x) == (y))
 
 #define integer_hi_set(x,y) ram_set_car (x, y)
- // TODO FOOBIGNUMS won't work, I think, will erase next pointer (or set it only in part) ACTUALLY, this is probably supposed to change the pointer. changed field1, npw changes the whole car
+// TODO FOOBIGNUMS won't work, I think, will erase next pointer (or set it only in part) ACTUALLY, this is probably supposed to change the pointer. changed field1, npw changes the whole car
 
 #define ZERO ENCODE_FIXNUM(0)
 #define NEG1 (ZERO-1)
 #define POS1 (ZERO+1)
-
-/* integer fixnum (uint8 n) // TODO this used to be a signed int, but broke everything. probably should be removed */
-/* { */
-/*   return ENCODE_FIXNUM (n); */
-/* } */ // TODO if no ill effect is detected without this, remove it
 
 // TODO this integer type is a mess, it should be obj, for clarity
 integer make_integer (digit lo, integer hi) // TODO BAD, should use encode_int instead
@@ -1250,9 +1240,9 @@ integer make_integer (digit lo, integer hi) // TODO BAD, should use encode_int i
 integer integer_hi (integer x) // TODO should be used for decoding
 {
   if (IN_RAM(x))
-    return ram_get_car (x); // TODO was field1
+    return ram_get_car (x);
   else if (IN_ROM(x))
-    return rom_get_car (x); // TODO was field1
+    return rom_get_car (x);
   else if (x < (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
     return NEG1; /* negative fixnum */
   else
@@ -1285,7 +1275,7 @@ integer norm (obj prefix, integer n)
         {
           if (d <= MAX_FIXNUM)
             {
-              n = ENCODE_FIXNUM ((uint8)d); // TODO is this cast needed at all ?
+              n = ENCODE_FIXNUM ((uint8)d);
               continue; // TODO with cast to unsigned, will it work for negative numbers ? or is it only handled in the next branch ?
             }
         }
@@ -1463,6 +1453,11 @@ integer add (integer x, integer y)
 {
   /* add(x,y) returns the sum of the integers x and y */
 
+  // TODO debug
+  p(x);
+  p(y);
+  printf("\n");
+  
   integer negc = ZERO; /* negative carry */
   obj result = NIL; /* nil terminated for the norm function */
   digit dx;
@@ -1801,12 +1796,13 @@ void test (void) // TODO still in use ? no, but useful for tests
   p (sub (enc (32768), enc (132768))); printf("\n"); // -100000
   p (add(sub (enc (32768), enc (32769)), enc(1000))); printf("\n"); // 999
   
-  p (mul (enc (123456789), enc (1000000000))); printf("\n");
-  p (mul (enc (123456789), enc (-1000000000))); printf("\n");
-  p (mul (enc (-123456789), enc (1000000000))); printf("\n");
-  p (mul (enc (-123456789), enc (-1000000000))); printf("\n");
+  p (mul (enc (123456789), enc (1000000000))); printf("\n"); // 123456789000000000
+  p (mul (enc (123456789), enc (-1000000000))); printf("\n"); // -123456789000000000
+  p (mul (enc (-123456789), enc (1000000000))); printf("\n"); // -123456789000000000
+  p (mul (enc (-123456789), enc (-1000000000))); printf("\n"); // 123456789000000000
+  p (mul (enc (-123456789), neg (enc (1000000000)))); printf("\n"); // 123456789000000000
 
-  p (divnonneg (enc (10000000-1), enc (500000))); printf("\n");
+  p (divnonneg (enc (10000000-1), enc (500000))); printf("\n"); // 19
 
   printf ("done\n");
 
@@ -3764,7 +3760,9 @@ int main (int argc, char *argv[])
   int errcode = 1;
   rom_addr rom_start_addr = 0;
 
-  test(); // TODO arithmetic test
+#ifdef TEST_BIGNUM
+  test();
+#endif
   
   if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 's')
     {

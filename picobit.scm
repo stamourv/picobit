@@ -1935,7 +1935,7 @@
 (define parse-file
   (lambda (filename)
     (let* ((library ;; TODO do not hard-code path
-            (with-input-from-file "/home/vincent/research/picobit/dev/library.scm" read-all))
+            (with-input-from-file "/home/vincent/src/picobit/dev/library.scm" read-all))
            (toplevel-exprs
             (expand-includes
 	     (append library
@@ -2598,7 +2598,7 @@
 ;------------------------------------------------------------------------------
 
 (define min-fixnum-encoding 3)
-(define min-fixnum -1) ;; TODO FOOBIGNUMS was 0, bignums needed -1 to be a fixnum
+(define min-fixnum -1)
 (define max-fixnum 255)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
 (define min-ram-encoding 512)
@@ -2642,6 +2642,12 @@
                 (vector-ref (cdr x) 0)
                 (compiler-error "unknown object" obj)))))))
 
+;; TODO actually, seem to be in a pair, scheme object in car, vector in cdr
+;; constant objects are represented by vectors
+;; 0 : encoding (ROM address) TODO really the ROM address ?
+;; 1 : TODO asm label constant ?
+;; 2 : number of occurences of this constant in the code
+;; 3 : pointer to content, used at encoding time
 (define (add-constant obj constants from-code? cont)
   (let ((o (translate-constant obj)))
     (let ((e (encode-direct o)))
@@ -2688,6 +2694,47 @@
 					 new-constants
 					 #f
 					 cont)))
+			((and (number? o) (exact? o))
+			 ; (pp (list START-ENCODING: o))
+			 (let loop1 ((n o)
+				     (acc '()))
+			   ;; acc will be the list of the linked blocks,
+			   ;; most significant part first
+			   ;; TODO use CPS, like everyone else
+			   ; (pp (list N: n HI: (arithmetic-shift n -16) LO: (modulo n (expt 2 16))))
+			   (if (not (or (= n 0) (= n -1)))
+			       (loop1 (arithmetic-shift n -16)
+				      (cons (modulo n (expt 2 16))
+					    acc))
+			       (let loop2 ((acc           acc)
+					   (prev          n) ; 0 or -1
+					   (descr         descr)
+					   (new-constants new-constants))
+				 ; (pp (list LOOP2: acc: acc prev: prev descr: descr))
+				 (if (null? acc) ; everything was encoded
+				     (cont new-constants)
+				     (begin
+				       (vector-set! descr 3 prev) ; value of hi
+				       (let ((descr ;; TODO OOPS nowhere is the actual value...
+					      (vector ;; TODO same as previous, asbtract ?
+					       #f
+					       (asm-make-label 'constant)
+					       (if from-code? 1 0)
+					       #f))
+					     (new-val
+					      ;; numerical value of the object
+					      (+ (arithmetic-shift prev 16)
+						 (car acc))))
+					 (loop2 (cdr acc)
+						new-val
+						descr
+						;; TODO find a way to prevent having 2 objects with the
+						;; same value, to force sharing
+						;; right now, I'm not sure sharing is done
+						;; perhaps, since, in the sorted list, if we search for
+						;; a certain value, only the 1st of it will show up
+						(cons (cons new-val descr)
+						      constants))))))))) ;; TODO FOOBIGNUMS
                         (else
                          (cont new-constants))))))))))
 
@@ -2938,11 +2985,15 @@
                       (obj (car x)))
                  (asm-label label)
 		 ;; see the vm source for a description of encodings
-                 (cond ((and (integer? obj) (exact? obj))
-                        (asm-8 0)
-                        (asm-8 (bitwise-and (arithmetic-shift obj -16) 255))
-                        (asm-8 (bitwise-and (arithmetic-shift obj -8) 255))
-                        (asm-8 (bitwise-and obj 255)))
+		 ;; TODO have comments here to explain encoding, at least magic number that give the type
+                 (cond ((and (integer? obj) (exact? obj)) ;; TODO FOOBGIGNUMS
+			(let ((hi (encode-constant (vector-ref descr 3)
+						   constants)))
+			  (pp (list ENCODE: (vector-ref descr 3) to: hi lo: obj))
+			  (asm-8 (+ 0 (arithmetic-shift hi -8)))
+			  (asm-8 (bitwise-and hi  #xff)) ; pointer to hi
+			  (asm-8 (bitwise-and obj #xff00)) ; bits 8-15
+			  (asm-8 (bitwise-and obj #xff)))) ; bits 0-7
                        ((pair? obj)
 			(let ((obj-car (encode-constant (car obj) constants))
 			      (obj-cdr (encode-constant (cdr obj) constants)))
