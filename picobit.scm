@@ -2696,45 +2696,14 @@
 					 cont)))
 			((and (number? o) (exact? o))
 			 ; (pp (list START-ENCODING: o))
-			 (let loop1 ((n o)
-				     (acc '()))
-			   ;; acc will be the list of the linked blocks,
-			   ;; most significant part first
-			   ;; TODO use CPS, like everyone else
-			   ; (pp (list N: n HI: (arithmetic-shift n -16) LO: (modulo n (expt 2 16))))
-			   (if (not (or (= n 0) (= n -1)))
-			       (loop1 (arithmetic-shift n -16)
-				      (cons (modulo n (expt 2 16))
-					    acc))
-			       (let loop2 ((acc           acc)
-					   (prev          n) ; 0 or -1
-					   (descr         descr)
-					   (new-constants new-constants))
-				 ; (pp (list LOOP2: acc: acc prev: prev descr: descr))
-				 (if (null? acc) ; everything was encoded
-				     (cont new-constants)
-				     (begin
-				       (vector-set! descr 3 prev) ; value of hi
-				       (let ((descr ;; TODO OOPS nowhere is the actual value...
-					      (vector ;; TODO same as previous, asbtract ?
-					       #f
-					       (asm-make-label 'constant)
-					       (if from-code? 1 0)
-					       #f))
-					     (new-val
-					      ;; numerical value of the object
-					      (+ (arithmetic-shift prev 16)
-						 (car acc))))
-					 (loop2 (cdr acc)
-						new-val
-						descr
-						;; TODO find a way to prevent having 2 objects with the
-						;; same value, to force sharing
-						;; right now, I'm not sure sharing is done
-						;; perhaps, since, in the sorted list, if we search for
-						;; a certain value, only the 1st of it will show up
-						(cons (cons new-val descr)
-						      constants))))))))) ;; TODO FOOBIGNUMS
+			 (let ((hi (arithmetic-shift o -16)))
+			   (vector-set! descr 3 hi)
+			   ;; recursion will stop once we reach 0 or -1 as the
+			   ;; high part, which will be matched by encode-direct
+			   (add-constant hi
+					 new-constants
+					 #f
+					 cont))) ;; TODO FOOBIGNUMS
                         (else
                          (cont new-constants))))))))))
 
@@ -2989,10 +2958,10 @@
                  (cond ((and (integer? obj) (exact? obj)) ;; TODO FOOBGIGNUMS
 			(let ((hi (encode-constant (vector-ref descr 3)
 						   constants)))
-			  (pp (list ENCODE: (vector-ref descr 3) to: hi lo: obj))
-			  (asm-8 (+ 0 (arithmetic-shift hi -8)))
+			  ; (pp (list ENCODE: (vector-ref descr 3) to: hi lo: obj))
+			  (asm-8 (+ 0 (arithmetic-shift hi -8))) ;; TODO -5 has low 16 at 00fb, should be fffb, 8 bits ar lost
 			  (asm-8 (bitwise-and hi  #xff)) ; pointer to hi
-			  (asm-8 (bitwise-and obj #xff00)) ; bits 8-15
+			  (asm-8 (arithmetic-shift obj -8)) ; bits 8-15
 			  (asm-8 (bitwise-and obj #xff)))) ; bits 0-7
                        ((pair? obj)
 			(let ((obj-car (encode-constant (car obj) constants))

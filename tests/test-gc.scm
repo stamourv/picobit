@@ -1,0 +1,8 @@
+(define (foo c)
+  (let ((x (cons 2 3)))
+    (cons 3 (foo c)))
+  ;; (if (display (car (cons 2 3)))
+;;       (foo)
+;;       (foo))
+  )
+(foo '())

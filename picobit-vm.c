@@ -1453,11 +1453,6 @@ integer add (integer x, integer y)
 {
   /* add(x,y) returns the sum of the integers x and y */
 
-  // TODO debug
-  p(x);
-  p(y);
-  printf("\n");
-  
   integer negc = ZERO; /* negative carry */
   obj result = NIL; /* nil terminated for the norm function */
   digit dx;
@@ -1627,16 +1622,7 @@ integer mulnonneg (integer x, integer y)
   return norm (result, s);
 }
 
-integer mul (integer x, integer y)
-{
-  /* mul(x,y) returns the product of the integers x and y */
-
-  if (negp (x))
-    return neg (mulnonneg (neg (x), y));
-  else
-    return mulnonneg (x, y);
-}
-
+// TODO have functions mul and div that handle negative arguments ? currently, the logic is in prim_mul and prim_div
 integer divnonneg (integer x, integer y)
 {
   /* divnonneg(x,y) returns the quotient and remainder of
@@ -1677,7 +1663,7 @@ void p (integer n)
     (long long)integer_lo (n);
   printf ("%lld ", x);
   // TODO test for hex output, to avoid signedness problems
-/*   printf("%x%x%x%x\n", // TODO prob, if a lower part is 0, will show 0, not 0000 */
+/*   printf("%x %x %x %x\n", // TODO prob, if a lower part is 0, will show 0, not 0000 */
 /* 	 integer_lo (integer_hi (integer_hi (integer_hi (n)))), */
 /* 	 integer_lo (integer_hi (integer_hi (n))), */
 /* 	 integer_lo (integer_hi (n)), */
@@ -1795,12 +1781,13 @@ void test (void) // TODO still in use ? no, but useful for tests
   p (sub (enc (32768), enc (32769))); printf("\n"); // -1
   p (sub (enc (32768), enc (132768))); printf("\n"); // -100000
   p (add(sub (enc (32768), enc (32769)), enc(1000))); printf("\n"); // 999
-  
-  p (mul (enc (123456789), enc (1000000000))); printf("\n"); // 123456789000000000
-  p (mul (enc (123456789), enc (-1000000000))); printf("\n"); // -123456789000000000
-  p (mul (enc (-123456789), enc (1000000000))); printf("\n"); // -123456789000000000
-  p (mul (enc (-123456789), enc (-1000000000))); printf("\n"); // 123456789000000000
-  p (mul (enc (-123456789), neg (enc (1000000000)))); printf("\n"); // 123456789000000000
+
+  // TODO mul was scrapped, logic is now in prim_mul
+/*   p (mul (enc (123456789), enc (1000000000))); printf("\n"); // 123456789000000000 */
+/*   p (mul (enc (123456789), enc (-1000000000))); printf("\n"); // -123456789000000000 */
+/*   p (mul (enc (-123456789), enc (1000000000))); printf("\n"); // -123456789000000000 */
+/*   p (mul (enc (-123456789), enc (-1000000000))); printf("\n"); // 123456789000000000 */
+/*   p (mul (enc (-123456789), neg (enc (1000000000)))); printf("\n"); // 123456789000000000 */
 
   p (divnonneg (enc (10000000-1), enc (500000))); printf("\n"); // 19
 
@@ -1860,7 +1847,12 @@ void prim_sub (void)
 void prim_mul (void)
 {
 #ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = mul (arg1, arg2);
+  a1 = negp (arg1);
+  a2 = negp (arg2); // -1 if negative
+  arg1 = mulnonneg (a1 ? neg(arg1) : arg1,
+		    a2 ? neg(arg2) : arg2);
+  if (a1 + a2 == 1) // only one of the 2 was negative
+    arg1 = neg(arg1);
 #else
   decode_2_int_args ();
   arg1 = encode_int (a1 * a2);
@@ -1870,12 +1862,19 @@ void prim_mul (void)
 
 void prim_div (void)
 {
-  decode_2_int_args (); // TODO useless work in the case of bignums, move in the else, but make sure that an error message is written even with bignums
+#ifdef INFINITE_PRECISION_BIGNUMS
+  if (obj_eq(arg2, ZERO))
+    ERROR("quotient", "divide by 0");
+  a1 = negp (arg1);
+  a2 = negp (arg2); // -1 if negative
+  arg1 = divnonneg (a1 ? neg(arg1) : arg1,
+		    a2 ? neg(arg2) : arg2);
+  if (a1 + a2 == 1) // only one of the 2 was negative
+    arg1 = neg(arg1);
+#else
+  decode_2_int_args ();
   if (a2 == 0)
     ERROR("quotient", "divide by 0");
-#ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = ZERO;
-#else
   arg1 = encode_int (a1 / a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -1883,12 +1882,22 @@ void prim_div (void)
 
 void prim_rem (void)
 {
-  decode_2_int_args (); // TODO same as div
+#ifdef INFINITE_PRECISION_BIGNUMS
+  if (obj_eq(arg2, ZERO))
+    ERROR("remainder", "divide by 0");
+  if (negp(arg1) || negp(arg2))
+    ERROR("remainder", "only positive numbers are supported");
+  // TODO fix this to handle negatives
+  // TODO logic quite similar to mul and div (likely, once we fix), abstract ?
+  arg3 = divnonneg (arg1, arg2);
+  arg4 = mulnonneg (arg2, arg3);
+  arg1 = sub(arg1, arg4 );
+  arg3 = OBJ_FALSE;
+  arg4 = OBJ_FALSE;
+#else
+  decode_2_int_args ();
   if (a2 == 0)
     ERROR("remainder", "divide by 0");
-#ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = ZERO;
-#else
   arg1 = encode_int (a1 % a2);
 #endif
   arg2 = OBJ_FALSE;
