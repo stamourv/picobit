@@ -32,20 +32,6 @@ typedef uint16 obj;
 
 /*---------------------------------------------------------------------------*/
 
-// bignum definitions
-
-#ifdef INFINITE_PRECISION_BIGNUMS
-
-#define digit_width 16
-
-typedef obj integer;
-typedef uint16 digit; // TODO why these ? adds to the confusion
-typedef uint32 two_digit;
-
-#endif
-
-/*---------------------------------------------------------------------------*/
-
 // environment
 
 #ifdef PICOBOARD2
@@ -382,6 +368,50 @@ void set_global (uint8 i, obj o);
 
 /*---------------------------------------------------------------------------*/
 
+// bignum definitions
+
+#ifdef INFINITE_PRECISION_BIGNUMS
+
+#define digit_width 16
+
+typedef obj integer;
+typedef uint16 digit; // TODO why these ? adds to the confusion
+typedef uint32 two_digit;
+
+#define obj_eq(x,y) ((x) == (y))
+#define integer_hi_set(x,y) ram_set_car (x, y)
+
+#define ZERO ENCODE_FIXNUM(0)
+#define NEG1 (ZERO-1)
+#define POS1 (ZERO+1)
+
+integer make_integer (digit lo, integer hi);
+integer integer_hi (integer x);
+digit integer_lo (integer x);
+
+integer norm (obj prefix, integer n);
+uint8 negp (integer x);
+int8 cmp (integer x, integer y);
+uint16 integer_length (integer x);
+integer shr (integer x);
+integer negative_carry (integer carry);
+integer shl (integer x);
+integer shift_left (integer x, uint16 n);
+integer add (integer x, integer y);
+integer invert (integer x);
+integer sub (integer x, integer y);
+integer neg (integer x);
+integer scale (digit n, integer x);
+integer mulnonneg (integer x, integer y);
+integer divnonneg (integer x, integer y);
+  
+int32 decode_int (obj o);
+obj encode_int (int32 n);
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
 // garbage collector
 
 // TODO explain what each tag means, with 1-2 mark bits
@@ -422,6 +452,75 @@ uint8 bytecode_lo4;
 int32 a1;
 int32 a2;
 int32 a3;
+
+/*---------------------------------------------------------------------------*/
+
+// primitives
+
+void prim_numberp (void);
+void prim_add (void);
+void prim_mul (void);
+void prim_div (void);
+void prim_rem (void);
+void prim_neg (void);
+void prim_eq (void);
+void prim_lt (void);
+void prim_gt (void);
+// TODO we have extra primitives, pring back geq, leq, and put them in a sensible place in the primitives
+void prim_ior (void);
+void prim_xor (void);
+
+void prim_pairp (void);
+obj cons (obj car, obj cdr);
+void prim_cons (void);
+void prim_car (void);
+void prim_cdr (void);
+void prim_set_car (void);
+void prim_set_cdr (void);
+void prim_nullp (void);
+
+void prim_u8vectorp (void);
+void prim_make_u8vector (void);
+void prim_u8vector_ref (void);
+void prim_u8vector_set (void);
+void prim_u8vector_length (void);
+void prim_u8vector_copy (void);
+
+void prim_eqp (void);
+void prim_not (void);
+void prim_symbolp (void);
+void prim_stringp (void);
+void prim_string2list (void);
+void prim_list2string (void);
+void prim_booleanp (void);
+
+#ifdef WORKSTATION
+void show (obj o);
+void print (obj o);
+#endif
+void prim_print (void);
+int32 read_clock (void);
+void prim_clock (void);
+void prim_motor (void);
+void prim_led (void);
+void prim_led2_color (void);
+void prim_getchar_wait (void);
+void prim_putchar (void);
+void prim_beep (void);
+void prim_adc (void);
+void prim_sernum (void);
+
+void prim_network_init (void);
+void prim_network_cleanup (void);
+void prim_receive_packet_to_u8vector (void);
+void prim_send_packet_from_u8vector (void);
+
+/*---------------------------------------------------------------------------*/
+
+// debugging functions
+
+void show_type (obj o);
+void show_state (rom_addr pc);
 
 /*---------------------------------------------------------------------------*/
 
