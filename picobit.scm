@@ -1,6 +1,7 @@
-; File: "picobit.scm", Time-stamp: <2006-05-08 16:04:37 feeley>
+;;;; File: "picobit.scm", Time-stamp: <2006-05-08 16:04:37 feeley>
 
-; Copyright (C) 2008 by Marc Feeley and Vincent St-Amour, All Rights Reserved.
+;;;; Copyright (C) 2004-2009 by Marc Feeley and Vincent St-Amour
+;;;; All Rights Reserved.
 
 (define-macro (dummy)
   (proper-tail-calls-set! #f)
