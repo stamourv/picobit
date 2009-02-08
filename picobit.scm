@@ -254,6 +254,8 @@
      (make-var '#%network-cleanup #t '() '() '() #f (make-primitive 0 #f #t))
      (make-var '#%receive-packet-to-u8vector #t '() '() '() #f (make-primitive 1 #f #f))
      (make-var '#%send-packet-from-u8vector #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%<= #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%>= #t '() '() '() #f (make-primitive 2 #f #f))
      
      (make-var '#%readyq #t '() '() '() #f #f)
      ;; TODO put in a meaningful order
@@ -271,6 +273,8 @@
     (= . #%=)
     (< . #%<)
     (> . #%>)
+    (<= . #%<=)
+    (>= . #%>=)
     (pair? . #%pair?)
     (cons . #%cons)
     (car . #%car)
@@ -2936,6 +2940,8 @@
 	    (define (prim.network-cleanup) (prim 50))
 	    (define (prim.receive-packet-to-u8vector) (prim 51))
 	    (define (prim.send-packet-from-u8vector)  (prim 52))
+	    (define (prim.<=)              (prim 53))
+	    (define (prim.>=)              (prim 54))
 	    
             (define big-endian? #f)
 
@@ -3116,6 +3122,8 @@
 			     ((#%network-cleanup) (prim.network-cleanup))
 			     ((#%receive-packet-to-u8vector) (prim.receive-packet-to-u8vector))
 			     ((#%send-packet-from-u8vector)  (prim.send-packet-from-u8vector))
+			     ((#%<=)              (prim.<=))
+                             ((#%>=)              (prim.>=))
                              (else
                               (compiler-error "unknown primitive" (cadr instr)))))
 

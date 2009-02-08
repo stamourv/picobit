@@ -8,6 +8,80 @@
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef WORKSTATION
+
+char *prim_name[64] =
+  {
+    "prim #%number?",
+    "prim #%+",
+    "prim #%-",
+    "prim #%*",
+    "prim #%quotient",
+    "prim #%remainder",
+    "prim #%neg",
+    "prim #%=",
+    "prim #%<",
+    "prim #%ior",
+    "prim #%>",
+    "prim #%xor",
+    "prim #%pair?",
+    "prim #%cons",
+    "prim #%car",
+    "prim #%cdr",
+    "prim #%set-car!",
+    "prim #%set-cdr!",
+    "prim #%null?",
+    "prim #%eq?",
+    "prim #%not",
+    "prim #%get-cont",
+    "prim #%graft-to-cont",
+    "prim #%return-to-cont",
+    "prim #%halt",
+    "prim #%symbol?",
+    "prim #%string?",
+    "prim #%string->list",
+    "prim #%list->string",
+    "prim #%make-u8vector",
+    "prim #%u8vector-ref",
+    "prim #%u8vector-set!",
+    "prim #%print",
+    "prim #%clock",
+    "prim #%motor",
+    "prim #%led",
+    "prim #%led2-color",
+    "prim #%getchar-wait",
+    "prim #%putchar",
+    "prim #%beep",
+    "prim #%adc",
+    "prim #%u8vector?",
+    "prim #%sernum",
+    "prim #%u8vector-length",
+    "prim #%u8vector-copy!",
+    "shift",
+    "pop",
+    "return",
+    "prim #%boolean?",
+    "prim #%network-init",
+    "prim #%network-cleanup",
+    "prim #%receive-packet-to-u8vector",
+    "prim #%send-packet-from-u8vector",
+    "prim #%<=",
+    "prim #%>=",
+    "prim 55",
+    "prim 56",
+    "prim 57",
+    "prim 58",
+    "prim 59",
+    "prim 60",
+    "prim 61",
+    "prim 62",
+    "prim 63"
+  };
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
 // numerical primitives
 
 void prim_numberp (void) {
@@ -139,7 +213,26 @@ void prim_gt (void) {
   arg2 = OBJ_FALSE;
 }
 
-// TODO we have extra primitives, pring back geq, leq, and put them in a sensible place in the primitives
+prim_leq (void) {
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = encode_bool(cmp (arg1, arg2) <= 0);
+#else
+  decode_2_int_args ();
+  arg1 = encode_bool(a1 <= a2);
+#endif
+  arg2 = OBJ_FALSE;
+  
+}
+
+void prim_geq (void) {
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = encode_bool(cmp (arg1, arg2) >= 0);
+#else
+  decode_2_int_args ();
+  arg1 = encode_bool(a1 >= a2);
+#endif
+  arg2 = OBJ_FALSE;
+}
 
 void prim_ior (void) { // TODO FOOBIGNUMS these have not been implemented with bignums, do it
   decode_2_int_args (); // TODO is the function call overhead worth it ?

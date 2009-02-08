@@ -2,8 +2,8 @@
 
 all: picobit-vm
 
-picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o
-	cc -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o -lpcap
+picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
+	cc -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o -lpcap
 
 .c.o:
 	$(CC) -O -c $*.c
@@ -15,6 +15,7 @@ debug:
 	cc -O -c -g -DDEBUG bignums.c
 	cc -O -c -g -DDEBUG debug.c
 	cc -O -c -g -DDEBUG primitives.c
+	cc -O -c -g -DDEBUG dispatch.c
 	make picobit-vm
 
 debug-gc:
@@ -23,6 +24,7 @@ debug-gc:
 	cc -O -c -g -DDEBUG -DDEBUG_GC bignums.c
 	cc -O -c -g -DDEBUG -DDEBUG_GC debug.c
 	cc -O -c -g -DDEBUG -DDEBUG_GC primitives.c
+	cc -O -c -g -DDEBUG -DDEBUG_GC dispatch.c
 	make picobit-vm
 
 clean:

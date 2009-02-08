@@ -457,6 +457,10 @@ int32 a3;
 
 // primitives
 
+#ifdef WORKSTATION
+char *prim_name[64];
+#endif
+
 void prim_numberp (void);
 void prim_add (void);
 void prim_mul (void);
@@ -514,6 +518,56 @@ void prim_network_init (void);
 void prim_network_cleanup (void);
 void prim_receive_packet_to_u8vector (void);
 void prim_send_packet_from_u8vector (void);
+
+/*---------------------------------------------------------------------------*/
+
+// dispatch
+
+#define FETCH_NEXT_BYTECODE() bytecode = rom_get (pc++)
+
+#define BEGIN_DISPATCH()                        \
+  dispatch:                                     \
+  IF_TRACE(show_state (pc));                    \
+  FETCH_NEXT_BYTECODE();                        \
+  bytecode_hi4 = bytecode & 0xf0;               \
+  bytecode_lo4 = bytecode & 0x0f;               \
+  switch (bytecode_hi4 >> 4) {
+
+#define END_DISPATCH() }
+
+#define CASE(opcode) case (opcode>>4):;
+
+#define DISPATCH(); goto dispatch;
+
+#define PUSH_CONSTANT1     0x00
+#define PUSH_CONSTANT2     0x10
+#define PUSH_STACK1        0x20
+#define PUSH_STACK2        0x30
+#define PUSH_GLOBAL        0x40
+#define SET_GLOBAL         0x50
+#define CALL               0x60
+#define JUMP               0x70
+#define LABEL_INSTR        0x80
+#define PUSH_CONSTANT_LONG 0x90
+
+#define FREE1              0xa0
+#define FREE2              0xb0
+
+#define PRIM1              0xc0
+#define PRIM2              0xd0
+#define PRIM3              0xe0
+#define PRIM4              0xf0
+
+#define PUSH_ARG1() push_arg1 ()
+#define POP() pop()
+
+void push_arg1 (void);
+obj pop (void);
+void pop_procedure (void);
+void handle_arity_and_rest_param (void);
+void build_env (void);
+void save_cont (void);
+void interpreter (void);
 
 /*---------------------------------------------------------------------------*/
 
