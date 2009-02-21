@@ -1940,7 +1940,7 @@
 (define parse-file
   (lambda (filename)
     (let* ((library ;; TODO do not hard-code path
-            (with-input-from-file "/home/vincent/src/picobit/dev/library.scm" read-all))
+            (with-input-from-file "library.scm" read-all))
            (toplevel-exprs
             (expand-includes
 	     (append library
