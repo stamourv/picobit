@@ -213,7 +213,7 @@ void prim_gt (void) {
   arg2 = OBJ_FALSE;
 }
 
-prim_leq (void) {
+prim_leq (void) { // TODO these 2 are useful, but they add to the code size, is it worth it ?
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) <= 0);
 #else
@@ -235,8 +235,12 @@ void prim_geq (void) {
 }
 
 void prim_ior (void) { // TODO FOOBIGNUMS these have not been implemented with bignums, do it
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = bitwise_ior(arg1, arg2);
+#else
   decode_2_int_args (); // TODO is the function call overhead worth it ?
   arg1 = encode_int (a1 | a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
@@ -245,6 +249,8 @@ void prim_xor (void) {
   arg1 = encode_int (a1 ^ a2);
   arg2 = OBJ_FALSE;
 }
+
+// TODO primitives de shift ?
 
 /*---------------------------------------------------------------------------*/
 

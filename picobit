@@ -1,0 +1,4 @@
+#!/usr/bin/env gsi
+
+;; TODO change this
+(include "/home/vincent/src/picobit/dev/picobit.scm")

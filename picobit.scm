@@ -2708,7 +2708,7 @@
 			   (add-constant hi
 					 new-constants
 					 #f
-					 cont))) ;; TODO FOOBIGNUMS
+					 cont)))
                         (else
                          (cont new-constants))))))))))
 

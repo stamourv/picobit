@@ -385,6 +385,31 @@ integer divnonneg (integer x, integer y) {
   return result;
 }
 
+integer bitwise_ior (integer x, integer y) {
+  /* returns the bitwise inclusive or of x and y */
+
+  obj result = ZERO;
+  printf("START\n");
+  
+  for (;;){
+    printf("LOOP\n");
+    if (obj_eq(x, ZERO)){
+      printf("ZERO\n");
+      return make_integer(y, result);
+    }
+    if (obj_eq(x, NEG1)){
+      printf("NEG1\n");
+      return norm(x, result);
+    }
+    result = make_integer(integer_lo(x) | integer_lo(y), // TODO a l'envers
+			  result);
+    x = integer_hi(x);
+    y = integer_hi(y);
+    printf("END-LOOP\n");
+  }
+  // TODO test for fixnums
+}
+
 // used only in primitives that use small numbers only
 // for example, vector primitives
 int32 decode_int (obj o) {
