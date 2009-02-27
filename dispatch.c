@@ -484,11 +484,11 @@ void interpreter (void) {
   case 8:
     arg2 = POP();  arg1 = POP();  prim_lt ();       PUSH_ARG1();  break;
   case 9:
-    arg2 = POP(); arg1 = POP(); prim_ior (); PUSH_ARG1(); break; // TODO swap these 2 and geq, leq ?
+    arg2 = POP();  arg1 = POP();  prim_leq ();      PUSH_ARG1();  break;
   case 10:
     arg2 = POP();  arg1 = POP();  prim_gt ();       PUSH_ARG1();  break;
   case 11:
-    arg2 = POP(); arg1 = POP(); prim_xor (); PUSH_ARG1(); break;
+    arg2 = POP();  arg1 = POP();  prim_geq ();      PUSH_ARG1();  break;
   case 12:
     arg1 = POP();  prim_pairp ();    PUSH_ARG1();  break;
   case 13:
@@ -684,12 +684,10 @@ void interpreter (void) {
     arg2 = POP(); arg1 = POP(); prim_send_packet_from_u8vector ();
     PUSH_ARG1(); break;
   case 5:
-    /* prim #% <= */
-    arg2 = POP();  arg1 = POP();  prim_leq (); PUSH_ARG1();  break;
+    arg2 = POP(); arg1 = POP(); prim_ior (); PUSH_ARG1(); break;
     break;
   case 6:
-    /* prim #% >= */
-    arg2 = POP();  arg1 = POP();  prim_geq (); PUSH_ARG1();  break;
+    arg2 = POP(); arg1 = POP(); prim_xor (); PUSH_ARG1(); break;
     break;
 #if 0
   case 7:

@@ -75,7 +75,7 @@
 
 (define <=
   (lambda (x y)
-    (or (#%< x y) (#%= x y))))
+    (#%<= x y)))
 
 (define >
   (lambda (x y)
@@ -83,7 +83,7 @@
 
 (define >=
   (lambda (x y)
-    (or (#%> x y) (#%= x y))))
+    (#%>= x y)))
 
 (define pair?
   (lambda (x)

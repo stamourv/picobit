@@ -37,9 +37,9 @@
      (make-var '#%neg #t '() '() '() #f (make-primitive 1 #f #f))
      (make-var '#%= #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%< #t '() '() '() #f (make-primitive 2 #f #f))
-     (make-var '#%ior #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%<= #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%> #t '() '() '() #f (make-primitive 2 #f #f))
-     (make-var '#%xor #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%>= #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%pair? #t '() '() '() #f (make-primitive 1 #f #f))
      (make-var '#%cons #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%car #t '() '() '() #f (make-primitive 1 #f #f))
@@ -78,8 +78,8 @@
      (make-var '#%network-cleanup #t '() '() '() #f (make-primitive 0 #f #t))
      (make-var '#%receive-packet-to-u8vector #t '() '() '() #f (make-primitive 1 #f #f))
      (make-var '#%send-packet-from-u8vector #t '() '() '() #f (make-primitive 2 #f #f))
-     (make-var '#%<= #t '() '() '() #f (make-primitive 2 #f #f))
-     (make-var '#%>= #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%ior #t '() '() '() #f (make-primitive 2 #f #f))
+     (make-var '#%xor #t '() '() '() #f (make-primitive 2 #f #f))
      
      (make-var '#%readyq #t '() '() '() #f #f)
      ;; TODO put in a meaningful order
