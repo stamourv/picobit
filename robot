@@ -1,0 +1,3 @@
+#! ./gsi
+
+(include "robot.scm")

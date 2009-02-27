@@ -1,0 +1,16 @@
+;; test to see if the newly reintroduced <= and >= work
+
+(if (and (<= 45 45)
+	 (<= 45 47)
+	 (not (<= 45 32))
+	 (>= 32 10)
+	 (>= 32 32)
+	 (not (>= 32 45)))
+    (display "PASSED\n"))
+(display (<= 45 45))
+(display (<= 45 47))
+(display (not (<= 45 32)))
+(display (>= 32 10))
+(display (>= 32 32))
+(display (not (>= 32 45)))
+(display "\n")
