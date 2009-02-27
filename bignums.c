@@ -8,13 +8,7 @@
 
 #ifdef INFINITE_PRECISION_BIGNUMS
 
-// TODO clean up all this
-
 integer make_integer (digit lo, integer hi) {
-/*   if(!hi && lo <= MAX_FIXNUM && lo >= MIN_FIXNUM) */
-/*     return ENCODE_FIXNUM(lo);o */
-  // TODO won't work, and the bignum functions are unaware of fixnums
-  // TODO if I uncomment, segfaults every time this is called. no ill effect is noticed without it, but kept just in case
   return alloc_ram_cell_init (BIGNUM_FIELD0 | (hi >> 8), hi, lo >> 8, lo);
 }
 
@@ -388,26 +382,35 @@ integer divnonneg (integer x, integer y) {
 integer bitwise_ior (integer x, integer y) {
   /* returns the bitwise inclusive or of x and y */
 
-  obj result = ZERO;
-  printf("START\n");
+  obj result = NIL;
   
   for (;;){
-    printf("LOOP\n");
-    if (obj_eq(x, ZERO)){
-      printf("ZERO\n");
-      return make_integer(y, result);
-    }
-    if (obj_eq(x, NEG1)){
-      printf("NEG1\n");
-      return norm(x, result);
-    }
-    result = make_integer(integer_lo(x) | integer_lo(y), // TODO a l'envers
+    if (obj_eq(x, ZERO))
+      return norm(result, y);
+    if (obj_eq(x, NEG1))
+      return norm(result, x);
+    result = make_integer(integer_lo(x) | integer_lo(y),
 			  result);
     x = integer_hi(x);
     y = integer_hi(y);
-    printf("END-LOOP\n");
   }
-  // TODO test for fixnums
+}
+
+integer bitwise_xor (integer x, integer y) { // TODO similar to ior (only diff is the test), abstract ?
+  /* returns the bitwise inclusive or of x and y */
+  
+  obj result = NIL;
+  
+  for (;;){
+    if (obj_eq(x, ZERO))
+      return norm(result, y);
+    if (obj_eq(x, NEG1))
+      return norm(result, x);
+    result = make_integer(integer_lo(x) ^ integer_lo(y),
+			  result);
+    x = integer_hi(x);
+    y = integer_hi(y);
+  }
 }
 
 // used only in primitives that use small numbers only

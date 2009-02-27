@@ -234,7 +234,7 @@ void prim_geq (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_ior (void) { // TODO FOOBIGNUMS these have not been implemented with bignums, do it
+void prim_ior (void) {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = bitwise_ior(arg1, arg2);
 #else
@@ -245,8 +245,12 @@ void prim_ior (void) { // TODO FOOBIGNUMS these have not been implemented with b
 }
 
 void prim_xor (void) {
+#ifdef INFINITE_PRECISION_BIGNUMS
+  arg1 = bitwise_xor(arg1, arg2);
+#else
   decode_2_int_args (); // TODO is the function call overhead worth it ?
   arg1 = encode_int (a1 ^ a2);
+#endif
   arg2 = OBJ_FALSE;
 }
 
