@@ -573,8 +573,10 @@ void interpreter (void);
 
 // debugging functions
 
+#ifdef WORKSTATION
 void show_type (obj o);
 void show_state (rom_addr pc);
+#endif
 
 /*---------------------------------------------------------------------------*/
 
