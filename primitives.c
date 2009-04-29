@@ -213,7 +213,7 @@ void prim_gt (void) {
   arg2 = OBJ_FALSE;
 }
 
-prim_leq (void) { // TODO these 2 are useful, but they add to the code size, is it worth it ?
+void prim_leq (void) { // TODO these 2 are useful, but they add to the code size, is it worth it ?
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) <= 0);
 #else
