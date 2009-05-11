@@ -12,7 +12,7 @@ void init_ram_heap (void) {
   
   free_list = 0;
   
-  while (o > (MIN_RAM_ENCODING + (glovars + 1) / 2)) {
+  while (o > (MIN_RAM_ENCODING + (glovars + 1) >> 1)) {
     // we don't want to add globals to the free list, and globals occupy the
     // beginning of memory at the rate of 2 globals per word (car and cdr)
     ram_set_gc_tags (o, GC_TAG_UNMARKED);
@@ -26,7 +26,7 @@ void init_ram_heap (void) {
   // each node of the free list must know the free length that follows it
   // this free length is stored in words, not in bytes
   // if we did count in bytes, the number might need more than 13 bits
-  ram_set_cdr (free_list_vec, VEC_BYTES / 4);
+  ram_set_cdr (free_list_vec, VEC_BYTES >> 2);
   
   for (i=0; i<glovars; i++)
     set_global (i, OBJ_FALSE);
@@ -168,7 +168,7 @@ void sweep (void) {
 
   free_list = 0;
 
-  while (visit >= (MIN_RAM_ENCODING + ((glovars + 1) / 2))) {
+  while (visit >= (MIN_RAM_ENCODING + ((glovars + 1) >> 1))) {
     // we don't want to sweep the global variables area
     if ((RAM_COMPOSITE(visit)
 	 && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) // 2 mark bit
@@ -179,7 +179,7 @@ void sweep (void) {
 	obj o = ram_get_cdr (visit);
 	uint16 i = ram_get_car (visit); // number of elements
 	ram_set_car (o, free_list_vec);
-	ram_set_cdr (o, (i + 3) / 4); // free length, in words
+	ram_set_cdr (o, (i + 3) >> 2); // free length, in words
 	free_list_vec = o;
 	// TODO merge free spaces
       }
@@ -304,13 +304,13 @@ obj alloc_vec_cell (uint16 n) {
   // case 2 : there is still some space left in the free section, create a new
   //  node to represent this space
   else {
-    obj new_free = o + (n + 3)/4;
+    obj new_free = o + (n + 3) >> 2;
     if (prec)
       ram_set_car (prec, new_free);
     else
       free_list_vec = new_free;
     ram_set_car (new_free, ram_get_car (o));
-    ram_set_cdr (new_free, ram_get_cdr (o) - (n + 3)/4);
+    ram_set_cdr (new_free, ram_get_cdr (o) - (n + 3) >> 2);
   }
   
   return o;

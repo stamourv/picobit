@@ -130,15 +130,15 @@ obj rom_get_entry (obj o){
 obj get_global (uint8 i) {
 // globals occupy the beginning of ram, with 2 globals per word
   if (i & 1)
-    return ram_get_cdr (MIN_RAM_ENCODING + (i / 2));
+    return ram_get_cdr (MIN_RAM_ENCODING + (i >> 1));
   else
-    return ram_get_car (MIN_RAM_ENCODING + (i / 2));
+    return ram_get_car (MIN_RAM_ENCODING + (i >> 1));
 }
 void set_global (uint8 i, obj o) {
   if (i & 1)
-    ram_set_cdr (MIN_RAM_ENCODING + (i / 2), o);
+    ram_set_cdr (MIN_RAM_ENCODING + (i >> 1), o);
   else
-    ram_set_car (MIN_RAM_ENCODING + (i / 2), o);
+    ram_set_car (MIN_RAM_ENCODING + (i >> 1), o);
 }
 
 // TODO generic functions (get_field0, get_car, etc) that work for both rom and ram were not used, are in garbage

@@ -366,7 +366,7 @@ void prim_make_u8vector (void) {
 			      VECTOR_FIELD2 | (arg3 >> 8),
 			      arg3 & 0xff);
 
-  a1 = (a1 + 3) / 4; // actual length, in words
+  a1 = (a1 + 3) >> 2; // actual length, in words
   while (a1--) {
     ram_set_field0 (arg3, a2);
     ram_set_field1 (arg3, a2);
@@ -397,7 +397,7 @@ void prim_u8vector_ref (void) {
     TYPE_ERROR("u8vector-ref.2", "vector");
 
   if (IN_VEC(arg1)) {
-    arg1 += (a2 / 4);
+    arg1 += (a2 >> 2);
     a2 %= 4;
     
     arg1 = encode_int (ram_get_fieldn (arg1, a2));
@@ -432,7 +432,7 @@ void prim_u8vector_set (void) { // TODO a lot in common with ref, abstract that
   else
     TYPE_ERROR("u8vector-set!.1", "vector");
   
-  arg1 += (a2 / 4);
+  arg1 += (a2 >> 2);
   a2 %= 4;
   
   ram_set_fieldn (arg1, a2, a3);
@@ -475,10 +475,10 @@ void prim_u8vector_copy (void) {
     
     // position to the start
     arg1 = ram_get_cdr (arg1);
-    arg1 += (a1 / 4);
+    arg1 += (a1 >> 2);
     a1 %= 4;
     arg3 = ram_get_cdr (arg3);
-    arg3 += (a2 / 4);
+    arg3 += (a2 >> 2);
     a2 %= 4;
     
     // copy
@@ -486,10 +486,10 @@ void prim_u8vector_copy (void) {
       ram_set_fieldn (arg3, a2, ram_get_fieldn (arg1, a1));
       
       a1++;
-      arg1 += (a1 / 4);
+      arg1 += (a1 >> 2);
       a1 %= 4; // TODO merge with the previous similar block ?
       a2++;
-      arg3 += (a2 / 4);
+      arg3 += (a2 >> 2);
       a2 %= 4;
     }
   }
@@ -506,7 +506,7 @@ void prim_u8vector_copy (void) {
       arg1 = rom_get_cdr (arg1);
     
     arg3 = ram_get_cdr (arg3);
-    arg3 += (a2 / 4);
+    arg3 += (a2 >> 2);
     a2 %= 4;
     
     while (a3--) {
@@ -514,7 +514,7 @@ void prim_u8vector_copy (void) {
       
       arg1 = rom_get_cdr (arg1);
       a2++;
-      arg3 += (a2 / 4);
+      arg3 += (a2 >> 2);
       a2 %= 4; // TODO very similar to the other case
     }
   }
