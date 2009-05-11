@@ -496,7 +496,7 @@ obj encode_int (int32 n) {
 #endif
 
 // useful for some primitives
-void decode_2_int_args (void) {
+void decode_2_int_args () {
   a1 = decode_int (arg1);
   a2 = decode_int (arg2);
 }

@@ -84,7 +84,7 @@ char *prim_name[64] =
 
 // numerical primitives
 
-void prim_numberp (void) {
+void prim_numberp () {
   if (arg1 >= MIN_FIXNUM_ENCODING
       && arg1 <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM)))
     arg1 = OBJ_TRUE;
@@ -98,7 +98,7 @@ void prim_numberp (void) {
   }
 }
 
-void prim_add (void) {
+void prim_add () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = add (arg1, arg2);
 #else
@@ -108,7 +108,7 @@ void prim_add (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_sub (void) {
+void prim_sub () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = sub (arg1, arg2);
 #else
@@ -118,7 +118,7 @@ void prim_sub (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_mul (void) {
+void prim_mul () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   a1 = negp (arg1);
   a2 = negp (arg2); // -1 if negative
@@ -133,7 +133,7 @@ void prim_mul (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_div (void) {
+void prim_div () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   if (obj_eq(arg2, ZERO))
     ERROR("quotient", "divide by 0");
@@ -152,7 +152,7 @@ void prim_div (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_rem (void) {
+void prim_rem () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   if (obj_eq(arg2, ZERO))
     ERROR("remainder", "divide by 0");
@@ -174,7 +174,7 @@ void prim_rem (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_neg (void) {
+void prim_neg () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = neg (arg1);
 #else
@@ -183,7 +183,7 @@ void prim_neg (void) {
 #endif
 }
 
-void prim_eq (void) {
+void prim_eq () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) == 0);
 #else
@@ -193,7 +193,7 @@ void prim_eq (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_lt (void) {
+void prim_lt () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) < 0);
 #else
@@ -203,7 +203,7 @@ void prim_lt (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_gt (void) {
+void prim_gt () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) > 0);
 #else
@@ -213,7 +213,7 @@ void prim_gt (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_leq (void) { // TODO these 2 are useful, but they add to the code size, is it worth it ?
+void prim_leq () { // TODO these 2 are useful, but they add to the code size, is it worth it ?
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) <= 0);
 #else
@@ -224,7 +224,7 @@ void prim_leq (void) { // TODO these 2 are useful, but they add to the code size
   
 }
 
-void prim_geq (void) {
+void prim_geq () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = encode_bool(cmp (arg1, arg2) >= 0);
 #else
@@ -234,7 +234,7 @@ void prim_geq (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_ior (void) {
+void prim_ior () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = bitwise_ior(arg1, arg2);
 #else
@@ -244,7 +244,7 @@ void prim_ior (void) {
   arg2 = OBJ_FALSE;
 }
 
-void prim_xor (void) {
+void prim_xor () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = bitwise_xor(arg1, arg2);
 #else
@@ -260,7 +260,7 @@ void prim_xor (void) {
 
 // list primitives
 
-void prim_pairp (void) {
+void prim_pairp () {
   if (IN_RAM(arg1))
     arg1 = encode_bool (RAM_PAIR(arg1));
   else if (IN_ROM(arg1))
@@ -276,12 +276,12 @@ obj cons (obj car, obj cdr) {
 			      cdr & 0xff);
 }
 
-void prim_cons (void) {
+void prim_cons () {
   arg1 = cons (arg1, arg2);
   arg2 = OBJ_FALSE;
 }
 
-void prim_car (void) {
+void prim_car () {
   if (IN_RAM(arg1)) {
     if (!RAM_PAIR(arg1))
       TYPE_ERROR("car.0", "pair");
@@ -296,7 +296,7 @@ void prim_car (void) {
     TYPE_ERROR("car.2", "pair");
 }
 
-void prim_cdr (void) {
+void prim_cdr () {
   if (IN_RAM(arg1)) {
     if (!RAM_PAIR(arg1))
       TYPE_ERROR("cdr.0", "pair");
@@ -311,7 +311,7 @@ void prim_cdr (void) {
     TYPE_ERROR("cdr.2", "pair");
 }
 
-void prim_set_car (void) {
+void prim_set_car () {
   if (IN_RAM(arg1)) {
     if (!RAM_PAIR(arg1))
       TYPE_ERROR("set-car!.0", "pair");
@@ -324,7 +324,7 @@ void prim_set_car (void) {
     TYPE_ERROR("set-car!.1", "pair");
 }
 
-void prim_set_cdr (void) {
+void prim_set_cdr () {
   if (IN_RAM(arg1)) {
     if (!RAM_PAIR(arg1))
       TYPE_ERROR("set-cdr!.0", "pair");
@@ -337,7 +337,7 @@ void prim_set_cdr (void) {
     TYPE_ERROR("set-cdr!.1", "pair");
 }
 
-void prim_nullp (void) {
+void prim_nullp () {
   arg1 = encode_bool (arg1 == OBJ_NULL);
 }
 
@@ -345,7 +345,7 @@ void prim_nullp (void) {
 
 // vector primitives
 
-void prim_u8vectorp (void) {
+void prim_u8vectorp () {
   if (IN_RAM(arg1))
     arg1 = encode_bool (RAM_VECTOR(arg1));
   else if (IN_ROM(arg1))
@@ -354,7 +354,7 @@ void prim_u8vectorp (void) {
     arg1 = OBJ_FALSE;
 }
 
-void prim_make_u8vector (void) {
+void prim_make_u8vector () {
   decode_2_int_args (); // arg1 is length, arg2 is contents
   // TODO adapt for the new bignums
   if (a2 > 255)
@@ -376,7 +376,7 @@ void prim_make_u8vector (void) {
   }
 }
 
-void prim_u8vector_ref (void) {
+void prim_u8vector_ref () {
   a2 = decode_int (arg2);
   // TODO adapt for the new bignums
   if (IN_RAM(arg1)) {
@@ -415,7 +415,7 @@ void prim_u8vector_ref (void) {
   arg4 = OBJ_FALSE;
 }
 
-void prim_u8vector_set (void) { // TODO a lot in common with ref, abstract that
+void prim_u8vector_set () { // TODO a lot in common with ref, abstract that
   a2 = decode_int (arg2); // TODO adapt for bignums
   a3 = decode_int (arg3);
 
@@ -442,7 +442,7 @@ void prim_u8vector_set (void) { // TODO a lot in common with ref, abstract that
   arg3 = OBJ_FALSE;
 }
 
-void prim_u8vector_length (void) {
+void prim_u8vector_length () {
   if (IN_RAM(arg1)) {
     if (!RAM_VECTOR(arg1))
       TYPE_ERROR("u8vector-length.0", "vector");
@@ -457,7 +457,7 @@ void prim_u8vector_length (void) {
     TYPE_ERROR("u8vector-length.2", "vector");
 }
 
-void prim_u8vector_copy (void) {
+void prim_u8vector_copy () {
   // arg1 is source, arg2 is source-start, arg3 is target, arg4 is target-start
   // arg5 is number of bytes to copy
   
@@ -532,16 +532,16 @@ void prim_u8vector_copy (void) {
 
 // miscellaneous primitives
 
-void prim_eqp (void) {
+void prim_eqp () {
   arg1 = encode_bool (arg1 == arg2);
   arg2 = OBJ_FALSE;
 }
 
-void prim_not (void) {
+void prim_not () {
   arg1 = encode_bool (arg1 == OBJ_FALSE);
 }
 
-void prim_symbolp (void) {
+void prim_symbolp () {
   if (IN_RAM(arg1))
     arg1 = encode_bool (RAM_SYMBOL(arg1));
   else if (IN_ROM(arg1))
@@ -550,7 +550,7 @@ void prim_symbolp (void) {
     arg1 = OBJ_FALSE;
 }
 
-void prim_stringp (void) {
+void prim_stringp () {
   if (IN_RAM(arg1))
     arg1 = encode_bool (RAM_STRING(arg1));
   else if (IN_ROM(arg1))
@@ -559,7 +559,7 @@ void prim_stringp (void) {
     arg1 = OBJ_FALSE;
 }
 
-void prim_string2list (void) {
+void prim_string2list () {
   if (IN_RAM(arg1)) {
     if (!RAM_STRING(arg1))
       TYPE_ERROR("string->list.0", "string");
@@ -576,14 +576,14 @@ void prim_string2list (void) {
     TYPE_ERROR("string->list.2", "string");
 }
 
-void prim_list2string (void) {
+void prim_list2string () {
   arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | ((arg1 & 0x1f00) >> 8),
 			      arg1 & 0xff,
 			      STRING_FIELD2,
 			      0);
 }
 
-void prim_booleanp (void) {
+void prim_booleanp () {
   arg1 = encode_bool (arg1 < 2);
 }
 
@@ -704,7 +704,7 @@ void print (obj o) {
 
 #endif
 
-void prim_print (void) {
+void prim_print () {
 #ifdef WORKSTATION
   print (arg1);
 #endif
@@ -712,7 +712,7 @@ void prim_print (void) {
   arg1 = OBJ_FALSE;
 }
 
-int32 read_clock (void) {
+int32 read_clock () {
   int32 now = 0;
 
 #ifdef PICOBOARD2
@@ -743,11 +743,11 @@ int32 read_clock (void) {
   return now;
 }
 
-void prim_clock (void) {
+void prim_clock () {
   arg1 = encode_int (read_clock ());
 }
 
-void prim_motor (void) {
+void prim_motor () {
   decode_2_int_args ();
 
   if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100)
@@ -767,7 +767,7 @@ void prim_motor (void) {
 }
 
 
-void prim_led (void) {
+void prim_led () {
   decode_2_int_args ();
   a3 = decode_int (arg3);
   
@@ -789,7 +789,7 @@ void prim_led (void) {
 }
 
 
-void prim_led2_color (void) {
+void prim_led2_color () {
   a1 = decode_int (arg1);
 
   if (a1 < 0 || a1 > 1)
@@ -808,7 +808,7 @@ void prim_led2_color (void) {
 }
 
 
-void prim_getchar_wait (void) {
+void prim_getchar_wait () {
   decode_2_int_args();
   a1 = read_clock () + a1;
 
@@ -841,7 +841,7 @@ void prim_getchar_wait (void) {
 }
 
 
-void prim_putchar (void) {
+void prim_putchar () {
   decode_2_int_args ();
 
   if (a1 < 0 || a1 > 255 || a2 < 1 || a2 > 3)
@@ -861,7 +861,7 @@ void prim_putchar (void) {
 }
 
 
-void prim_beep (void) {
+void prim_beep () {
   decode_2_int_args ();
 
   if (a1 < 1 || a1 > 255 || a2 < 0)
@@ -881,7 +881,7 @@ void prim_beep (void) {
 }
 
 
-void prim_adc (void) {
+void prim_adc () {
   short x;
 
   a1 = decode_int (arg1);
@@ -902,7 +902,7 @@ void prim_adc (void) {
   arg1 = encode_int (x);
 }
 
-void prim_sernum (void) {
+void prim_sernum () {
   short x;
 
 #ifdef PICOBOARD2
@@ -920,7 +920,7 @@ void prim_sernum (void) {
 
 // networking primitives
 
-void prim_network_init (void) { // TODO maybe put in the initialization of the vm
+void prim_network_init () { // TODO maybe put in the initialization of the vm
 #ifdef WORKSTATION
   handle = pcap_open_live(INTERFACE, MAX_PACKET_SIZE, PROMISC, TO_MSEC, errbuf);
   if (handle == NULL)
@@ -928,13 +928,13 @@ void prim_network_init (void) { // TODO maybe put in the initialization of the v
 #endif
 }
 
-void prim_network_cleanup (void) { // TODO maybe put in halt ?
+void prim_network_cleanup () { // TODO maybe put in halt ?
 #ifdef WORKSTATION
   pcap_close(handle);
 #endif
 }
 
-void prim_receive_packet_to_u8vector (void) {
+void prim_receive_packet_to_u8vector () {
   // arg1 is the vector in which to put the received packet
   if (!RAM_VECTOR(arg1))
     TYPE_ERROR("receive-packet-to-u8vector", "vector");
@@ -970,7 +970,7 @@ void prim_receive_packet_to_u8vector (void) {
 #endif
 }
 
-void prim_send_packet_from_u8vector (void) {
+void prim_send_packet_from_u8vector () {
   // arg1 is the vector which contains the packet to be sent
   // arg2 is the length of the packet
   // TODO only works with ram vectors for now

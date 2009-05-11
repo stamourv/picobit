@@ -461,63 +461,63 @@ int32 a3;
 char *prim_name[64];
 #endif
 
-void prim_numberp (void);
-void prim_add (void);
-void prim_mul (void);
-void prim_div (void);
-void prim_rem (void);
-void prim_neg (void);
-void prim_eq (void);
-void prim_lt (void);
-void prim_gt (void);
+void prim_numberp ();
+void prim_add ();
+void prim_mul ();
+void prim_div ();
+void prim_rem ();
+void prim_neg ();
+void prim_eq ();
+void prim_lt ();
+void prim_gt ();
 // TODO we have extra primitives, pring back geq, leq, and put them in a sensible place in the primitives
-void prim_ior (void);
-void prim_xor (void);
+void prim_ior ();
+void prim_xor ();
 
-void prim_pairp (void);
+void prim_pairp ();
 obj cons (obj car, obj cdr);
-void prim_cons (void);
-void prim_car (void);
-void prim_cdr (void);
-void prim_set_car (void);
-void prim_set_cdr (void);
-void prim_nullp (void);
+void prim_cons ();
+void prim_car ();
+void prim_cdr ();
+void prim_set_car ();
+void prim_set_cdr ();
+void prim_nullp ();
 
-void prim_u8vectorp (void);
-void prim_make_u8vector (void);
-void prim_u8vector_ref (void);
-void prim_u8vector_set (void);
-void prim_u8vector_length (void);
-void prim_u8vector_copy (void);
+void prim_u8vectorp ();
+void prim_make_u8vector ();
+void prim_u8vector_ref ();
+void prim_u8vector_set ();
+void prim_u8vector_length ();
+void prim_u8vector_copy ();
 
-void prim_eqp (void);
-void prim_not (void);
-void prim_symbolp (void);
-void prim_stringp (void);
-void prim_string2list (void);
-void prim_list2string (void);
-void prim_booleanp (void);
+void prim_eqp ();
+void prim_not ();
+void prim_symbolp ();
+void prim_stringp ();
+void prim_string2list ();
+void prim_list2string ();
+void prim_booleanp ();
 
 #ifdef WORKSTATION
 void show (obj o);
 void print (obj o);
 #endif
-void prim_print (void);
-int32 read_clock (void);
-void prim_clock (void);
-void prim_motor (void);
-void prim_led (void);
-void prim_led2_color (void);
-void prim_getchar_wait (void);
-void prim_putchar (void);
-void prim_beep (void);
-void prim_adc (void);
-void prim_sernum (void);
+void prim_print ();
+int32 read_clock ();
+void prim_clock ();
+void prim_motor ();
+void prim_led ();
+void prim_led2_color ();
+void prim_getchar_wait ();
+void prim_putchar ();
+void prim_beep ();
+void prim_adc ();
+void prim_sernum ();
 
-void prim_network_init (void);
-void prim_network_cleanup (void);
-void prim_receive_packet_to_u8vector (void);
-void prim_send_packet_from_u8vector (void);
+void prim_network_init ();
+void prim_network_cleanup ();
+void prim_receive_packet_to_u8vector ();
+void prim_send_packet_from_u8vector ();
 
 /*---------------------------------------------------------------------------*/
 
@@ -561,13 +561,13 @@ void prim_send_packet_from_u8vector (void);
 #define PUSH_ARG1() push_arg1 ()
 #define POP() pop()
 
-void push_arg1 (void);
-obj pop (void);
-void pop_procedure (void);
-void handle_arity_and_rest_param (void);
-void build_env (void);
-void save_cont (void);
-void interpreter (void);
+void push_arg1 ();
+obj pop ();
+void pop_procedure ();
+void handle_arity_and_rest_param ();
+void build_env ();
+void save_cont ();
+void interpreter ();
 
 /*---------------------------------------------------------------------------*/
 
