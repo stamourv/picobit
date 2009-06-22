@@ -1,0 +1,56 @@
+This is a very small Scheme system designed to run on small
+microcontrollers, currently the PIC microcontroller.
+
+It consists of
+
+* a bytecode compiler which compiles Scheme source code to bytecode.
+  The bytecode compiler is run using the Gambit-C Scheme system,
+  usually on a PC/workstation.
+
+* a bytecode interpreter which can be either compiled to run on a
+  microcontroller, or to be run on some common operating systems, at
+  least GNU/Linux (Windows support hasn't been tested in a while,
+  though, and especially the networking part might not work out of the
+  box).
+
+
+USAGE:
+
+1. Install the dependencies:
+
+  * Gambit-C: needed to run the bytecode compiler.
+    See http://www.iro.umontreal.ca/~gambit/
+
+  * libpcap: optional, to test networking on PC's (GNU/Linux)
+    Be sure to also install the package containing the headers
+    (libpcap-dev or similar).
+    (TODO: add to makefile somehow)
+
+2a. Targetting a PC/workstation for testing:
+
+  * Build the VM: run
+     make
+
+  * Compile and run a Scheme program: run
+     ./p schemefile-without-suffix
+
+2b. Compile and run a Scheme program on PIC:
+
+  <TODO>
+
+
+SEE ALSO:
+
+  * S3 (Small Scheme Stack) : A Scheme TCP/IP Stack Targeting Small
+    Embedded Applications
+    http://www-etud.iro.umontreal.ca/~stamourv/sw08-tcp.pdf
+
+  * Slides from the presentation given at the 2008 Workshop on Scheme
+    and Functional Programming
+    http://www-etud.iro.umontreal.ca/~stamourv/s3.pdf
+
+ and maybe you find the papers about the BIT and PICBIT systems
+ interesting, which have been written before PICOBIT and share some
+ common concepts:
+
+    http://w3.ift.ulaval.ca/~dadub100/
