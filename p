@@ -2,6 +2,7 @@
 
 set -eu
 
-./picobit "$1".scm && ./picobit-vm "$1".hex
+base="$(dirname "$1")/$(basename "$1" .scm)"
 
-echo
+./picobit "$base".scm
+./picobit-vm "$base".hex
