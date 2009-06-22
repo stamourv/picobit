@@ -415,7 +415,7 @@ integer bitwise_xor (integer x, integer y) { // TODO similar to ior (only diff i
 
 // used only in primitives that use small numbers only
 // for example, vector primitives
-int32 decode_int (obj o) {
+int16 decode_int (obj o) {
   int8 result;
   if (o < MIN_FIXNUM_ENCODING)
     TYPE_ERROR("decode_int.0", "integer");
@@ -438,7 +438,7 @@ int32 decode_int (obj o) {
 }
 
 // same purpose as decode_int
-obj encode_int (int32 n) {
+obj encode_int (int16 n) {
   if (n >= MIN_FIXNUM && n <= MAX_FIXNUM) {
     return ENCODE_FIXNUM(n);
   }
@@ -450,7 +450,7 @@ obj encode_int (int32 n) {
 
 // regular (finite, 24 bits) bignums
 
-int32 decode_int (obj o) {
+int16 decode_int (obj o) {
   uint8 u;
   uint8 h;
   uint8 l;

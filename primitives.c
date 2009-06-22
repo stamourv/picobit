@@ -9,7 +9,6 @@
 /*---------------------------------------------------------------------------*/
 
 #ifdef WORKSTATION
-
 char *prim_name[64] =
   {
     "prim #%number?",
@@ -77,7 +76,6 @@ char *prim_name[64] =
     "prim 62",
     "prim 63"
   };
-
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -666,8 +664,8 @@ void show (obj o) {
 	printf ("#<vector %d>", o);
       else {
 	printf ("(");
-	car = ram_get_car (o);
-	cdr = ram_get_cdr (o);
+	cdr = ram_get_car (o);
+	car = ram_get_cdr (o);
 	// ugly hack, takes advantage of the fact that pairs and
 	// continuations have the same layout
 	goto loop;
@@ -921,7 +919,7 @@ void prim_sernum () {
 // networking primitives
 
 void prim_network_init () { // TODO maybe put in the initialization of the vm
-#ifdef WORKSTATION
+#ifdef NETWORKING
   handle = pcap_open_live(INTERFACE, MAX_PACKET_SIZE, PROMISC, TO_MSEC, errbuf);
   if (handle == NULL)
     ERROR("network-init", "interface not responding");
@@ -929,7 +927,7 @@ void prim_network_init () { // TODO maybe put in the initialization of the vm
 }
 
 void prim_network_cleanup () { // TODO maybe put in halt ?
-#ifdef WORKSTATION
+#ifdef NETWORKING
   pcap_close(handle);
 #endif
 }
@@ -939,7 +937,7 @@ void prim_receive_packet_to_u8vector () {
   if (!RAM_VECTOR(arg1))
     TYPE_ERROR("receive-packet-to-u8vector", "vector");
 
-#ifdef WORKSTATION
+#ifdef NETWORKING
   // receive the packet in the buffer
   struct pcap_pkthdr header;
   const u_char *packet;
@@ -986,7 +984,7 @@ void prim_send_packet_from_u8vector () {
 
   arg1 = ram_get_cdr (arg1);
 
-#ifdef WORKSTATION
+#ifdef NETWORKING
   // copy the packet to the output buffer
   while (a1 < a2)
     buf[a1] = ram_get_fieldn (arg1, a1 % 4);

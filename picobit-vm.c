@@ -329,7 +329,7 @@ void usage (void)
 
 int main (int argc, char *argv[])
 {
-  int errcode = 1;
+  int errcode = 0;
   rom_addr rom_start_addr = 0;
 
 #ifdef TEST_BIGNUM

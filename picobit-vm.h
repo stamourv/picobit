@@ -69,9 +69,9 @@ static volatile near bit ACTIVITY_LED2 @ ((unsigned)&ACTIVITY_LED2_LAT*8)+ACTIVI
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <pcap.h>
 
-// for libpcap
+#ifdef NETWORKING
+#include <pcap.h>
 #define MAX_PACKET_SIZE BUFSIZ
 #define PROMISC 1
 #define TO_MSEC 1
@@ -79,7 +79,7 @@ char errbuf[PCAP_ERRBUF_SIZE];
 pcap_t *handle;
 #define INTERFACE "eth0"
 char buf [MAX_PACKET_SIZE]; // buffer for writing
-
+#endif
 
 #ifdef _WIN32
 
@@ -320,7 +320,7 @@ void set_global (uint8 i, obj o);
 // fixnum definitions in picobit-vm.h , address space layout section
 
 #define ENCODE_FIXNUM(n) ((obj)(n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
-#define DECODE_FIXNUM(o) ((int32)(o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
+#define DECODE_FIXNUM(o) ((int16)(o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
 
 #define IN_VEC(o) ((o) >= MIN_VEC_ENCODING)
 #define IN_RAM(o) (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING))
@@ -405,8 +405,8 @@ integer scale (digit n, integer x);
 integer mulnonneg (integer x, integer y);
 integer divnonneg (integer x, integer y);
   
-int32 decode_int (obj o);
-obj encode_int (int32 n);
+int16 decode_int (obj o);
+obj encode_int (int16 n);
 
 #endif
 
@@ -449,9 +449,9 @@ rom_addr entry;
 uint8 bytecode;
 uint8 bytecode_hi4;
 uint8 bytecode_lo4;
-int32 a1;
-int32 a2;
-int32 a3;
+int16 a1;
+int16 a2;
+int16 a3;
 
 /*---------------------------------------------------------------------------*/
 

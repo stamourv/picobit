@@ -1,4 +1,4 @@
-# TODO make libpcap an option
+# TODO make libpcap an option, can use -DNETWORKING
 
 all: picobit-vm
 
