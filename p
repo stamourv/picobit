@@ -1,2 +1,3 @@
 #!/bin/bash
-./picobit $1.scm && ./picobit-vm $1.hex
+set -eu
+./picobit "$1".scm && ./picobit-vm "$1".hex
