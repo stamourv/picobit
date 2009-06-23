@@ -6,7 +6,7 @@
 # TODO also have test for REAL big values, with more than 2 blocks
 
 for X in tests/arithmetic/*.scm ; do
-    echo $X
-    ./p $(echo $X | sed s/\.scm$//) #| grep FAILED
+    echo "$X"
+    ./p "$X" #| grep FAILED
     echo
 done
