@@ -32,7 +32,7 @@ USAGE:
      make
 
   * Compile and run a Scheme program: run
-     ./p schemefile-without-suffix
+     ./p schemefile
 
 2b. Compile and run a Scheme program on PIC:
 
