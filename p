@@ -23,6 +23,22 @@
      (reverse (string->list str))
      (reverse (string->list ".scm"))))))
 
+;; quick solution just differentiating between signals and exits.
+;; todo: is even this part portable? probably not.
+;;  (and further explanations are missing anyway)
+(define (status->string s)
+  (cond ((zero? s)
+	 "exited successfully")
+	((> s 255)
+	 (string-append "exited with exit code "
+			(number->string (arithmetic-shift s -8))))
+	((< s 0)
+	 (error "negative status" s))
+	((string-append "terminated by signal "
+			(number->string s)))))
+;;^ doesn't check for the case where both exit code and signal is non-zero.
+
+
 (define (run cmd . args)
   (let ((p (open-process (list path: (path-expand cmd)
 			       arguments: args
@@ -33,7 +49,11 @@
       (close-port p)
       (or (= s 0)
 	  ;;(error )
-	  (exit 1)))));;; how to propagate exit codes portably?
+	  (error (string-append "command "
+				(status->string s)
+				":")
+		 cmd
+		 args)))))
 
 ;; --- / library stuff
 
