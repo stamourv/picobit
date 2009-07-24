@@ -8,11 +8,11 @@
 (define max-fixnum 255)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
 (define min-ram-encoding 512)
-(define max-ram-encoding 4095)
-(define min-vec-encoding 4096)
-(define max-vec-encoding 8191)
+(define max-ram-encoding 1279)
+(define min-vec-encoding 1280)
+(define max-vec-encoding 2047)
 
-(define code-start #x5000)
+(define code-start #x8000)
 
 (define (predef-constants) (list))
 
@@ -363,7 +363,7 @@
                  (asm-label label)
 		 ;; see the vm source for a description of encodings
 		 ;; TODO have comments here to explain encoding, at least magic number that give the type
-                 (cond ((and (integer? obj) (exact? obj)) ;; TODO FOOBGIGNUMS
+                 (cond ((and (integer? obj) (exact? obj))
 			(let ((hi (encode-constant (vector-ref descr 3)
 						   constants)))
 			  ; (pp (list ENCODE: (vector-ref descr 3) to: hi lo: obj))

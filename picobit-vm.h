@@ -15,12 +15,15 @@
 
 // types
 
+#ifndef SIXPIC
+// these types are already defined in SIXPIC
 typedef char int8;
 typedef short int16;
 typedef long int32;
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned long uint32;
+#endif
 
 typedef uint8 word;
 
@@ -104,7 +107,7 @@ char buf [MAX_PACKET_SIZE]; // buffer for writing
 #define true  1
 #define false 0
 
-#define CODE_START 0x5000
+#define CODE_START 0x8000
 
 /*---------------------------------------------------------------------------*/
 
@@ -139,56 +142,76 @@ void type_error (char *prim, char *type);
 // address space layout
 // TODO document each zone, also explain that since vector space is in ram, it uses the ram primitives
 
-#define MAX_VEC_ENCODING 8191
-#define MIN_VEC_ENCODING 4096
+#define MAX_VEC_ENCODING 2047
+#define MIN_VEC_ENCODING 1280
 #define VEC_BYTES ((MAX_VEC_ENCODING - MIN_VEC_ENCODING + 1)*4)
 // if the pic has less than 8k of memory, start vector space lower
-// TODO the pic actually has 2k, so change these
-// TODO we'd only actually need 1024 or so for ram and vectors, since we can't address more. this gives us a lot of rom space
 
-#define MAX_RAM_ENCODING 4095
+#define MAX_RAM_ENCODING 1279
 #define MIN_RAM_ENCODING 512
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
-// TODO watch out if we address more than what the PIC actually has
 
 #define MIN_FIXNUM_ENCODING 3
 #define MIN_FIXNUM -1
 #define MAX_FIXNUM 255
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING+MAX_FIXNUM-MIN_FIXNUM+1)
 
-#define OBJ_TO_RAM_ADDR(o,f) (((ram_addr)((uint16)(o) - MIN_RAM_ENCODING) << 2) + (f))
-#define OBJ_TO_ROM_ADDR(o,f) (((rom_addr)((uint16)(o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
-
+#define OBJ_TO_RAM_ADDR(o,f) ((((o) - MIN_RAM_ENCODING) << 2) + (f))
+#define OBJ_TO_ROM_ADDR(o,f) ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
 
 #ifdef PICOBOARD2
+#ifdef SIXPIC
+#define ram_get(a) *(a+0x200)
+#define ram_set(a,x) *(a+0x200) = (x)
+#else
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
 #endif
-
-
+#endif
 #ifdef WORKSTATION
 uint8 ram_mem[RAM_BYTES + VEC_BYTES];
 #define ram_get(a) ram_mem[a]
 #define ram_set(a,x) ram_mem[a] = (x)
 #endif
 
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifndef SIXPIC
+// provided by SIXPIC
 uint8 rom_get (rom_addr a){
   return *(rom uint8*)a;
 }
 #endif
-
+#endif
 
 #ifdef WORKSTATION
 #define ROM_BYTES 8192
-// TODO the new pics have 32k, change this ? minus the vm size, firmware ?
-uint8 rom_mem[ROM_BYTES];
-uint8 rom_get (rom_addr a);
+uint8 rom_mem[ROM_BYTES] =
+  {
+#define RED_GREEN
+#define PUTCHAR_LIGHT_not
+#ifdef RED_GREEN
+    0xFB, 0xD7, 0x03, 0x00, 0x00, 0x00, 0x00, 0x32
+    , 0x03, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00
+    , 0x08, 0x50, 0x80, 0x16, 0xFE, 0xE8, 0x00, 0xFC
+    , 0x32, 0x80, 0x2D, 0xFE, 0xFC, 0x31, 0x80, 0x43
+    , 0xFE, 0xFC, 0x33, 0x80, 0x2D, 0xFE, 0xFC, 0x31
+    , 0x80, 0x43, 0xFE, 0x90, 0x16, 0x01, 0x20, 0xFC
+    , 0x32, 0xE3, 0xB0, 0x37, 0x09, 0xF3, 0xFF, 0x20
+    , 0xFC, 0x33, 0xE3, 0xB0, 0x40, 0x0A, 0xF3, 0xFF
+    , 0x08, 0xF3, 0xFF, 0x01, 0x40, 0x21, 0xD1, 0x00
+    , 0x02, 0xC0, 0x4C, 0x71, 0x01, 0x20, 0x50, 0x90
+    , 0x51, 0x00, 0xF1, 0x40, 0xD8, 0xB0, 0x59, 0x90
+    , 0x51, 0x00, 0xFF
 #endif
-
-/*---------------------------------------------------------------------------*/
-
-// memory access
+#ifdef PUTCHAR_LIGHT
+    0xFB, 0xD7, 0x00, 0x00, 0x80, 0x08, 0xFE, 0xE8
+    , 0x00, 0xF6, 0xF5, 0x90, 0x08
+#endif
+  };
+uint8 rom_get (rom_addr a) {
+  return rom_mem[a-CODE_START];
+}
+#endif
 
 #define RAM_GET_FIELD0_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,0))
 #define RAM_SET_FIELD0_MACRO(o,val) ram_set (OBJ_TO_RAM_ADDR(o,0), val)
@@ -248,6 +271,25 @@ obj rom_get_entry (obj o);
 obj get_global (uint8 i);
 void set_global (uint8 i, obj o);
 
+word ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
+word ram_get_gc_tag0 (obj o) { return RAM_GET_GC_TAG0_MACRO(o); }
+word ram_get_gc_tag1 (obj o) { return RAM_GET_GC_TAG1_MACRO(o); }
+void ram_set_gc_tags (obj o, word tags) { RAM_SET_GC_TAGS_MACRO(o, tags); }
+void ram_set_gc_tag0 (obj o, word tag) { RAM_SET_GC_TAG0_MACRO(o,tag); }
+void ram_set_gc_tag1 (obj o, word tag) { RAM_SET_GC_TAG1_MACRO(o,tag); }
+word ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
+word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); }
+word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
+word ram_get_field3 (obj o) { return RAM_GET_FIELD3_MACRO(o); }
+void ram_set_field0 (obj o, word val) { RAM_SET_FIELD0_MACRO(o,val); }
+void ram_set_field1 (obj o, word val) { RAM_SET_FIELD1_MACRO(o,val); }
+void ram_set_field2 (obj o, word val) { RAM_SET_FIELD2_MACRO(o,val); }
+void ram_set_field3 (obj o, word val) { RAM_SET_FIELD3_MACRO(o,val); }
+word rom_get_field0 (obj o) { return ROM_GET_FIELD0_MACRO(o); }
+word rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
+word rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
+word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -271,6 +313,7 @@ void set_global (uint8 i, obj o);
   
   ifndef INFINITE_PRECISION_BIGNUMS
   bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)
+  TODO doesn't work properly for the moment. only 16 bits are usable now
 
   pair         1GGaaaaa aaaaaaaa 000ddddd dddddddd
   a is car
@@ -313,14 +356,14 @@ void set_global (uint8 i, obj o);
 
 #define OBJ_FALSE 0
 #define OBJ_TRUE  1
-#define encode_bool(x) ((obj)(x))
+#define encode_bool(x) (x)
 
 #define OBJ_NULL  2
 
 // fixnum definitions in picobit-vm.h , address space layout section
 
-#define ENCODE_FIXNUM(n) ((obj)(n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
-#define DECODE_FIXNUM(o) ((int16)(o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
+#define ENCODE_FIXNUM(n) ((n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
+#define DECODE_FIXNUM(o) ((o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
 
 #define IN_VEC(o) ((o) >= MIN_VEC_ENCODING)
 #define IN_RAM(o) (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING))
@@ -391,7 +434,7 @@ digit integer_lo (integer x);
 
 integer norm (obj prefix, integer n);
 uint8 negp (integer x);
-int8 cmp (integer x, integer y);
+uint8 cmp (integer x, integer y);
 uint16 integer_length (integer x);
 integer shr (integer x);
 integer negative_carry (integer carry);
@@ -405,8 +448,8 @@ integer scale (digit n, integer x);
 integer mulnonneg (integer x, integer y);
 integer divnonneg (integer x, integer y);
   
-int16 decode_int (obj o);
-obj encode_int (int16 n);
+uint16 decode_int (obj o);
+obj encode_int (uint16 n);
 
 #endif
 
@@ -449,9 +492,9 @@ rom_addr entry;
 uint8 bytecode;
 uint8 bytecode_hi4;
 uint8 bytecode_lo4;
-int16 a1;
-int16 a2;
-int16 a3;
+uint16 a1;
+uint16 a2;
+uint16 a3;
 
 /*---------------------------------------------------------------------------*/
 
@@ -503,7 +546,7 @@ void show (obj o);
 void print (obj o);
 #endif
 void prim_print ();
-int32 read_clock ();
+uint32 read_clock ();
 void prim_clock ();
 void prim_motor ();
 void prim_led ();
@@ -535,28 +578,28 @@ void prim_send_packet_from_u8vector ();
 
 #define END_DISPATCH() }
 
-#define CASE(opcode) case (opcode>>4):;
+#define CASE(opcode) case (opcode):;
 
 #define DISPATCH(); goto dispatch;
 
-#define PUSH_CONSTANT1     0x00
-#define PUSH_CONSTANT2     0x10
-#define PUSH_STACK1        0x20
-#define PUSH_STACK2        0x30
-#define PUSH_GLOBAL        0x40
-#define SET_GLOBAL         0x50
-#define CALL               0x60
-#define JUMP               0x70
-#define LABEL_INSTR        0x80
-#define PUSH_CONSTANT_LONG 0x90
+#define PUSH_CONSTANT1     0x0
+#define PUSH_CONSTANT2     0x1
+#define PUSH_STACK1        0x2
+#define PUSH_STACK2        0x3
+#define PUSH_GLOBAL        0x4
+#define SET_GLOBAL         0x5
+#define CALL               0x6
+#define JUMP               0x7
+#define LABEL_INSTR        0x8
+#define PUSH_CONSTANT_LONG 0x9
 
-#define FREE1              0xa0
-#define FREE2              0xb0
+#define FREE1              0xa
+#define FREE2              0xb
 
-#define PRIM1              0xc0
-#define PRIM2              0xd0
-#define PRIM3              0xe0
-#define PRIM4              0xf0
+#define PRIM1              0xc
+#define PRIM2              0xd
+#define PRIM3              0xe
+#define PRIM4              0xf
 
 #define PUSH_ARG1() push_arg1 ()
 #define POP() pop()

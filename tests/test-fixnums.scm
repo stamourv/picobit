@@ -3,6 +3,6 @@
 (define x 255)
 (define (loop x)
   (if (> x 0)
-      (begin ;	(print x)
+      (begin (display x)
 	     (loop (- x 1)))))
 (loop x)

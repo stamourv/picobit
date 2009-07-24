@@ -24,10 +24,15 @@ integer integer_hi (integer x) {
 }
 
 digit integer_lo (integer x) {
-  if (IN_RAM(x))
-    return (((digit)ram_get_field2 (x)) << 8) + ram_get_field3 (x);
-  else if (IN_ROM(x))
-    return (((digit)rom_get_field2 (x)) << 8) + rom_get_field3 (x);
+  uint16 f2;
+  if (IN_RAM(x)) {
+    f2 = ram_get_field2 (x);
+    return (f2 << 8) + ram_get_field3 (x);
+  }
+  else if (IN_ROM(x)) {
+    f2 = rom_get_field2 (x);
+    return (f2 << 8) + rom_get_field3 (x);
+  }
   else
     return DECODE_FIXNUM(x);
 }
@@ -44,13 +49,14 @@ integer norm (obj prefix, integer n) {
     
     if (obj_eq (n, ZERO)) {
       if (d <= MAX_FIXNUM) {
-	n = ENCODE_FIXNUM ((uint8)d);
-	continue; // TODO with cast to unsigned, will it work for negative numbers ? or is it only handled in the next branch ?
+	n = ENCODE_FIXNUM (d & 0xff);
+	continue;
       }
     }
     else if (obj_eq (n, NEG1)) {
-      if (d >= (1<<digit_width) + MIN_FIXNUM) {
-	n = ENCODE_FIXNUM (d - (1<<digit_width)); // TODO had a cast, origianlly to int8, changed to uint8 which didn't work (obviously, we use -1 here), is a cast necessary at all ?
+      // -1 is an illegal literal in SIXPIC, thus the double negative
+      if (d >= (1<<digit_width) - (-MIN_FIXNUM)) {
+	n = ENCODE_FIXNUM (d - (1<<digit_width));
 	continue;
       }
     }
@@ -73,31 +79,31 @@ uint8 negp (integer x) {
   return true;
 }
 
-int8 cmp (integer x, integer y) {
-  /* cmp(x,y) return -1 when x<y, 1 when x>y, and 0 when x=y */
-  
-  int8 result = 0;
+uint8 cmp (integer x, integer y) {
+  /* cmp(x,y) return 0 when x<y, 2 when x>y, and 1 when x=y */
+
+  uint8 result = 1;
   digit xlo;
   digit ylo;
 
   for (;;) {
     if (obj_eq (x, ZERO) || obj_eq (x, NEG1)) {
       if (!obj_eq (x, y))
-	{ if (negp (y)) result = 1; else result = -1; }
+	{ if (negp (y)) result = 2; else result = 0; }
       break;
     }
-    
+
     if (obj_eq (y, ZERO) || obj_eq (y, NEG1)) {
-      if (negp (x)) result = -1; else result = 1;
+      if (negp (x)) result = 0; else result = 2;
       break;
     }
-    
+
     xlo = integer_lo (x);
     ylo = integer_lo (y);
-   x = integer_hi (x);
+    x = integer_hi (x);
     y = integer_hi (y);
     if (xlo != ylo)
-      { if (xlo < ylo) result = -1; else result = 1; }
+      { if (xlo < ylo) result = 0; else result = 2; }
   }
   return result;
 }
@@ -140,7 +146,7 @@ integer shr (integer x) { // TODO have shift_right
     d = integer_lo (x);
     x = integer_hi (x);
     result = make_integer ((d >> 1) |
-			   ((integer_lo (x) & 1) ? (1<<(digit_width-1)) : 0),
+			   ((integer_lo (x) & 1) ? (1 << (digit_width-1)) : 0),
 			   result);
   }
   
@@ -171,14 +177,14 @@ integer shl (integer x) {
     d = integer_lo (x);
     x = integer_hi (x);
     temp = negc;
-    negc = negative_carry (d & (1<<(digit_width-1))); // TODO right side is constant, and sixpic has no constant folding
+    negc = negative_carry (d & (1 << (digit_width-1)));
     result = make_integer ((d << 1) | obj_eq (temp, NEG1), result);
   }
 
   return result;
 }
 
-integer shift_left (integer x, uint16 n) { // TODO have the primitves been changed for this and right ?
+integer shift_left (integer x, uint16 n) {
   /* shift_left(x,n) returns the integer x shifted n bits to the left */
   
   if (obj_eq (x, ZERO))
@@ -271,10 +277,10 @@ integer sub (integer x, integer y) {
       dx++; /* may wrap around */
       negc = negative_carry (dx <= dy);
     }
-    
+
     x = integer_hi (x);
     y = integer_hi (y);
-    
+
     result = make_integer (dx, result);
   }
 
@@ -306,7 +312,7 @@ integer scale (digit n, integer x) {
   for (;;) {
     if (obj_eq (x, ZERO)){
       if (carry <= MAX_FIXNUM)
-	result = norm (result, ENCODE_FIXNUM ((uint8)carry));
+	result = norm (result, ENCODE_FIXNUM (carry & 0xff));
       else
 	result = norm (result, make_integer (carry, ZERO));
       break;
@@ -314,18 +320,20 @@ integer scale (digit n, integer x) {
     
     if (obj_eq (x, NEG1)) {
       carry = carry - n;
-      if (carry >= ((1<<digit_width) + MIN_FIXNUM))
-	result = norm (result, ENCODE_FIXNUM ((uint8)carry));
+      // -1 as a literal is wrong with SIXPIC, thus the double negative
+      if (carry >= ((1<<digit_width) - (- MIN_FIXNUM)))
+	result = norm (result, ENCODE_FIXNUM (carry & 0xff));
       else
 	result = norm (result, make_integer (carry, NEG1));
       break;
     }
 
-    m = (two_digit)integer_lo (x) * n + carry;
+    m = integer_lo (x);
+    m = m * n + carry;
     
     x = integer_hi (x);
     carry = m >> digit_width;
-    result = make_integer ((digit)m, result);
+    result = make_integer (m, result);
   }
 
   return result;
@@ -368,7 +376,7 @@ integer divnonneg (integer x, integer y) {
     
     do {
       result = shl (result);
-      if (cmp (x, y) >= 0) {
+      if (cmp (x, y) >= 1) {
 	x = sub (x, y);
 	result = add (POS1, result);
       }
@@ -415,8 +423,8 @@ integer bitwise_xor (integer x, integer y) { // TODO similar to ior (only diff i
 
 // used only in primitives that use small numbers only
 // for example, vector primitives
-int16 decode_int (obj o) {
-  int8 result;
+uint16 decode_int (obj o) {
+  uint8 result;
   if (o < MIN_FIXNUM_ENCODING)
     TYPE_ERROR("decode_int.0", "integer");
   
@@ -438,8 +446,8 @@ int16 decode_int (obj o) {
 }
 
 // same purpose as decode_int
-obj encode_int (int16 n) {
-  if (n >= MIN_FIXNUM && n <= MAX_FIXNUM) {
+obj encode_int (uint16 n) {
+  if (n <= MAX_FIXNUM) {
     return ENCODE_FIXNUM(n);
   }
   
@@ -450,7 +458,7 @@ obj encode_int (int16 n) {
 
 // regular (finite, 24 bits) bignums
 
-int16 decode_int (obj o) {
+uint16 decode_int (obj o) {
   uint8 u;
   uint8 h;
   uint8 l;
@@ -481,12 +489,12 @@ int16 decode_int (obj o) {
     TYPE_ERROR("decode_int.3", "integer");
   
   if (u >= 128) // negative
-    return ((int32)((((int16)u - 256) << 8) + h) << 8) + l;
+    return ((uint32)((((uint16)u - 256) << 8) + h) << 8) + l; // TODO ints are all 16 bits, 24 bits won't work
   
-  return ((int32)(((int16)u << 8) + h) << 8) + l;
+  return ((uint32)(((uint16)u << 8) + h) << 8) + l;
 }
 
-obj encode_int (int32 n) {
+obj encode_int (uint16 n) { // TODO does not use the full 24 bits
   if (n >= MIN_FIXNUM && n <= MAX_FIXNUM)
     return ENCODE_FIXNUM(n);
 

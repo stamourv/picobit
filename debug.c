@@ -75,7 +75,7 @@ integer enc (long long n) {
     return norm (result, ZERO);
 }
 
-void test (void) {
+void test () {
   integer min2;
   integer min1;
   integer zero;

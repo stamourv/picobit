@@ -160,7 +160,7 @@ void prim_rem () {
   // TODO logic quite similar to mul and div (likely, once we fix), abstract ?
   arg3 = divnonneg (arg1, arg2);
   arg4 = mulnonneg (arg2, arg3);
-  arg1 = sub(arg1, arg4 );
+  arg1 = sub(arg1, arg4);
   arg3 = OBJ_FALSE;
   arg4 = OBJ_FALSE;
 #else
@@ -183,7 +183,7 @@ void prim_neg () {
 
 void prim_eq () {
 #ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = encode_bool(cmp (arg1, arg2) == 0);
+  arg1 = encode_bool(cmp (arg1, arg2) == 1);
 #else
   decode_2_int_args ();
   arg1 = encode_bool(a1 == a2);
@@ -193,7 +193,7 @@ void prim_eq () {
 
 void prim_lt () {
 #ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = encode_bool(cmp (arg1, arg2) < 0);
+  arg1 = encode_bool(cmp (arg1, arg2) < 1);
 #else
   decode_2_int_args ();
   arg1 = encode_bool(a1 < a2);
@@ -203,7 +203,7 @@ void prim_lt () {
 
 void prim_gt () {
 #ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = encode_bool(cmp (arg1, arg2) > 0);
+  arg1 = encode_bool(cmp (arg1, arg2) > 1);
 #else
   decode_2_int_args ();
   arg1 = encode_bool(a1 > a2);
@@ -213,7 +213,7 @@ void prim_gt () {
 
 void prim_leq () { // TODO these 2 are useful, but they add to the code size, is it worth it ?
 #ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = encode_bool(cmp (arg1, arg2) <= 0);
+  arg1 = encode_bool(cmp (arg1, arg2) <= 1);
 #else
   decode_2_int_args ();
   arg1 = encode_bool(a1 <= a2);
@@ -224,7 +224,7 @@ void prim_leq () { // TODO these 2 are useful, but they add to the code size, is
 
 void prim_geq () {
 #ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = encode_bool(cmp (arg1, arg2) >= 0);
+  arg1 = encode_bool(cmp (arg1, arg2) >= 1);
 #else
   decode_2_int_args ();
   arg1 = encode_bool(a1 >= a2);
@@ -236,7 +236,7 @@ void prim_ior () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = bitwise_ior(arg1, arg2);
 #else
-  decode_2_int_args (); // TODO is the function call overhead worth it ?
+  decode_2_int_args ();
   arg1 = encode_int (a1 | a2);
 #endif
   arg2 = OBJ_FALSE;
@@ -246,13 +246,13 @@ void prim_xor () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = bitwise_xor(arg1, arg2);
 #else
-  decode_2_int_args (); // TODO is the function call overhead worth it ?
+  decode_2_int_args ();
   arg1 = encode_int (a1 ^ a2);
 #endif
   arg2 = OBJ_FALSE;
 }
 
-// TODO primitives de shift ?
+// TODO primitives for shifting ?
 
 /*---------------------------------------------------------------------------*/
 
@@ -380,14 +380,14 @@ void prim_u8vector_ref () {
   if (IN_RAM(arg1)) {
     if (!RAM_VECTOR(arg1))
       TYPE_ERROR("u8vector-ref.0", "vector");
-    if ((ram_get_car (arg1) <= a2) || (a2 < 0))
+    if (ram_get_car (arg1) <= a2)
       ERROR("u8vector-ref.0", "vector index invalid");
     arg1 = ram_get_cdr (arg1);
   }
   else if (IN_ROM(arg1)) {
     if (!ROM_VECTOR(arg1))
       TYPE_ERROR("u8vector-ref.1", "vector");
-    if ((rom_get_car (arg1) <= a2) || (a2 < 0))
+    if (rom_get_car (arg1) <= a2)
       ERROR("u8vector-ref.1", "vector index invalid");
     arg1 = rom_get_cdr (arg1);
   }
@@ -423,7 +423,7 @@ void prim_u8vector_set () { // TODO a lot in common with ref, abstract that
   if (IN_RAM(arg1)) {
     if (!RAM_VECTOR(arg1))
       TYPE_ERROR("u8vector-set!.0", "vector");
-    if ((ram_get_car (arg1) <= a2) || (a2 < 0))
+    if (ram_get_car (arg1) <= a2)
       ERROR("u8vector-set!", "vector index invalid");
     arg1 = ram_get_cdr (arg1);
   }
@@ -467,8 +467,7 @@ void prim_u8vector_copy () {
   if (IN_RAM(arg1) && IN_RAM(arg3)) {
     if (!RAM_VECTOR(arg1) || !RAM_VECTOR(arg3))
       TYPE_ERROR("u8vector-copy!.0", "vector");
-    if ((ram_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
-	(ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
+    if ((ram_get_car (arg1) < (a1 + a3)) || (ram_get_car (arg3) < (a2 + a3)))
       ERROR("u8vector-copy!.0", "vector index invalid");
     
     // position to the start
@@ -495,8 +494,7 @@ void prim_u8vector_copy () {
   else if (IN_ROM(arg1) && IN_RAM(arg3)) {
     if (!ROM_VECTOR(arg1) || !RAM_VECTOR(arg3))
       TYPE_ERROR("u8vector-copy!.1", "vector");
-    if ((rom_get_car (arg1) < (a1 + a3)) || (a1 < 0) ||
-	(ram_get_car (arg3) < (a2 + a3)) || (a2 < 0))
+    if ((rom_get_car (arg1) < (a1 + a3)) || (ram_get_car (arg3) < (a2 + a3)))
       ERROR("u8vector-copy!.1", "vector index invalid");
     
     arg1 = rom_get_cdr (arg1);
@@ -612,7 +610,7 @@ void show (obj o) {
     else
       in_ram = 0;
     
-    if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o))) // TODO fix for new bignums
+    if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o))) // TODO fix for new bignums, especially for the sign, a -5 is displayed as 251
       printf ("%d", decode_int (o));
     else if ((in_ram && RAM_COMPOSITE(o)) || (!in_ram && ROM_COMPOSITE(o))) {
       obj car;
@@ -710,11 +708,13 @@ void prim_print () {
   arg1 = OBJ_FALSE;
 }
 
-int32 read_clock () {
-  int32 now = 0;
+uint32 read_clock () {
+  uint32 now = 0;
 
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifndef SIXPIC
   now = from_now( 0 );
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -751,8 +751,10 @@ void prim_motor () {
   if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100)
     ERROR("motor", "argument out of range");
 
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifndef SIXPIC
   MOTOR_set( a1, a2 );
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -769,11 +771,13 @@ void prim_led () {
   decode_2_int_args ();
   a3 = decode_int (arg3);
   
-  if (a1 < 1 || a1 > 3 || a2 < 0 || a3 < 0)
+  if (a1 < 1 || a1 > 3)
     ERROR("led", "argument out of range");
 
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifndef SIXPIC
   LED_set( a1, a2, a3 );
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -790,11 +794,13 @@ void prim_led () {
 void prim_led2_color () {
   a1 = decode_int (arg1);
 
-  if (a1 < 0 || a1 > 1)
+  if (a1 > 1)
     ERROR("led2-colors", "argument out of range");
 
 #ifdef PICOBOARD2
+#ifndef SIXPIC
   LED2_color_set( a1 );
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -810,17 +816,19 @@ void prim_getchar_wait () {
   decode_2_int_args();
   a1 = read_clock () + a1;
 
-  if (a1 < 0 || a2 < 1 || a2 > 3)
+  if (a2 < 1 || a2 > 3)
     ERROR("getchar-wait", "argument out of range");
 
 #ifdef PICOBOARD2
   arg1 = OBJ_FALSE;
+#ifndef SIXPIC
   {
     serial_port_set ports;
     ports = serial_rx_wait_with_timeout( a2, a1 );
     if (ports != 0)
       arg1 = encode_int (serial_rx_read( ports ));
   }
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -842,11 +850,15 @@ void prim_getchar_wait () {
 void prim_putchar () {
   decode_2_int_args ();
 
-  if (a1 < 0 || a1 > 255 || a2 < 1 || a2 > 3)
+  if (a1 > 255 || a2 < 1 || a2 > 3)
     ERROR("putchar", "argument out of range");
 
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifdef SIXPIC
+  uart_write(a1);
+#else
   serial_tx_write( a2, a1 );
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -862,11 +874,13 @@ void prim_putchar () {
 void prim_beep () {
   decode_2_int_args ();
 
-  if (a1 < 1 || a1 > 255 || a2 < 0)
+  if (a1 < 1 || a1 > 255)
     ERROR("beep", "argument out of range");
   
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifndef SIXPIC
   beep( a1, from_now( a2 ) );
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -880,15 +894,17 @@ void prim_beep () {
 
 
 void prim_adc () {
-  short x;
+  uint16 x;
 
   a1 = decode_int (arg1);
 
   if (a1 < 1 || a1 > 3)
     ERROR("adc", "argument out of range");
 
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifndef SIXPIC
   x = adc( a1 );
+#endif
 #endif
 
 #ifdef WORKSTATION
@@ -901,10 +917,12 @@ void prim_adc () {
 }
 
 void prim_sernum () {
-  short x;
+  uint16 x;
 
-#ifdef PICOBOARD2
+#ifdef  PICOBOARD2
+#ifndef SIXPIC
   x = serial_num ();
+#endif
 #endif
 
 #ifdef WORKSTATION

@@ -6,18 +6,18 @@
 
 #include "picobit-vm.h"
 
-void push_arg1 (void) {
+void push_arg1 () {
   env = cons (arg1, env);
   arg1 = OBJ_FALSE;
 }
 
-obj pop (void) {
+obj pop () {
   obj o = ram_get_car (env);
   env = ram_get_cdr (env);
   return o;
 }
 
-void pop_procedure (void) {
+void pop_procedure () {
   arg1 = POP();
   
   if (IN_RAM(arg1)) {      
@@ -36,7 +36,7 @@ void pop_procedure (void) {
     TYPE_ERROR("pop_procedure.2", "procedure");
 }
 
-void handle_arity_and_rest_param (void) {
+void handle_arity_and_rest_param () {
   uint8 np;
   
   np = rom_get (entry++);
@@ -67,7 +67,7 @@ void handle_arity_and_rest_param (void) {
   }
 }
 
-void build_env (void) {
+void build_env () {
   while (na != 0) {
     arg3 = POP();
     
@@ -79,7 +79,7 @@ void build_env (void) {
   arg3 = OBJ_FALSE;
 }
 
-void save_cont (void) {
+void save_cont () {
   // the second half is a closure
   arg3 = alloc_ram_cell_init (CLOSURE_FIELD0 | (pc >> 11),
 			      (pc >> 3) & 0xff,
@@ -92,8 +92,9 @@ void save_cont (void) {
   arg3 = OBJ_FALSE;
 }
 
-void interpreter (void) {
-  pc = (CODE_START + 4) + ((rom_addr)rom_get (CODE_START+2) << 2);
+void interpreter () {
+  pc = rom_get (CODE_START+2);
+  pc = (CODE_START + 4) + (pc << 2);
   
   glovars = rom_get (CODE_START+3); // number of global variables
 
@@ -309,10 +310,11 @@ void interpreter (void) {
     
     entry = (arg2 << 8) | bytecode;
     
-    arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
-				((arg2 & 0x07) << 5) | (bytecode >> 3),
-				((bytecode &0x07) <<5) |((arg3 &0x1f00) >>8),
-				arg3 & 0xff);
+    arg1 =
+      alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
+			   ((arg2 & 0x07) << 5) | (bytecode >> 3),
+			   ((bytecode & 0x07) << 5) | ((arg3 & 0x1f00) >> 8),
+			   arg3 & 0xff);
     
     PUSH_ARG1();
     
@@ -320,7 +322,8 @@ void interpreter (void) {
     arg3 = OBJ_FALSE;
     
     break;
-    
+
+#if 0
   case 5: // call-toplevel-short
     FETCH_NEXT_BYTECODE(); // TODO the short version have a lot in common with the long ones, abstract ?
     // TODO short instructions don't work at the moment
@@ -401,6 +404,7 @@ void interpreter (void) {
     arg3 = OBJ_FALSE;
     
     break;
+#endif
     
 #if 0
   case 10:
@@ -443,8 +447,10 @@ void interpreter (void) {
   FETCH_NEXT_BYTECODE();
   
   IF_TRACE(printf("  (push [long] 0x%04x)\n", (bytecode_lo4 << 8) + bytecode));
-  
-  arg1 = (bytecode_lo4 << 8) | bytecode;
+
+  // necessary since SIXPIC would have kept the result of the shift at 8 bits
+  arg1 = bytecode_lo4;
+  arg1 = (arg1 << 8) | bytecode;
   PUSH_ARG1();
   
   DISPATCH();

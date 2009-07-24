@@ -29,50 +29,22 @@ void type_error (char *prim, char *type) {
 }
 #endif
 
+#ifdef SIXPIC
+void halt_with_error () {
+  uart_write(101); // e
+  uart_write(114); // r
+  uart_write(114); // r
+  uart_write(13);
+  uart_write(10);
+  exit();
+}
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 // memory access
 
-#ifdef WORKSTATION
-uint8 rom_mem[ROM_BYTES] =
-  {
-#define RED_GREEN
-#define PUTCHAR_LIGHT_not
-#ifdef RED_GREEN
-    0xFB, 0xD7, 0x03, 0x00, 0x00, 0x00, 0x00, 0x32
-    , 0x03, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00
-    , 0x08, 0x50, 0x80, 0x16, 0xFE, 0xE8, 0x00, 0xFC
-    , 0x32, 0x80, 0x2D, 0xFE, 0xFC, 0x31, 0x80, 0x43
-    , 0xFE, 0xFC, 0x33, 0x80, 0x2D, 0xFE, 0xFC, 0x31
-    , 0x80, 0x43, 0xFE, 0x90, 0x16, 0x01, 0x20, 0xFC
-    , 0x32, 0xE3, 0xB0, 0x37, 0x09, 0xF3, 0xFF, 0x20
-    , 0xFC, 0x33, 0xE3, 0xB0, 0x40, 0x0A, 0xF3, 0xFF
-    , 0x08, 0xF3, 0xFF, 0x01, 0x40, 0x21, 0xD1, 0x00
-    , 0x02, 0xC0, 0x4C, 0x71, 0x01, 0x20, 0x50, 0x90
-    , 0x51, 0x00, 0xF1, 0x40, 0xD8, 0xB0, 0x59, 0x90
-    , 0x51, 0x00, 0xFF
-#endif
-#ifdef PUTCHAR_LIGHT
-    0xFB, 0xD7, 0x00, 0x00, 0x80, 0x08, 0xFE, 0xE8
-    , 0x00, 0xF6, 0xF5, 0x90, 0x08
-#endif
-  };
-uint8 rom_get (rom_addr a) {
-  return rom_mem[a-CODE_START];
-}
-#endif
-
-word ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
-word ram_get_gc_tag0 (obj o) { return RAM_GET_GC_TAG0_MACRO(o); }
-word ram_get_gc_tag1 (obj o) { return RAM_GET_GC_TAG1_MACRO(o); }
-void ram_set_gc_tags (obj o, word tags) { RAM_SET_GC_TAGS_MACRO(o, tags); }
-void ram_set_gc_tag0 (obj o, word tag) { RAM_SET_GC_TAG0_MACRO(o,tag); }
-void ram_set_gc_tag1 (obj o, word tag) { RAM_SET_GC_TAG1_MACRO(o,tag); }
-word ram_get_field0 (obj o) { return RAM_GET_FIELD0_MACRO(o); }
-word ram_get_field1 (obj o) { return RAM_GET_FIELD1_MACRO(o); }
-word ram_get_field2 (obj o) { return RAM_GET_FIELD2_MACRO(o); }
-word ram_get_field3 (obj o) { return RAM_GET_FIELD3_MACRO(o); }
-word ram_get_fieldn (obj o, word n) { // TODO have as a macro ?
+word ram_get_fieldn (obj o, word n) {
   switch (n) {
   case 0: return ram_get_field0 (o);
   case 1: return ram_get_field1 (o);
@@ -80,31 +52,33 @@ word ram_get_fieldn (obj o, word n) { // TODO have as a macro ?
   case 3: return ram_get_field3 (o);
   }
 }
-void ram_set_field0 (obj o, word val) { RAM_SET_FIELD0_MACRO(o,val); }
-void ram_set_field1 (obj o, word val) { RAM_SET_FIELD1_MACRO(o,val); }
-void ram_set_field2 (obj o, word val) { RAM_SET_FIELD2_MACRO(o,val); }
-void ram_set_field3 (obj o, word val) { RAM_SET_FIELD3_MACRO(o,val); }
 void ram_set_fieldn (obj o, uint8 n, word val) { // TODO have as a macro ?
   switch (n) {
   case 0: ram_set_field0 (o, val); break;
   case 1: ram_set_field1 (o, val); break;
   case 2: ram_set_field2 (o, val); break;
   case 3: ram_set_field3 (o, val); break;
-  }  
+  }
 }
-word rom_get_field0 (obj o) { return ROM_GET_FIELD0_MACRO(o); }
-word rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
-word rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
-word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
 
-obj ram_get_car (obj o)
-{ return ((ram_get_field0 (o) & 0x1f) << 8) | ram_get_field1 (o); }
-obj rom_get_car (obj o)
-{ return ((rom_get_field0 (o) & 0x1f) << 8) | rom_get_field1 (o); }
-obj ram_get_cdr (obj o)
-{ return ((ram_get_field2 (o) & 0x1f) << 8) | ram_get_field3 (o); }
-obj rom_get_cdr (obj o)
-{ return ((rom_get_field2 (o) & 0x1f) << 8) | rom_get_field3 (o); }
+// these temporary variables are necessary with SIXPIC, or else the shift
+// results will be 8 bits values, which is wrong
+obj ram_get_car (obj o) {
+  uint16 tmp = ram_get_field0 (o) & 0x1f;
+  return (tmp << 8) | ram_get_field1 (o);
+}
+obj rom_get_car (obj o) {
+  uint16 tmp = rom_get_field0 (o) & 0x1f;
+  return (tmp << 8) | rom_get_field1 (o);
+}
+obj ram_get_cdr (obj o) {
+  uint16 tmp = ram_get_field2 (o) & 0x1f;
+  return (tmp << 8) | ram_get_field3 (o);
+}
+obj rom_get_cdr (obj o) {
+  uint16 tmp = rom_get_field2 (o) & 0x1f;
+  return (tmp << 8) | rom_get_field3 (o);
+}
 
 void ram_set_car (obj o, obj val) {
   ram_set_field0 (o, (val >> 8) | (ram_get_field0 (o) & 0xe0));
@@ -116,15 +90,16 @@ void ram_set_cdr (obj o, obj val) {
 }
 
 // function entry point
+// the temporary variables are necessary with SIXPIC, see above
 obj ram_get_entry (obj o) {
-  return (((ram_get_field0 (o) & 0x1f) << 11)
-	  | (ram_get_field1 (o) << 3)
-	  | (ram_get_field2 (o) >> 5));
+  uint16 tmp  = ram_get_field0 (o) & 0x1f;
+  uint16 tmp2 = ram_get_field1 (o);
+  return ((tmp << 11) | (tmp2 << 3) | (ram_get_field2 (o) >> 5));
 }
 obj rom_get_entry (obj o){
-  return (((rom_get_field0 (o) & 0x1f) << 11)
-	  | (rom_get_field1 (o) << 3)
-	  | (rom_get_field2 (o) >> 5));
+  uint16 tmp  = rom_get_field0 (o) & 0x1f;
+  uint16 tmp2 = rom_get_field1 (o);
+  return ((tmp << 11) | (tmp2 << 3) | (rom_get_field2 (o) >> 5));
 }
 
 obj get_global (uint8 i) {
@@ -321,7 +296,7 @@ int read_hex_file (char *filename)
 
 #ifdef WORKSTATION
 
-void usage (void)
+void usage ()
 {
   printf ("usage: sim file.hex\n");
   exit (1);
@@ -391,4 +366,8 @@ int main (int argc, char *argv[])
   return errcode;
 }
 
+#endif
+
+#ifdef SIXPIC
+interpreter();
 #endif

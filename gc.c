@@ -6,13 +6,14 @@
 
 #include "picobit-vm.h"
 
-void init_ram_heap (void) {
+void init_ram_heap () {
   uint8 i;
   obj o = MAX_RAM_ENCODING;
   
   free_list = 0;
-  
-  while (o > (MIN_RAM_ENCODING + ((glovars + 1) >> 1))) {
+
+  uint16 bound = MIN_RAM_ENCODING + ((glovars + 1) >> 1);
+  while (o > bound) {
     // we don't want to add globals to the free list, and globals occupy the
     // beginning of memory at the rate of 2 globals per word (car and cdr)
     ram_set_gc_tags (o, GC_TAG_UNMARKED);
@@ -157,7 +158,7 @@ void mark (obj temp) {
 int max_live = 0;
 #endif
 
-void sweep (void) {
+void sweep () {
   /* sweep phase */
   
 #ifdef DEBUG_GC
@@ -207,7 +208,7 @@ void sweep (void) {
 #endif
 }
 
-void gc (void) {
+void gc () {
   uint8 i;
   
   IF_TRACE(printf("\nGC BEGINS\n"));
@@ -234,7 +235,7 @@ void gc (void) {
   sweep ();
 }
 
-obj alloc_ram_cell (void) {
+obj alloc_ram_cell () {
   obj o;
   
 #ifdef DEBUG_GC
