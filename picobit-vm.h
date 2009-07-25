@@ -593,8 +593,7 @@ obj arg5;
 obj cont;
 obj env;
 
-uint8 na; /* interpreter variables */
-rom_addr pc;
+rom_addr pc; /* interpreter variables */
 uint8 glovars;
 rom_addr entry;
 uint8 bytecode;
@@ -698,8 +697,8 @@ void prim_send_packet_from_u8vector ();
 void push_arg1 ();
 obj pop ();
 void pop_procedure ();
-void handle_arity_and_rest_param ();
-void build_env ();
+uint8 handle_arity_and_rest_param (uint8 na);
+uint8 build_env (uint8 na);
 void save_cont ();
 void interpreter ();
 

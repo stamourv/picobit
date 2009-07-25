@@ -36,7 +36,7 @@ void pop_procedure () {
     TYPE_ERROR("pop_procedure.2", "procedure");
 }
 
-void handle_arity_and_rest_param () {
+uint8 handle_arity_and_rest_param (uint8 na) {
   uint8 np;
 
   np = rom_get (entry++);
@@ -65,9 +65,11 @@ void handle_arity_and_rest_param () {
     arg1 = cons (arg3, arg1);
     arg3 = OBJ_FALSE;
   }
+
+  return na;
 }
 
-void build_env () {
+uint8 build_env (uint8 na) {
   while (na != 0) {
     arg3 = pop();
 
@@ -192,11 +194,8 @@ void interpreter () {
 
     IF_TRACE(printf("  (call %d)\n", bytecode_lo4));
 
-    na = bytecode_lo4;
-
     pop_procedure ();
-    handle_arity_and_rest_param ();
-    build_env ();
+    build_env (handle_arity_and_rest_param (bytecode_lo4));
     save_cont ();
 
     env = arg1;
@@ -211,11 +210,8 @@ void interpreter () {
 
     IF_TRACE(printf("  (jump %d)\n", bytecode_lo4));
 
-    na = bytecode_lo4;
-
     pop_procedure ();
-    handle_arity_and_rest_param ();
-    build_env ();
+    build_env (handle_arity_and_rest_param (bytecode_lo4));
 
     env = arg1;
     pc = entry;
@@ -240,9 +236,7 @@ void interpreter () {
       entry = (arg2 << 8) + bytecode + CODE_START;
       arg1 = OBJ_NULL;
 
-      na = rom_get (entry++);
-
-      build_env ();
+      build_env (rom_get (entry++));
       save_cont ();
 
       env = arg1;
@@ -265,9 +259,7 @@ void interpreter () {
       entry = (arg2 << 8) + bytecode + CODE_START;
       arg1 = OBJ_NULL;
 
-      na = rom_get (entry++);
-
-      build_env ();
+      build_env (rom_get (entry++));
 
       env = arg1;
       pc = entry;
@@ -339,9 +331,7 @@ void interpreter () {
       entry = pc + bytecode + CODE_START;
       arg1 = OBJ_NULL;
 
-      na = rom_get (entry++);
-
-      build_env ();
+      build_env (rom_get (entry++));
       save_cont ();
 
       env = arg1;
@@ -360,9 +350,7 @@ void interpreter () {
       entry = pc + bytecode + CODE_START;
       arg1 = OBJ_NULL;
 
-      na = rom_get (entry++);
-
-      build_env ();
+      build_env (rom_get (entry++));
 
       env = arg1;
       pc = entry;
@@ -542,11 +530,8 @@ void interpreter () {
 
       push_arg1();
 
-      na = 0;
-
       pop_procedure ();
-      handle_arity_and_rest_param ();
-      build_env ();
+      build_env (handle_arity_and_rest_param (0));
 
       env = arg1;
       pc = entry;
