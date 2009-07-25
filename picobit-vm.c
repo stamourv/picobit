@@ -283,14 +283,16 @@ int read_hex_file (char *filename)
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef ROBOT
+/* #ifdef ROBOT */
+// TODO since picobit-vm.h can now contain code (with LESS_MACROS), including
+// the header in each results in multiple definitions of these functions.
 // no separate compilation
 #include "debug.c"
 #include "gc.c"
 #include "bignums.c"
 #include "primitives.c"
 #include "dispatch.c"
-#endif
+/* #endif */
 
 /*---------------------------------------------------------------------------*/
 

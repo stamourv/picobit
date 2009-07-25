@@ -746,7 +746,7 @@ void prim_clock () {
 void prim_motor () {
   decode_2_int_args ();
 
-  if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100)
+  if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100) // TODO since we now use undigned values, we can't go backwards anymore
     ERROR("motor", "argument out of range");
 
 #ifdef  PICOBOARD2
