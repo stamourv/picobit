@@ -237,40 +237,6 @@ uint8 rom_get (rom_addr a) {
 #define ROM_GET_FIELD2_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,2))
 #define ROM_GET_FIELD3_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,3))
 
-word ram_get_gc_tags (obj o);
-word ram_get_gc_tag0 (obj o);
-word ram_get_gc_tag1 (obj o);
-void ram_set_gc_tags (obj o, word tags);
-void ram_set_gc_tag0 (obj o, word tag);
-void ram_set_gc_tag1 (obj o, word tag);
-word ram_get_field0 (obj o);
-word ram_get_field1 (obj o);
-word ram_get_field2 (obj o);
-word ram_get_field3 (obj o);
-word ram_get_fieldn (obj o, word n);
-void ram_set_field0 (obj o, word val);
-void ram_set_field1 (obj o, word val);
-void ram_set_field2 (obj o, word val);
-void ram_set_field3 (obj o, word val);
-void ram_set_fieldn (obj o, uint8 n, word val);
-word rom_get_field0 (obj o);
-word rom_get_field1 (obj o);
-word rom_get_field2 (obj o);
-word rom_get_field3 (obj o);
-
-obj ram_get_car (obj o);
-obj rom_get_car (obj o);
-obj ram_get_cdr (obj o);
-obj rom_get_cdr (obj o);
-void ram_set_car (obj o, obj val);
-void ram_set_cdr (obj o, obj val);
-
-obj ram_get_entry (obj o);
-obj rom_get_entry (obj o);
-
-obj get_global (uint8 i);
-void set_global (uint8 i, obj o);
-
 word ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
 word ram_get_gc_tag0 (obj o) { return RAM_GET_GC_TAG0_MACRO(o); }
 word ram_get_gc_tag1 (obj o) { return RAM_GET_GC_TAG1_MACRO(o); }
@@ -289,6 +255,20 @@ word rom_get_field0 (obj o) { return ROM_GET_FIELD0_MACRO(o); }
 word rom_get_field1 (obj o) { return ROM_GET_FIELD1_MACRO(o); }
 word rom_get_field2 (obj o) { return ROM_GET_FIELD2_MACRO(o); }
 word rom_get_field3 (obj o) { return ROM_GET_FIELD3_MACRO(o); }
+
+obj ram_get_car (obj o);
+obj rom_get_car (obj o);
+obj ram_get_cdr (obj o);
+obj rom_get_cdr (obj o);
+void ram_set_car (obj o, obj val);
+void ram_set_cdr (obj o, obj val);
+
+obj ram_get_entry (obj o);
+obj rom_get_entry (obj o);
+
+obj get_global (uint8 i);
+void set_global (uint8 i, obj o);
+
 
 /*---------------------------------------------------------------------------*/
 
