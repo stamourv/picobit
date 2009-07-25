@@ -166,17 +166,32 @@ void type_error (char *prim, char *type);
 #define MAX_FIXNUM 255
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING + MAX_FIXNUM - MIN_FIXNUM + 1)
 
+#ifdef LESS_MACROS
+uint16 OBJ_TO_RAM_ADDR(uint16 o, uint8 f) {return ((((o) - MIN_RAM_ENCODING) << 2) + (f));}
+uint16 OBJ_TO_ROM_ADDR(uint16 o, uint8 f) {return ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)));}
+#else
 #define OBJ_TO_RAM_ADDR(o,f) ((((o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_ROM_ADDR(o,f) ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
+#endif
 
 #ifdef SIXPIC
+#ifdef LESS_MACROS
+uint8 ram_get(uint16 a) { return *(a+0x200); }
+void  ram_set(uint16 a, uint8 x) { *(a+0x200) = (x); }
+#else
 #define ram_get(a) *(a+0x200)
 #define ram_set(a,x) *(a+0x200) = (x)
 #endif
+#endif
 
 #ifdef MCC18
+#ifdef LESS_MACROS
+uint8 ram_get(uint16 a) {return *(uint8*)(a+0x200);}
+void  ram_set(uint16 a, uint8 x) {*(uint8*)(a+0x200) = (x);}
+#else
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
+#endif
 #endif
 
 #ifdef HI_TECH_C
@@ -238,10 +253,24 @@ uint8 rom_get (rom_addr a) {
 }
 #endif
 
+#ifdef LESS_MACROS
+uint8 RAM_GET_FIELD0_MACRO(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,0));}
+void  RAM_SET_FIELD0_MACRO(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,0), val);}
+uint8 ROM_GET_FIELD0_MACRO(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,0));}
+#else
 #define RAM_GET_FIELD0_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,0))
 #define RAM_SET_FIELD0_MACRO(o,val) ram_set (OBJ_TO_RAM_ADDR(o,0), val)
 #define ROM_GET_FIELD0_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,0))
+#endif
 
+#ifdef LESS_MACROS
+uint8 RAM_GET_GC_TAGS_MACRO(uint16 o) {return (RAM_GET_FIELD0_MACRO(o) & 0x60);}
+uint8 RAM_GET_GC_TAG0_MACRO(uint16 o) {return (RAM_GET_FIELD0_MACRO(o) & 0x20);}
+uint8 RAM_GET_GC_TAG1_MACRO(uint16 o) {return (RAM_GET_FIELD0_MACRO(o) & 0x40);}
+void  RAM_SET_GC_TAGS_MACRO(uint16 o, uint8 tags) {(RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0x9f) | (tags)));}
+void  RAM_SET_GC_TAG0_MACRO(uint16 o, uint8 tag)  {RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xdf) | (tag));}
+void  RAM_SET_GC_TAG1_MACRO(uint16 o, uint8 tag)  {RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xbf) | (tag));}
+#else
 #define RAM_GET_GC_TAGS_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x60)
 #define RAM_GET_GC_TAG0_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x20)
 #define RAM_GET_GC_TAG1_MACRO(o) (RAM_GET_FIELD0_MACRO(o) & 0x40)
@@ -251,7 +280,19 @@ uint8 rom_get (rom_addr a) {
   RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xdf) | (tag))
 #define RAM_SET_GC_TAG1_MACRO(o,tag)                                    \
   RAM_SET_FIELD0_MACRO(o,(RAM_GET_FIELD0_MACRO(o) & 0xbf) | (tag))
+#endif
 
+#ifdef LESS_MACROS
+uint8 RAM_GET_FIELD1_MACRO(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,1));}
+uint8 RAM_GET_FIELD2_MACRO(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,2));}
+uint8 RAM_GET_FIELD3_MACRO(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,3));}
+void  RAM_SET_FIELD1_MACRO(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,1), val);}
+void  RAM_SET_FIELD2_MACRO(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,2), val);}
+void  RAM_SET_FIELD3_MACRO(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,3), val);}
+uint8 ROM_GET_FIELD1_MACRO(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,1));}
+uint8 ROM_GET_FIELD2_MACRO(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,2));}
+uint8 ROM_GET_FIELD3_MACRO(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,3));}
+#else
 #define RAM_GET_FIELD1_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,1))
 #define RAM_GET_FIELD2_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,2))
 #define RAM_GET_FIELD3_MACRO(o) ram_get (OBJ_TO_RAM_ADDR(o,3))
@@ -261,6 +302,7 @@ uint8 rom_get (rom_addr a) {
 #define ROM_GET_FIELD1_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,1))
 #define ROM_GET_FIELD2_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,2))
 #define ROM_GET_FIELD3_MACRO(o) rom_get (OBJ_TO_ROM_ADDR(o,3))
+#endif
 
 word ram_get_gc_tags (obj o) { return RAM_GET_GC_TAGS_MACRO(o); }
 word ram_get_gc_tag0 (obj o) { return RAM_GET_GC_TAG0_MACRO(o); }
@@ -367,52 +409,103 @@ void set_global (uint8 i, obj o);
 
 // fixnum definitions in picobit-vm.h , address space layout section
 
+#ifdef LESS_MACROS
+uint16 ENCODE_FIXNUM(uint8  n) {return ((n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM));}
+uint8  DECODE_FIXNUM(uint16 o) {return ((o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM));}
+#else
 #define ENCODE_FIXNUM(n) ((n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
 #define DECODE_FIXNUM(o) ((o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
+#endif
 
 #define IN_VEC(o) ((o) >= MIN_VEC_ENCODING)
+#ifdef LESS_MACROS
+uint8 IN_VEC(uint16 o) {return ((o) >= MIN_VEC_ENCODING);}
+uint8 IN_RAM(uint16 o) {return (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING));}
+uint8 IN_ROM(uint16 o) {return (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING));}
+#else
 #define IN_RAM(o) (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING))
 #define IN_ROM(o) (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
+#endif
 
 // bignum first byte : 00Gxxxxx
 #define BIGNUM_FIELD0 0
+#ifdef LESS_MACROS
+uint8 RAM_BIGNUM(uint16 o) {return ((ram_get_field0 (o) & 0xc0) == BIGNUM_FIELD0);}
+uint8 ROM_BIGNUM(uint16 o) {return ((rom_get_field0 (o) & 0xc0) == BIGNUM_FIELD0);}
+#else
 #define RAM_BIGNUM(o) ((ram_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
 #define ROM_BIGNUM(o) ((rom_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
+#endif
 
 // composite first byte : 1GGxxxxx
 #define COMPOSITE_FIELD0 0x80
+#ifdef LESS_MACROS
+uint8 RAM_COMPOSITE(uint16 o) {return ((ram_get_field0 (o) & 0x80) == COMPOSITE_FIELD0);}
+uint8 ROM_COMPOSITE(uint16 o) {return ((rom_get_field0 (o) & 0x80) == COMPOSITE_FIELD0);}
+#else
 #define RAM_COMPOSITE(o) ((ram_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
 #define ROM_COMPOSITE(o) ((rom_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
+#endif
 
 // pair third byte : 000xxxxx
 #define PAIR_FIELD2 0
+#ifdef LESS_MACROS
+uint8 RAM_PAIR(uint16 o) {return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == PAIR_FIELD2));}
+uint8 ROM_PAIR(uint16 o) {return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == PAIR_FIELD2));}
+#else
 #define RAM_PAIR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == PAIR_FIELD2))
 #define ROM_PAIR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == PAIR_FIELD2))
+#endif
 
 // symbol third byte : 001xxxxx
 #define SYMBOL_FIELD2 0x20
+#ifdef LESS_MACROS
+uint8 RAM_SYMBOL(uint16 o) {return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == SYMBOL_FIELD2));}
+uint8 ROM_SYMBOL(uint16 o) {return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == SYMBOL_FIELD2));}
+#else
 #define RAM_SYMBOL(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
 #define ROM_SYMBOL(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
+#endif
 
 // string third byte : 010xxxxx
 #define STRING_FIELD2 0x40
+#ifdef LESS_MACROS
+uint8 RAM_STRING(uint16 o) {return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == STRING_FIELD2));}
+uint8 ROM_STRING(uint16 o) {return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2));}
+#else
 #define RAM_STRING(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == STRING_FIELD2))
 #define ROM_STRING(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2))
+#endif
 
 // vector third byte : 011xxxxx
 #define VECTOR_FIELD2 0x60
+#ifdef LESS_MACROS
+uint8 RAM_VECTOR(uint16 o) {return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2));}
+uint8 ROM_VECTOR(uint16 o) {return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2));}
+#else
 #define RAM_VECTOR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
 #define ROM_VECTOR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
+#endif
 
 // continuation third byte : 100xxxxx
 #define CONTINUATION_FIELD2 0x80
+#ifdef LESS_MACROS
+uint8 RAM_CONTINUATION(uint16 o) {return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2));}
+uint8 ROM_CONTINUATION(uint16 o) {return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2));}
+#else
 #define RAM_CONTINUATION(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
 #define ROM_CONTINUATION(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
+#endif
 
 // closure first byte : 01Gxxxxx
 #define CLOSURE_FIELD0 0x40
+#ifdef LESS_MACROS
+uint8 RAM_CLOSURE(uint16 o) {return ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0);}
+uint8 ROM_CLOSURE(uint16 o) {return ((rom_get_field0 (o) & 0xc0) == CLOSURE_FIELD0);}
+#else
 #define RAM_CLOSURE(o) ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
 #define ROM_CLOSURE(o) ((rom_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -468,12 +561,22 @@ obj encode_int (uint16 n);
 #define GC_TAG_UNMARKED (0<<5)
 
 /* Number of object fields of objects in ram */
+#ifdef LESS_MACROS
+uint8 HAS_2_OBJECT_FIELDS(uint16 visit) {return (RAM_PAIR(visit) || RAM_CONTINUATION(visit));}
+#ifdef INFINITE_PRECISION_BIGNUMS
+uint8 HAS_1_OBJECT_FIELD(uint16 visit)  {return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit) || RAM_BIGNUM(visit));}
+#else
+uint8 HAS_1_OBJECT_FIELD(uint16 visit)  {return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit));}
+#endif
+
+#else
 #define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR(visit) || RAM_CONTINUATION(visit))
 #ifdef INFINITE_PRECISION_BIGNUMS
 #define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) \
 				    || RAM_CLOSURE(visit) || RAM_BIGNUM(visit))
 #else
 #define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit))
+#endif
 #endif
 // all composites except pairs and continuations have 1 object field
 
