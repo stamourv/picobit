@@ -417,12 +417,12 @@ uint8  DECODE_FIXNUM(uint16 o) {return ((o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM)
 #define DECODE_FIXNUM(o) ((o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM))
 #endif
 
-#define IN_VEC(o) ((o) >= MIN_VEC_ENCODING)
 #ifdef LESS_MACROS
 uint8 IN_VEC(uint16 o) {return ((o) >= MIN_VEC_ENCODING);}
 uint8 IN_RAM(uint16 o) {return (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING));}
 uint8 IN_ROM(uint16 o) {return (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING));}
 #else
+#define IN_VEC(o) ((o) >= MIN_VEC_ENCODING)
 #define IN_RAM(o) (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING))
 #define IN_ROM(o) (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
 #endif
