@@ -9,10 +9,10 @@
 void init_ram_heap () {
   uint8 i;
   obj o = MAX_RAM_ENCODING;
+  uint16 bound = MIN_RAM_ENCODING + ((glovars + 1) >> 1);
   
   free_list = 0;
 
-  uint16 bound = MIN_RAM_ENCODING + ((glovars + 1) >> 1);
   while (o > bound) {
     // we don't want to add globals to the free list, and globals occupy the
     // beginning of memory at the rate of 2 globals per word (car and cdr)
