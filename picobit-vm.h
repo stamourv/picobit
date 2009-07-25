@@ -45,6 +45,14 @@ typedef uint16 obj;
 #define ROBOT
 #endif
 
+#ifdef MCC18
+#define ROBOT
+#endif
+
+#ifdef SIXPIC
+#define ROBOT
+#endif
+
 #ifndef ROBOT
 #define WORKSTATION
 #endif
@@ -125,16 +133,14 @@ char buf [MAX_PACKET_SIZE]; // buffer for writing
 
 // error handling
 
-#ifdef PICOBOARD2
-#define ERROR(prim, msg) halt_with_error()
-#define TYPE_ERROR(prim, type) halt_with_error()
-#endif
-
 #ifdef WORKSTATION
 #define ERROR(prim, msg) error (prim, msg)
 #define TYPE_ERROR(prim, type) type_error (prim, type)
 void error (char *prim, char *msg);
 void type_error (char *prim, char *type);
+#else
+#define ERROR(prim, msg) halt_with_error()
+#define TYPE_ERROR(prim, type) halt_with_error()
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -159,28 +165,31 @@ void type_error (char *prim, char *type);
 #define OBJ_TO_RAM_ADDR(o,f) ((((o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_ROM_ADDR(o,f) ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
 
-#ifdef PICOBOARD2
 #ifdef SIXPIC
 #define ram_get(a) *(a+0x200)
 #define ram_set(a,x) *(a+0x200) = (x)
-#else
+#endif
+
+#ifdef MCC18
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
 #endif
-#endif
+
 #ifdef WORKSTATION
 uint8 ram_mem[RAM_BYTES + VEC_BYTES];
 #define ram_get(a) ram_mem[a]
 #define ram_set(a,x) ram_mem[a] = (x)
 #endif
 
-#ifdef  PICOBOARD2
-#ifndef SIXPIC
-// provided by SIXPIC
+#ifdef MCC18
 uint8 rom_get (rom_addr a){
   return *(rom uint8*)a;
 }
 #endif
+#ifdef HI_TECH_C
+uint8 rom_get (rom_addr a){
+  return flash_read(a);
+}
 #endif
 
 #ifdef WORKSTATION

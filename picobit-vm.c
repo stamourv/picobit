@@ -283,7 +283,7 @@ int read_hex_file (char *filename)
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef PICOBOARD2
+#ifdef ROBOT
 // no separate compilation
 #include "debug.c"
 #include "gc.c"

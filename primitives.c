@@ -712,9 +712,7 @@ uint32 read_clock () {
   uint32 now = 0;
 
 #ifdef  PICOBOARD2
-#ifndef SIXPIC
   now = from_now( 0 );
-#endif
 #endif
 
 #ifdef WORKSTATION
@@ -752,9 +750,7 @@ void prim_motor () {
     ERROR("motor", "argument out of range");
 
 #ifdef  PICOBOARD2
-#ifndef SIXPIC
   MOTOR_set( a1, a2 );
-#endif
 #endif
 
 #ifdef WORKSTATION
@@ -775,9 +771,7 @@ void prim_led () {
     ERROR("led", "argument out of range");
 
 #ifdef  PICOBOARD2
-#ifndef SIXPIC
   LED_set( a1, a2, a3 );
-#endif
 #endif
 
 #ifdef WORKSTATION
@@ -798,9 +792,7 @@ void prim_led2_color () {
     ERROR("led2-colors", "argument out of range");
 
 #ifdef PICOBOARD2
-#ifndef SIXPIC
   LED2_color_set( a1 );
-#endif
 #endif
 
 #ifdef WORKSTATION
@@ -819,16 +811,15 @@ void prim_getchar_wait () {
   if (a2 < 1 || a2 > 3)
     ERROR("getchar-wait", "argument out of range");
 
-#ifdef PICOBOARD2
   arg1 = OBJ_FALSE;
-#ifndef SIXPIC
+  
+#ifdef PICOBOARD2
   {
     serial_port_set ports;
     ports = serial_rx_wait_with_timeout( a2, a1 );
     if (ports != 0)
       arg1 = encode_int (serial_rx_read( ports ));
   }
-#endif
 #endif
 
 #ifdef WORKSTATION
@@ -854,11 +845,10 @@ void prim_putchar () {
     ERROR("putchar", "argument out of range");
 
 #ifdef  PICOBOARD2
-#ifdef SIXPIC
-  uart_write(a1);
-#else
   serial_tx_write( a2, a1 );
 #endif
+#ifdef SIXPIC
+  uart_write(a1);
 #endif
 
 #ifdef WORKSTATION
@@ -878,9 +868,7 @@ void prim_beep () {
     ERROR("beep", "argument out of range");
   
 #ifdef  PICOBOARD2
-#ifndef SIXPIC
   beep( a1, from_now( a2 ) );
-#endif
 #endif
 
 #ifdef WORKSTATION
@@ -902,9 +890,7 @@ void prim_adc () {
     ERROR("adc", "argument out of range");
 
 #ifdef  PICOBOARD2
-#ifndef SIXPIC
   x = adc( a1 );
-#endif
 #endif
 
 #ifdef WORKSTATION
@@ -920,9 +906,7 @@ void prim_sernum () {
   uint16 x;
 
 #ifdef  PICOBOARD2
-#ifndef SIXPIC
   x = serial_num ();
-#endif
 #endif
 
 #ifdef WORKSTATION

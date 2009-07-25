@@ -55,7 +55,7 @@ integer norm (obj prefix, integer n) {
     }
     else if (obj_eq (n, NEG1)) {
       // -1 is an illegal literal in SIXPIC, thus the double negative
-      if (d >= (1<<digit_width) - (-MIN_FIXNUM)) {
+      if (d >= (1<<digit_width) - (- MIN_FIXNUM)) {
 	n = ENCODE_FIXNUM (d - (1<<digit_width));
 	continue;
       }
