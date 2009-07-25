@@ -133,6 +133,10 @@ char buf [MAX_PACKET_SIZE]; // buffer for writing
 
 // error handling
 
+#ifdef HI_TECH_C
+void halt_with_error () {while(1);}
+#endif
+
 #ifdef WORKSTATION
 #define ERROR(prim, msg) error (prim, msg)
 #define TYPE_ERROR(prim, type) type_error (prim, type)
@@ -173,6 +177,18 @@ void type_error (char *prim, char *type);
 #ifdef MCC18
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
+#endif
+
+#ifdef HI_TECH_C
+// cannot be a macro
+uint8 ram_get(uint16 a) {
+  uint8 *p = a+0x200;
+  return *p;
+}
+void ram_set(uint16 a, uint8 x) {
+  uint8 *p = a+0x200;
+  *p = x;
+}
 #endif
 
 #ifdef WORKSTATION
