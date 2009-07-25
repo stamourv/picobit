@@ -573,20 +573,6 @@ void prim_send_packet_from_u8vector ();
 
 #define FETCH_NEXT_BYTECODE() bytecode = rom_get (pc++)
 
-#define BEGIN_DISPATCH()                        \
-  dispatch:                                     \
-  IF_TRACE(show_state (pc));                    \
-  FETCH_NEXT_BYTECODE();                        \
-  bytecode_hi4 = bytecode & 0xf0;               \
-  bytecode_lo4 = bytecode & 0x0f;               \
-  switch (bytecode_hi4 >> 4) {
-
-#define END_DISPATCH() }
-
-#define CASE(opcode) case (opcode):;
-
-#define DISPATCH(); goto dispatch;
-
 #define PUSH_CONSTANT1     0x0
 #define PUSH_CONSTANT2     0x1
 #define PUSH_STACK1        0x2
@@ -605,9 +591,6 @@ void prim_send_packet_from_u8vector ();
 #define PRIM2              0xd
 #define PRIM3              0xe
 #define PRIM4              0xf
-
-#define PUSH_ARG1() push_arg1 ()
-#define POP() pop()
 
 void push_arg1 ();
 obj pop ();
