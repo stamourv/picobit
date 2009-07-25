@@ -371,3 +371,9 @@ int main (int argc, char *argv[])
 #ifdef SIXPIC
 interpreter();
 #endif
+
+#ifdef HI_TECH_C
+void main () {
+  interpreter();
+}
+#endif
