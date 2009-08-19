@@ -186,7 +186,7 @@ void sweep () {
       }
       ram_set_car (visit, free_list);
       free_list = visit;
-      }
+    }
     else {
       if (RAM_COMPOSITE(visit))
 	ram_set_gc_tags (visit, GC_TAG_UNMARKED);

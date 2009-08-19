@@ -355,8 +355,10 @@ void set_global (uint8 i, obj o);
   Gs represent mark bits used by the gc
 
   ifdef INFINITE_PRECISION_BIGNUMS
-  bignum n     0GG***** **next** hhhhhhhh llllllll  (16 bit digit)
+  bignum n     00G***** **next** hhhhhhhh llllllll  (16 bit digit)
   TODO what to do with the gc tags for the bignums ? will this work ?
+  TODO since bignums have only 1 field, only one gc tag is should be enough
+  (only one is used anyway), so no conflict with closures
   
   ifndef INFINITE_PRECISION_BIGNUMS
   bignum n     00000000 uuuuuuuu hhhhhhhh llllllll  (24 bit signed integer)

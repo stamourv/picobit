@@ -459,9 +459,9 @@ obj encode_int (uint16 n) {
 // regular (finite, 24 bits) bignums
 
 uint16 decode_int (obj o) {
-  uint8 u;
-  uint8 h;
-  uint8 l;
+  uint16 u; // TODO should be 32, but is lost anyway since this returns a uint16
+  uint16 h;
+  uint8  l;
 
   if (o < MIN_FIXNUM_ENCODING)
     TYPE_ERROR("decode_int.0", "integer");
@@ -489,9 +489,9 @@ uint16 decode_int (obj o) {
     TYPE_ERROR("decode_int.3", "integer");
   
   if (u >= 128) // negative
-    return ((uint32)((((uint16)u - 256) << 8) + h) << 8) + l; // TODO ints are all 16 bits, 24 bits won't work
+    return ((((u - 256) << 8) + h) << 8) + l; // TODO ints are all 16 bits, 24 bits won't work
   
-  return ((uint32)(((uint16)u << 8) + h) << 8) + l;
+  return (((u << 8) + h) << 8) + l;
 }
 
 obj encode_int (uint16 n) { // TODO does not use the full 24 bits
