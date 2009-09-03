@@ -194,7 +194,7 @@
 ;;      (asm-32 (- (asm-label-pos x) self))))
 
 (define (asm-at-assembly . procs)
-  (asm-code-extend (vector 'DEFERRED procs)))
+  (asm-code-extend (vector 'DEFERRED procs 0)))
 
 ;; (asm-listing text) adds text to the right side of the listing.
 ;; The atoms in "text" will be output using "display" (lists are
@@ -217,61 +217,78 @@
 
     (let loop1 ()
       (let loop2 ((lst fixup-lst)
-                  (changed? #f)
                   (pos asm-start-pos))
-        (if (null? lst)
-          (if changed? (loop1))
-          (let* ((fixup (car lst))
-                 (pos (+ pos (car fixup)))
-                 (curr (cdr fixup))
-                 (x (car curr)))
-            (if (eq? (vector-ref x 0) 'LABEL)
-              ; LABEL
-              (if (= (vector-ref x 1) pos)
-                (loop2 (cdr lst) changed? pos)
-                (begin
-                  (vector-set! x 1 pos)
-                  (loop2 (cdr lst) #t pos)))
-              ; DEFERRED
-              (let loop3 ()
-                (let ((n ((car (vector-ref x 1)) pos)))
-                  (if n
-                    (loop2 (cdr lst) changed? (+ pos n))
-                    (begin
-                      (vector-set! x 1 (cddr (vector-ref x 1)))
-                      (loop3))))))))))
+        (if (pair? lst)
+            (let* ((fixup (car lst))
+                   (pos (+ pos (car fixup)))
+                   (curr (cdr fixup))
+                   (x (car curr)))
+              (if (eq? (vector-ref x 0) 'LABEL)
+                  ;; LABEL
+                  (loop2 (cdr lst) pos)
+                  ;; DEFERRED
+                  (let ((old-size (vector-ref x 2)))
+                    (let loop3 ()
+                      (let ((new-size ((car (vector-ref x 1)) pos)))
+                        (if new-size
+                            (begin
+                              (vector-set! x 2 new-size)
+                              (loop2 (cdr lst) (+ pos old-size)))
+                            (begin
+                              (vector-set! x 1 (cddr (vector-ref x 1)))
+                              (loop3))))))))
+            (let loop4 ((lst fixup-lst)
+                        (pos asm-start-pos)
+                        (changed? #f))
+              (if (pair? lst)
+                  (let* ((fixup (car lst))
+                         (pos (+ pos (car fixup)))
+                         (curr (cdr fixup))
+                         (x (car curr)))
+                    (if (eq? (vector-ref x 0) 'LABEL)
+                        ;; LABEL
+                        (if (= (vector-ref x 1) pos)
+                            (loop4 (cdr lst) pos changed?)
+                            (begin
+                              (vector-set! x 1 pos)
+                              (loop4 (cdr lst) pos #t)))
+                        ;; DEFERRED
+                        (let ((new-size (vector-ref x 2)))
+                          (loop4 (cdr lst) (+ pos new-size) changed?))))
+                  (if changed?
+                      (loop1)))))))
 
-    (let loop4 ((prev asm-code-stream)
+    (let loop5 ((prev asm-code-stream)
                 (curr (cdr asm-code-stream))
                 (pos asm-start-pos))
       (if (null? curr)
-        (set-car! asm-code-stream prev)
-        (let ((x (car curr))
-              (next (cdr curr)))
-          (if (vector? x)
-            (let ((kind (vector-ref x 0)))
-              (cond ((eq? kind 'LABEL)
-                     (let ((final-pos (vector-ref x 1)))
-                       (if final-pos
-                         (if (not (= pos final-pos))
-                           (compiler-internal-error
-                             "asm-assemble, inconsistency detected"))
-                         (vector-set! x 1 pos))
-                       (set-cdr! prev next)
-                       (loop4 prev next pos)))
-                    ((eq? kind 'DEFERRED)
-                     (let ((temp asm-code-stream))
-                       (set! asm-code-stream (asm-make-stream))
-                       ((cadr (vector-ref x 1)) pos)
-                       (let ((tail (car asm-code-stream)))
-                         (set-cdr! tail next)
-                         (let ((head (cdr asm-code-stream)))
-                           (set-cdr! prev head)
-                           (set! asm-code-stream temp)
-                           (loop4 prev head pos)))))
-                    (else
-                     (loop4 curr next pos))))
-            (loop4 curr next (+ pos 1))))))))
+          (set-car! asm-code-stream prev)
+          (let ((x (car curr))
+                (next (cdr curr)))
+            (if (vector? x)
+                (let ((kind (vector-ref x 0)))
+                  (cond ((eq? kind 'LABEL)
+                         (let ((final-pos (vector-ref x 1)))
+                           (if final-pos
+                               (if (not (= pos final-pos))
+                                   (compiler-internal-error
+                                    "asm-assemble, inconsistency detected"))
+                               (vector-set! x 1 pos))
+                           (set-cdr! prev next)
+                           (loop5 prev next pos)))
+                        ((eq? kind 'DEFERRED)
+                         (let ((temp asm-code-stream))
+                           (set! asm-code-stream (asm-make-stream))
+                           ((cadr (vector-ref x 1)) pos)
+                           (let ((tail (car asm-code-stream)))
+                             (set-cdr! tail next)
+                             (let ((head (cdr asm-code-stream)))
+                               (set-cdr! prev head)
+                               (set! asm-code-stream temp)
+                               (loop5 prev head pos)))))
+                        (else
+                         (loop5 curr next pos))))
+                (loop5 curr next (+ pos 1))))))))
 
 ;; (asm-display-listing port) produces a listing of the code stream
 ;; on the given output port.  The bytes generated are shown in
@@ -417,6 +434,8 @@
             (print-line 1 0 '())
             (if #t
                 (begin
+                  ;;;(pp (- 3447 (- pos asm-start-pos)));;;;;;;;;;;;
+
                   (display (- pos asm-start-pos) ##stderr-port)
                   (display " bytes\n" ##stderr-port)))))))))
 
