@@ -1,4 +1,4 @@
-;;;; File: "encoding.scm", Time-stamp: <2006-05-08 16:04:37 feeley>
+;;;; File: "encoding.scm", Time-stamp: <2009-08-22 14:39:05 feeley>
 
 ;;;; Copyright (C) 2004-2009 by Marc Feeley and Vincent St-Amour
 ;;;; All Rights Reserved.
@@ -213,34 +213,79 @@
           (let ((constants (sort-constants constants))
  		(globals   (sort-globals   globals)))
 
-            (define (label-instr label opcode)
+            (define (label-instr label opcode-rel4 opcode-rel8 opcode-rel12 opcode-abs16 opcode-sym)
+;;;;;;;;;;;;;;;;;              (if (eq? opcode-sym 'goto) (pp (list 'goto label)))
               (asm-at-assembly
 	       ;; if the distance from pc to the label fits in a single byte,
 	       ;; a short instruction is used, containing a relative address
 	       ;; if not, the full 16-bit label is used
-;;; 	       (lambda (self)
-;;; 		 (let ((dist (- (asm-label-pos label) self)))
-;;; 		   (and (< dist 256) ;; TODO have this between -128 and 127 ? would be more flexible, I guess
-;;; 			(> dist 0)
-;;; 			2)))
-;;; 	       (lambda (self)
-;;; 		 (asm-8 (+ opcode 5))
-;;; 		 (asm-8 (- (asm-label-pos label) self)))
-	       ;; TODO doesn't work at the moment
-	       
+	       (lambda (self)
+                 (let ((dist (- (asm-label-pos label) (+ self 1))))
+                   (and opcode-rel4
+                        (<= 0 dist 15) ;; TODO go backwards too ?
+                        1)))
+	       (lambda (self)
+                 (let ((dist (- (asm-label-pos label) (+ self 1))))
+                   (if stats?
+                       (let ((key (list '---rel-4bit opcode-sym)))
+                         (let ((n (table-ref instr-table key 0)))
+                           (table-set! instr-table key (+ n 1)))))
+                   (asm-8 (+ opcode-rel4 dist))))
+
+	       (lambda (self)
+                 (let ((dist (+ 128 (- (asm-label-pos label) (+ self 2)))))
+                   (and opcode-rel8
+                        (<= 0 dist 255)
+                        2)))
+	       (lambda (self)
+                 (let ((dist (+ 128 (- (asm-label-pos label) (+ self 2)))))
+                   (if stats?
+                       (let ((key (list '---rel-8bit opcode-sym)))
+                         (let ((n (table-ref instr-table key 0)))
+                           (table-set! instr-table key (+ n 1)))))
+                   (asm-8 opcode-rel8)
+                   (asm-8 dist)))
+
+	       (lambda (self)
+                 (let ((dist (+ 2048 (- (asm-label-pos label) (+ self 2)))))
+                   (and opcode-rel12
+                        (<= 0 dist 4095)
+                        2)))
+	       (lambda (self)
+                 (let ((dist (+ 2048 (- (asm-label-pos label) (+ self 2)))))
+                   (if stats?
+                       (let ((key (list '---rel-12bit opcode-sym)))
+                         (let ((n (table-ref instr-table key 0)))
+                           (table-set! instr-table key (+ n 1)))))
+                   (asm-8 (+ opcode-rel12 (quotient dist 256)))
+                   (asm-8 (modulo dist 256))))
+
                (lambda (self)
 		 3)
                (lambda (self)
 		 (let ((pos (- (asm-label-pos label) code-start)))
-			 (asm-8 opcode)
-			 (asm-8 (quotient pos 256))
-			 (asm-8 (modulo pos 256))))))
+                   (if stats?
+                       (let ((key (list '---abs-16bit opcode-sym)))
+                         (let ((n (table-ref instr-table key 0)))
+                           (table-set! instr-table key (+ n 1)))))
+                   (asm-8 opcode-abs16)
+                   (asm-8 (quotient pos 256))
+                   (asm-8 (modulo pos 256))))))
 
             (define (push-constant n)
               (if (<= n 31)
-                  (asm-8 (+ #x00 n))
                   (begin
-                    (asm-8 (+ #x90 (quotient n 256)))
+                    (if stats?
+                        (let ((key '---push-constant-1byte))
+                          (let ((n (table-ref instr-table key 0)))
+                            (table-set! instr-table key (+ n 1)))))
+                    (asm-8 (+ #x00 n)))
+                  (begin
+                    (if stats?
+                        (let ((key '---push-constant-2bytes))
+                          (let ((n (table-ref instr-table key 0)))
+                            (table-set! instr-table key (+ n 1)))))
+                    (asm-8 (+ #xa0 (quotient n 256)))
 		    (asm-8 (modulo n 256)))))
 
             (define (push-stack n)
@@ -250,15 +295,35 @@
 
             (define (push-global n)
 	      (if (<= n 15)
-		  (asm-8 (+ #x40 n))
-		  (begin (asm-8 #x8e)
-			 (asm-8 n))))
+                  (begin
+                    (if stats?
+                        (let ((key '---push-global-1byte))
+                          (let ((n (table-ref instr-table key 0)))
+                            (table-set! instr-table key (+ n 1)))))
+                    (asm-8 (+ #x40 n)))
+		  (begin
+                    (if stats?
+                        (let ((key '---push-global-2bytes))
+                          (let ((n (table-ref instr-table key 0)))
+                            (table-set! instr-table key (+ n 1)))))
+                    (asm-8 #x8e)
+                    (asm-8 n))))
 
             (define (set-global n)
               (if (<= n 15)
-	          (asm-8 (+ #x50 n))
-		  (begin (asm-8 #x8f)
-			 (asm-8 n))))
+	          (begin
+                    (if stats?
+                        (let ((key '---set-global-1byte))
+                          (let ((n (table-ref instr-table key 0)))
+                            (table-set! instr-table key (+ n 1)))))
+                    (asm-8 (+ #x50 n)))
+		  (begin
+                    (if stats?
+                        (let ((key '---set-global-2bytes))
+                          (let ((n (table-ref instr-table key 0)))
+                            (table-set! instr-table key (+ n 1)))))
+                    (asm-8 #x8f)
+                    (asm-8 n))))
 
             (define (call n)
               (if (> n 15)
@@ -270,20 +335,48 @@
                   (compiler-error "call has too many arguments")
                   (asm-8 (+ #x70 n))))
 
+            (define optimize! #f);;;;;;;;;;;;;;;;;;;;;
+;            (define optimize! 0);;;;;;;;;;;;;;;;;;;;;
+
             (define (call-toplevel label)
-              (label-instr label #x80))
+              (label-instr label
+                           #f ;; saves 36 (22)
+                           #xb5 ;; saves 60, 78 (71)
+                           #f ;; saves 150, 168 (161)
+                           #xb0
+                           'call-toplevel))
 
             (define (jump-toplevel label)
-              (label-instr label #x81))
+              (label-instr label
+                           #x80 ;; saves 62 (62)
+                           #xb6 ;; saves 45, 76 (76)
+                           #f ;; saves 67, 98 (98)
+                           #xb1
+                           'jump-toplevel))
 
             (define (goto label)
-              (label-instr label #x82))
+              (label-instr label
+                           #f ;; saves 0 (2)
+                           #xb7 ;; saves 21, 21 (22)
+                           #f ;; saves 30, 30 (31)
+                           #xb2
+                           'goto))
 
             (define (goto-if-false label)
-              (label-instr label #x83))
+              (label-instr label
+                           #x90 ;; saves 54 (44)
+                           #xb8 ;; saves 83, 110 (105)
+                           #f ;; saves 109, 136 (131)
+                           #xb3
+                           'goto-if-false))
 
             (define (closure label)
-              (label-instr label #x84))
+              (label-instr label
+                           #f ;; saves 50 (48)
+                           #xb9 ;; #f;; does not work!!! #xb9 ;; saves 27, 52 (51) FOO
+                           #f ;; saves 34, 59 (58)
+                           #xb4
+                           'closure))
 
             (define (prim n)
               (asm-8 (+ #xc0 n)))
@@ -345,6 +438,9 @@
 	    (define (prim.xor)             (prim 54))
 	    
             (define big-endian? #f)
+
+            (define stats? #t)
+            (define instr-table (make-table))
 
             (asm-begin! code-start #f)
 
@@ -415,9 +511,17 @@
                         (compiler-error "unknown object type" obj)))))
              constants)
 
+            ;;(pp code);;;;;;;;;;;;
+
             (let loop2 ((lst code))
               (if (pair? lst)
                   (let ((instr (car lst)))
+
+                    (if stats?
+                        (if (not (number? instr))
+                            (let ((key (car instr)))
+                              (let ((n (table-ref instr-table key 0)))
+                                (table-set! instr-table key (+ n 1))))))
 
                     (cond ((number? instr)
                            (let ((label (cdr (assq instr labels))))
@@ -544,6 +648,12 @@
 
             (asm-assemble)
 
+            (if stats?
+                (pretty-print
+                 (sort-list (table->list instr-table)
+                            (lambda (x y) (> (cdr x) (cdr y))))))
+
+;;;;;;;;;            (asm-display-listing ##stdout-port);;;;;;;;;;;;;
             (asm-write-hex-file hex-filename)
 
             (asm-end!))))))

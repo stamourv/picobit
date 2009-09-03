@@ -685,11 +685,17 @@ void prim_send_packet_from_u8vector ();
 #define SET_GLOBAL         0x5
 #define CALL               0x6
 #define JUMP               0x7
+#if 1
+#define JUMP_TOPLEVEL_REL4 0x8
+#define GOTO_IF_FALSE_REL4 0x9
+#define PUSH_CONSTANT_LONG 0xa
+#define LABEL_INSTR        0xb
+#else
+#define JUMP_TOPLEVEL_REL4 0xa
+#define GOTO_IF_FALSE_REL4 0xb
 #define LABEL_INSTR        0x8
 #define PUSH_CONSTANT_LONG 0x9
-
-#define FREE1              0xa
-#define FREE2              0xb
+#endif
 
 #define PRIM1              0xc
 #define PRIM2              0xd

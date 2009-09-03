@@ -302,17 +302,24 @@ void interpreter () {
 
       FETCH_NEXT_BYTECODE();
 
-      IF_TRACE(printf("  (closure 0x%04x)\n", (arg2 << 8) | bytecode));
+      entry = (arg2 << 8) | bytecode;
+
+      IF_TRACE(printf("  (closure 0x%04x)\n", entry));
 
       arg3 = pop(); // env
 
-      entry = (arg2 << 8) | bytecode;
+      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (entry >> 11),
+                                  entry >> 3,
+                                  ((entry & 0x07) <<5) | ((arg3 >> 8) & 0x1f),
+                                  arg3 & 0xff);
 
-      arg1 =
+#if 0
+      arg1 = // FOO remove
         alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
                              ((arg2 & 0x07) << 5) | (bytecode >> 3),
                              ((bytecode & 0x07) << 5) | ((arg3 & 0x1f00) >> 8),
                              arg3 & 0xff);
+#endif
 
       push_arg1();
 
@@ -321,14 +328,13 @@ void interpreter () {
 
       break;
 
-#if 0
-    case 5: // call-toplevel-short
+#if 1
+    case 5: // call-toplevel-rel8
       FETCH_NEXT_BYTECODE(); // TODO the short version have a lot in common with the long ones, abstract ?
-      // TODO short instructions don't work at the moment
-      IF_TRACE(printf("  (call-toplevel-short 0x%04x)\n",
-                      pc + bytecode + CODE_START));
 
-      entry = pc + bytecode + CODE_START;
+      IF_TRACE(printf("  (call-toplevel-rel8 0x%04x)\n", pc + bytecode - 128));
+
+      entry = pc + bytecode - 128;
       arg1 = OBJ_NULL;
 
       build_env (rom_get (entry++));
@@ -341,13 +347,12 @@ void interpreter () {
 
       break;
 
-    case 6: // jump-toplevel-short
+    case 6: // jump-toplevel-rel8
       FETCH_NEXT_BYTECODE();
 
-      IF_TRACE(printf("  (jump-toplevel-short 0x%04x)\n",
-                      pc + bytecode + CODE_START));
+      IF_TRACE(printf("  (jump-toplevel-rel8 0x%04x)\n", pc + bytecode - 128));
 
-      entry = pc + bytecode + CODE_START;
+      entry = pc + bytecode - 128;
       arg1 = OBJ_NULL;
 
       build_env (rom_get (entry++));
@@ -359,38 +364,41 @@ void interpreter () {
 
       break;
 
-    case 7: // goto-short
+    case 7: // goto-rel8
       FETCH_NEXT_BYTECODE();
 
-      IF_TRACE(printf("  (goto-short 0x%04x)\n", pc + bytecode + CODE_START));
+      IF_TRACE(printf("  (goto-rel8 0x%04x)\n", pc + bytecode - 128));
 
-      pc = pc + bytecode + CODE_START;
+      pc = pc + bytecode - 128;
 
       break;
 
-    case 8: // goto-if-false-short
+    case 8: // goto-if-false-rel8
       FETCH_NEXT_BYTECODE();
 
-      IF_TRACE(printf("  (goto-if-false-short 0x%04x)\n",
-                      pc + bytecode + CODE_START));
+      IF_TRACE(printf("  (goto-if-false-rel8 0x%04x)\n", pc + bytecode - 128));
 
       if (pop() == OBJ_FALSE)
-        pc = pc + bytecode + CODE_START;
+        pc = pc + bytecode - 128;
 
       break;
 
-    case 9: // closure-short
+      /* #if 0 */ // FOO
+
+    // FOO why does this not work?  don't worry about it now.
+
+    case 9: // closure-rel8
       FETCH_NEXT_BYTECODE();
 
-      IF_TRACE(printf("  (closure-short 0x%04x)\n", pc + bytecode));
+      entry = pc + bytecode - 128;
+
+      IF_TRACE(printf("  (closure-rel8 0x%04x)\n", entry));
 
       arg3 = pop(); // env
 
-      entry = pc + bytecode;
-
-      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
-                                  ((arg2 & 0x07) << 5) | (bytecode >> 3),
-                                  ((bytecode &0x07) <<5) |((arg3 &0x1f00) >>8),
+      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (entry >> 11),
+                                  entry >> 3,
+                                  ((entry & 0x07) << 5) | ((arg3 >> 8) & 0x1f),
                                   arg3 & 0xff);
 
       push_arg1();
@@ -398,6 +406,8 @@ void interpreter () {
       arg3 = OBJ_FALSE;
 
       break;
+      /* #endif */ // FOO
+
 #endif
 
 #if 0
@@ -450,12 +460,31 @@ void interpreter () {
     goto dispatch;
 
     /*************************************************************************/
-  case FREE1 : // FREE
+
+  case JUMP_TOPLEVEL_REL4 :
+
+    IF_TRACE(printf("  (jump-toplevel-rel4 0x%04x)\n", pc + (bytecode & 0x0f)));
+
+    entry = pc + (bytecode & 0x0f);
+    arg1 = OBJ_NULL;
+
+    build_env (rom_get (entry++));
+
+    env = arg1;
+    pc = entry;
+
+    arg1 = OBJ_FALSE;
 
     goto dispatch;
 
     /*************************************************************************/
-  case FREE2 : // FREE
+
+  case GOTO_IF_FALSE_REL4 :
+
+    IF_TRACE(printf("  (goto-if-false-rel4 0x%04x)\n", pc + (bytecode & 0x0f)));
+
+    if (pop() == OBJ_FALSE)
+      pc = pc + (bytecode & 0x0f);
 
     goto dispatch;
 

@@ -1,4 +1,4 @@
-;;;; File: "comp.scm", Time-stamp: <2006-05-08 16:04:37 feeley>
+;;;; File: "comp.scm", Time-stamp: <2009-08-21 23:41:38 feeley>
 
 ;;;; Copyright (C) 2004-2009 by Marc Feeley and Vincent St-Amour
 ;;;; All Rights Reserved.
@@ -1047,7 +1047,7 @@
                        (make-vector (vector-length bbs) 1)
                        (vector-length bbs)))))
 
-(define linearize
+(define linearize-old
   (lambda (bbs)
     (let loop ((label (- (vector-length bbs) 1))
                (lst '()))
@@ -1079,6 +1079,136 @@
                            rev-instrs)))
                    lst)))
           lst))))
+
+(define linearize
+  (lambda (bbs)
+
+    (define rev-code '())
+
+    (define pos 0)
+
+    (define (emit x)
+      (set! pos (+ pos 1))
+      (set! rev-code (cons x rev-code)))
+
+    (define todo (cons '() '()))
+
+    (define dumped (make-vector (vector-length bbs) #f))
+
+    (define (get fallthrough-to-next?)
+      (if (pair? (cdr todo))
+          (if fallthrough-to-next?
+              (let* ((label-pos (cadr todo))
+                     (label (car label-pos))
+                     (rest (cddr todo)))
+                (if (not (pair? rest))
+                    (set-car! todo todo))
+                (set-cdr! todo rest)
+                label)
+              (let loop ((x (cdr todo)) (best-label-pos #f))
+                #;
+                (if (pair? x)
+                    (if (not (vector-ref dumped (car (car x))))
+                        (pp (car x))))
+                (if (pair? x)
+                    (loop (cdr x)
+                          (if (vector-ref dumped (car (car x)))
+                              best-label-pos
+                              (if (or (not best-label-pos)
+                                      (> (cdr (car x)) (cdr best-label-pos)))
+                                  (car x)
+                                  best-label-pos)))
+                    (if (pair? best-label-pos)
+                        (car best-label-pos)
+                        #f))))
+          #f))
+
+    (define (next)
+      (let loop ((x (cdr todo)))
+        (if (pair? x)
+            (let* ((label-pos (car x))
+                   (label (car label-pos)))
+              (if (not (vector-ref dumped label))
+                  label
+                  (loop (cdr x))))
+            #f)))
+
+    (define (schedule! label tail?)
+      (let ((label-pos (cons label pos)))
+        (if tail?
+            (let ((cell (cons label-pos '())))
+              (set-cdr! (car todo) cell)
+              (set-car! todo cell))
+            (let ((cell (cons label-pos (cdr todo))))
+              (set-cdr! todo cell)
+              (if (eq? (car todo) todo)
+                  (set-car! todo cell))))))
+
+    (define (dump)
+      (let loop ((fallthrough-to-next? #t))
+        (let ((label (get fallthrough-to-next?)))
+          (if label
+              (if (not (vector-ref dumped label))
+                  (begin
+                    (vector-set! dumped label #t)
+                    (loop (dump-bb label)))
+                  (loop fallthrough-to-next?))))))
+
+    (define (dump-bb label)
+      (let* ((bb (vector-ref bbs label))
+             (rev-instrs (bb-rev-instrs bb))
+             (jump (car rev-instrs))
+             (opcode (car jump)))
+        (emit label)
+        (for-each
+         (lambda (instr)
+           (case (car instr)
+             ((closure call-toplevel)
+              (schedule! (cadr instr) #t)))
+           (emit instr))
+         (reverse (cdr rev-instrs)))
+        (cond ((eq? opcode 'goto)
+               (schedule! (cadr jump) #f)
+               (if (not (equal? (cadr jump) (next)))
+                   (begin
+                     (emit jump)
+                     #f)
+                   #t))
+              ((eq? opcode 'goto-if-false)
+               (schedule! (cadr jump) #f)
+               (schedule! (caddr jump) #f)
+               (cond ((equal? (caddr jump) (next))
+                      (emit (list 'goto-if-false (cadr jump)))
+                      #t)
+                     ((equal? (cadr jump) (next))
+                      (emit (list 'prim '#%not))
+                      (emit (list 'goto-if-false (caddr jump)))
+                      #t)
+                     (else
+                      (emit (list 'goto-if-false (cadr jump)))
+                      (emit (list 'goto (caddr jump)))
+                      #f)))
+              (else
+               (case (car jump)
+                 ((jump-toplevel)
+                  (schedule! (cadr jump) #f)
+                  ;; it is not correct to remove jump-toplevel when label is next
+                  (if #t ;; (not (equal? (cadr jump) (next)))
+                      (begin
+                        (emit jump)
+                        #f)
+                      #t))
+                 (else
+                  (emit jump)
+                  #f))))))
+
+    (set-car! todo todo) ;; make fifo
+
+    (schedule! 0 #f)
+
+    (dump)
+
+    (reverse rev-code)))
 
 (define optimize-code
   (lambda (code)
