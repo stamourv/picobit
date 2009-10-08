@@ -373,7 +373,7 @@
             (define (closure label)
               (label-instr label
                            #f ;; saves 50 (48)
-                           #xb9 ;; #f;; does not work!!! #xb9 ;; saves 27, 52 (51) FOO
+                           #f ;; #xb9 ;; #f;; does not work!!! #xb9 ;; saves 27, 52 (51) TODO
                            #f ;; saves 34, 59 (58)
                            #xb4
                            'closure))
@@ -390,9 +390,7 @@
             (define (prim.neg)             (prim 6))
             (define (prim.=)               (prim 7))
             (define (prim.<)               (prim 8))
-	    (define (prim.<=)              (prim 9))
             (define (prim.>)               (prim 10))
-	    (define (prim.>=)              (prim 11))
             (define (prim.pair?)           (prim 12))
             (define (prim.cons)            (prim 13))
             (define (prim.car)             (prim 14))
@@ -425,7 +423,6 @@
 	    (define (prim.u8vector?)       (prim 41))
 	    (define (prim.sernum)          (prim 42))
 	    (define (prim.u8vector-length) (prim 43))
-	    (define (prim.u8vector-copy!)  (prim 44))
             (define (prim.shift)           (prim 45))
             (define (prim.pop)             (prim 46))
             (define (prim.return)          (prim 47))
@@ -586,9 +583,7 @@
                              ((#%neg)             (prim.neg))
                              ((#%=)               (prim.=))
                              ((#%<)               (prim.<))
-			     ((#%<=)              (prim.<=))
                              ((#%>)               (prim.>))
-                             ((#%>=)              (prim.>=))
                              ((#%pair?)           (prim.pair?))
                              ((#%cons)            (prim.cons))
                              ((#%car)             (prim.car))
@@ -621,7 +616,6 @@
                              ((#%u8vector?)       (prim.u8vector?))
                              ((#%sernum)          (prim.sernum))
 			     ((#%u8vector-length) (prim.u8vector-length))
-			     ((#%u8vector-copy!)  (prim.u8vector-copy!))
 			     ((#%boolean?)        (prim.boolean?))
 			     ((#%network-init)    (prim.network-init))
 			     ((#%network-cleanup) (prim.network-cleanup))

@@ -55,7 +55,7 @@ char *prim_name[64] =
     "prim #%u8vector?",
     "prim #%sernum",
     "prim #%u8vector-length",
-    "prim #%u8vector-copy!",
+    "prim 44"
     "shift",
     "pop",
     "return",
@@ -211,27 +211,6 @@ void prim_gt () {
   arg2 = OBJ_FALSE;
 }
 
-void prim_leq () { // TODO these 2 are useful, but they add to the code size, is it worth it ?
-#ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = encode_bool(cmp (arg1, arg2) <= 1);
-#else
-  decode_2_int_args ();
-  arg1 = encode_bool(a1 <= a2);
-#endif
-  arg2 = OBJ_FALSE;
-  
-}
-
-void prim_geq () {
-#ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = encode_bool(cmp (arg1, arg2) >= 1);
-#else
-  decode_2_int_args ();
-  arg1 = encode_bool(a1 >= a2);
-#endif
-  arg2 = OBJ_FALSE;
-}
-
 void prim_ior () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = bitwise_ior(arg1, arg2);
@@ -353,25 +332,15 @@ void prim_u8vectorp () {
 }
 
 void prim_make_u8vector () {
-  decode_2_int_args (); // arg1 is length, arg2 is contents
+  a1 = decode_int (arg1); // arg1 is length
   // TODO adapt for the new bignums
-  if (a2 > 255)
-    ERROR("make-u8vector", "byte vectors can only contain bytes");
   
-  arg3 = alloc_vec_cell (a1);
+  arg2 = alloc_vec_cell (a1);
   arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | (a1 >> 8),
 			      a1 & 0xff,
-			      VECTOR_FIELD2 | (arg3 >> 8),
-			      arg3 & 0xff);
-
-  a1 = (a1 + 3) >> 2; // actual length, in words
-  while (a1--) {
-    ram_set_field0 (arg3, a2);
-    ram_set_field1 (arg3, a2);
-    ram_set_field2 (arg3, a2);
-    ram_set_field3 (arg3, a2);
-    arg3++;
-  }
+			      VECTOR_FIELD2 | (arg2 >> 8),
+			      arg2 & 0xff);
+  arg2 = OBJ_FALSE;
 }
 
 void prim_u8vector_ref () {
@@ -455,74 +424,6 @@ void prim_u8vector_length () {
     TYPE_ERROR("u8vector-length.2", "vector");
 }
 
-void prim_u8vector_copy () {
-  // arg1 is source, arg2 is source-start, arg3 is target, arg4 is target-start
-  // arg5 is number of bytes to copy
-  
-  a1 = decode_int (arg2);
-  a2 = decode_int (arg4);
-  a3 = decode_int (arg5);
-  
-  // case 1 : ram to ram
-  if (IN_RAM(arg1) && IN_RAM(arg3)) {
-    if (!RAM_VECTOR(arg1) || !RAM_VECTOR(arg3))
-      TYPE_ERROR("u8vector-copy!.0", "vector");
-    if ((ram_get_car (arg1) < (a1 + a3)) || (ram_get_car (arg3) < (a2 + a3)))
-      ERROR("u8vector-copy!.0", "vector index invalid");
-    
-    // position to the start
-    arg1 = ram_get_cdr (arg1);
-    arg1 += (a1 >> 2);
-    a1 %= 4;
-    arg3 = ram_get_cdr (arg3);
-    arg3 += (a2 >> 2);
-    a2 %= 4;
-    
-    // copy
-    while (a3--) {
-      ram_set_fieldn (arg3, a2, ram_get_fieldn (arg1, a1));
-      
-      a1++;
-      arg1 += (a1 >> 2);
-      a1 %= 4; // TODO merge with the previous similar block ?
-      a2++;
-      arg3 += (a2 >> 2);
-      a2 %= 4;
-    }
-  }
-  // case 2 : rom to ram
-  else if (IN_ROM(arg1) && IN_RAM(arg3)) {
-    if (!ROM_VECTOR(arg1) || !RAM_VECTOR(arg3))
-      TYPE_ERROR("u8vector-copy!.1", "vector");
-    if ((rom_get_car (arg1) < (a1 + a3)) || (ram_get_car (arg3) < (a2 + a3)))
-      ERROR("u8vector-copy!.1", "vector index invalid");
-    
-    arg1 = rom_get_cdr (arg1);
-    while (a1--)
-      arg1 = rom_get_cdr (arg1);
-    
-    arg3 = ram_get_cdr (arg3);
-    arg3 += (a2 >> 2);
-    a2 %= 4;
-    
-    while (a3--) {
-      ram_set_fieldn (arg3, a2, decode_int (rom_get_car (arg1)));
-      
-      arg1 = rom_get_cdr (arg1);
-      a2++;
-      arg3 += (a2 >> 2);
-      a2 %= 4; // TODO very similar to the other case
-    }
-  }
-  else
-    TYPE_ERROR("u8vector-copy!.2", "vector");
-  
-  arg1 = OBJ_FALSE;
-  arg2 = OBJ_FALSE;
-  arg3 = OBJ_FALSE;
-  arg4 = OBJ_FALSE;
-  arg5 = OBJ_FALSE;
-}
 
 /*---------------------------------------------------------------------------*/
 

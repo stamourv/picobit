@@ -591,7 +591,6 @@ obj arg1; /* root set */
 obj arg2;
 obj arg3;
 obj arg4;
-obj arg5;
 obj cont;
 obj env;
 
@@ -640,7 +639,6 @@ void prim_make_u8vector ();
 void prim_u8vector_ref ();
 void prim_u8vector_set ();
 void prim_u8vector_length ();
-void prim_u8vector_copy ();
 
 void prim_eqp ();
 void prim_not ();

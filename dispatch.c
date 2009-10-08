@@ -313,14 +313,6 @@ void interpreter () {
                                   ((entry & 0x07) <<5) | ((arg3 >> 8) & 0x1f),
                                   arg3 & 0xff);
 
-#if 0
-      arg1 = // FOO remove
-        alloc_ram_cell_init (CLOSURE_FIELD0 | (arg2 >> 3),
-                             ((arg2 & 0x07) << 5) | (bytecode >> 3),
-                             ((bytecode & 0x07) << 5) | ((arg3 & 0x1f00) >> 8),
-                             arg3 & 0xff);
-#endif
-
       push_arg1();
 
       arg2 = OBJ_FALSE;
@@ -383,9 +375,7 @@ void interpreter () {
 
       break;
 
-      /* #if 0 */ // FOO
-
-    // FOO why does this not work?  don't worry about it now.
+    // TODO why does this not work?  don't worry about it now, as it is disabled in the compiler
 
     case 9: // closure-rel8
       FETCH_NEXT_BYTECODE();
@@ -406,8 +396,6 @@ void interpreter () {
       arg3 = OBJ_FALSE;
 
       break;
-      /* #endif */ // FOO
-
 #endif
 
 #if 0
@@ -513,11 +501,11 @@ void interpreter () {
     case 8:
       arg2 = pop();  arg1 = pop();  prim_lt ();       push_arg1();  break;
     case 9:
-      arg2 = pop();  arg1 = pop();  prim_leq ();      push_arg1();  break;
+      break; // FREE
     case 10:
       arg2 = pop();  arg1 = pop();  prim_gt ();       push_arg1();  break;
     case 11:
-      arg2 = pop();  arg1 = pop();  prim_geq ();      push_arg1();  break;
+      break; // FREE
     case 12:
       arg1 = pop();  prim_pairp ();    push_arg1();  break;
     case 13:
@@ -602,7 +590,9 @@ void interpreter () {
       arg1 = pop();  prim_list2string ();  push_arg1();  break;
     case 13:
       /* prim #%make-u8vector */
-      arg2 = pop(); arg1 = pop(); prim_make_u8vector (); push_arg1(); break;
+      // not exactly like the standard Scheme function.
+      // only takes one argument, and does not fill the vector
+      arg1 = pop(); prim_make_u8vector (); push_arg1(); break;
     case 14:
       /* prim #%u8vector-ref */
       arg2 = pop(); arg1 = pop(); prim_u8vector_ref (); push_arg1(); break;
@@ -658,9 +648,7 @@ void interpreter () {
       /* prim #%u8vector-length */
       arg1 = pop(); prim_u8vector_length (); push_arg1(); break;
     case 12:
-      /* prim #%u8vector-copy! */
-      arg5 = pop(); arg4 = pop(); arg3 = pop(); arg2 = pop(); arg1 = pop();
-      prim_u8vector_copy (); break;
+      // FREE
       break;
     case 13:
       /* shift */
@@ -698,16 +686,27 @@ void interpreter () {
       arg1 = pop(); prim_booleanp (); push_arg1(); break;
     case 1:
       /* prim #%network-init */
-      prim_network_init (); break;
+#ifdef NETWORKING
+      prim_network_init ();
+#endif
+      break;
     case 2:
       /* prim #%network-cleanup */
-      prim_network_cleanup (); break;
+#ifdef NETWORKING
+      prim_network_cleanup ();
+#endif
+      break;
     case 3:
       /* prim #%receive-packet-to-u8vector */
-      arg1 = pop(); prim_receive_packet_to_u8vector (); push_arg1(); break;
+#ifdef NETWORKING
+      arg1 = pop(); prim_receive_packet_to_u8vector (); push_arg1();
+#endif
+      break;
     case 4:
       /* prim #%send-packet-from-u8vector */
+#ifdef NETWORKING
       arg2 = pop(); arg1 = pop(); prim_send_packet_from_u8vector ();
+#endif
       push_arg1(); break;
     case 5:
       arg2 = pop(); arg1 = pop(); prim_ior (); push_arg1(); break;
@@ -716,7 +715,7 @@ void interpreter () {
       arg2 = pop(); arg1 = pop(); prim_xor (); push_arg1(); break;
       break;
 #if 0
-    case 7:
+    case 7: // FREE
       break;
     case 8:
       break;

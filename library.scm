@@ -75,7 +75,7 @@
 
 (define <=
   (lambda (x y)
-    (#%<= x y)))
+    (or (< x y) (= x y))))
 
 (define >
   (lambda (x y)
@@ -83,7 +83,7 @@
 
 (define >=
   (lambda (x y)
-    (#%>= x y)))
+    (or (> x y) (= x y))))
 
 (define pair?
   (lambda (x)
@@ -505,7 +505,7 @@
 (define list->u8vector
   (lambda (x)
     (let* ((n (length x))
-	   (v (#%make-u8vector n 0)))
+	   (v (#%make-u8vector n)))
       (list->u8vector-loop v 0 x)
       v)))
 (define list->u8vector-loop
@@ -518,10 +518,21 @@
 (define u8vector-set! (lambda (x y z) (#%u8vector-set! x y z)))
 (define make-u8vector
   (lambda (n x)
-    (#%make-u8vector n x)))
+    (make-u8vector-loop (#%make-u8vector n) (- n 1) x)))
+(define make-u8vector-loop
+  (lambda (v n x)
+    (if (>= n 0)
+        (begin (u8vector-set! v n x)
+               (make-u8vector-loop v (- n 1) x))
+        v)))
 (define u8vector-copy!
   (lambda (source source-start target target-start n)
-    (#%u8vector-copy! source source-start target target-start n)))
+    (if (> n 0)
+        (begin (u8vector-set! target target-start
+                              (u8vector-ref source source-start))
+               (u8vector-copy! source (+ source-start 1)
+                               target (+ target-start 1)
+                               (- n 1))))))
 
 (define network-init (lambda () (#%network-init)))
 (define network-cleanup (lambda () (#%network-cleanup)))

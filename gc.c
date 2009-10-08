@@ -221,8 +221,6 @@ void gc () {
   mark (arg3);
   IF_GC_TRACE(printf("arg4\n"));
   mark (arg4);
-  IF_GC_TRACE(printf("arg5\n"));
-  mark (arg5);
   IF_GC_TRACE(printf("cont\n"));
   mark (cont);
   IF_GC_TRACE(printf("env\n"));
