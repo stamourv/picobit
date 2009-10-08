@@ -147,7 +147,7 @@ void test () {
   n = shift_left (four, 5);
   
   for (i=0; i<=14; i++) {
-    printf("\nloop-3 : i=%d len=%d ", i);
+    printf("\nloop-3 : i=%d len=%d ", i, integer_length(n));
     p (shift_left (n, i*4));
   }
 
