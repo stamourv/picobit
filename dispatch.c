@@ -399,7 +399,7 @@ void interpreter () {
 #endif
 
 #if 0
-    case 10:
+    case 10: // FREE
       break;
     case 11:
       break;
@@ -500,12 +500,16 @@ void interpreter () {
       arg2 = pop();  arg1 = pop();  prim_eq ();       push_arg1();  break;
     case 8:
       arg2 = pop();  arg1 = pop();  prim_lt ();       push_arg1();  break;
+#if0
     case 9:
       break; // FREE
+#endif
     case 10:
       arg2 = pop();  arg1 = pop();  prim_gt ();       push_arg1();  break;
+#if 0
     case 11:
       break; // FREE
+#endif
     case 12:
       arg1 = pop();  prim_pairp ();    push_arg1();  break;
     case 13:
@@ -684,30 +688,21 @@ void interpreter () {
     case 0:
       /* prim #%boolean? */
       arg1 = pop(); prim_booleanp (); push_arg1(); break;
+#ifdef NETWORKING
     case 1:
       /* prim #%network-init */
-#ifdef NETWORKING
-      prim_network_init ();
-#endif
-      break;
+      prim_network_init (); break;
     case 2:
       /* prim #%network-cleanup */
-#ifdef NETWORKING
-      prim_network_cleanup ();
-#endif
-      break;
+      prim_network_cleanup (); break;
     case 3:
       /* prim #%receive-packet-to-u8vector */
-#ifdef NETWORKING
-      arg1 = pop(); prim_receive_packet_to_u8vector (); push_arg1();
-#endif
-      break;
+      arg1 = pop(); prim_receive_packet_to_u8vector (); push_arg1(); break;
     case 4:
       /* prim #%send-packet-from-u8vector */
-#ifdef NETWORKING
       arg2 = pop(); arg1 = pop(); prim_send_packet_from_u8vector ();
-#endif
       push_arg1(); break;
+#endif
     case 5:
       arg2 = pop(); arg1 = pop(); prim_ior (); push_arg1(); break;
       break;
