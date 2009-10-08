@@ -500,7 +500,7 @@ void interpreter () {
       arg2 = pop();  arg1 = pop();  prim_eq ();       push_arg1();  break;
     case 8:
       arg2 = pop();  arg1 = pop();  prim_lt ();       push_arg1();  break;
-#if0
+#if 0
     case 9:
       break; // FREE
 #endif
