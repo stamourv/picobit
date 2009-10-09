@@ -485,15 +485,15 @@ void interpreter () {
     case 0:
       arg1 = pop();  prim_numberp ();  push_arg1();  break;
     case 1:
-      arg2 = pop();  arg1 = pop();  prim_add ();      push_arg1();  break;
+      arg2 = pop();  arg1 = pop();  prim_add ();         push_arg1();  break;
     case 2:
-      arg2 = pop();  arg1 = pop();  prim_sub ();      push_arg1();  break;
+      arg2 = pop();  arg1 = pop();  prim_sub ();         push_arg1();  break;
     case 3:
-      arg2 = pop();  arg1 = pop();  prim_mul ();      push_arg1();  break;
+      arg2 = pop();  arg1 = pop();  prim_mul_non_neg (); push_arg1();  break;
     case 4:
-      arg2 = pop();  arg1 = pop();  prim_div ();      push_arg1();  break;
+      arg2 = pop();  arg1 = pop();  prim_div_non_neg (); push_arg1();  break;
     case 5:
-      arg2 = pop();  arg1 = pop();  prim_rem ();      push_arg1();  break;
+      arg2 = pop();  arg1 = pop();  prim_rem ();         push_arg1();  break;
 #if 0
     case 6: // FREE
       break;

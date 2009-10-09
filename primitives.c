@@ -14,7 +14,7 @@ char *prim_name[64] =
     "prim #%number?",
     "prim #%+",
     "prim #%-",
-    "prim #%*",
+    "prim #%mul-non-neg",
     "prim #%quotient",
     "prim #%remainder",
     "prim 6",
@@ -116,7 +116,7 @@ void prim_sub () {
   arg2 = OBJ_FALSE;
 }
 
-void prim_mul () {
+void prim_mul_non_neg () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   arg1 = mulnonneg (arg1, arg2);
 #else
@@ -126,7 +126,7 @@ void prim_mul () {
   arg2 = OBJ_FALSE;
 }
 
-void prim_div () {
+void prim_div_non_neg () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   if (obj_eq(arg2, ZERO))
     ERROR("quotient", "divide by 0");

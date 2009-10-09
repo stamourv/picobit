@@ -67,7 +67,7 @@
            (y-neg? (< y 0))
            (x      (if x-neg? (neg x) x))
            (y      (if y-neg? (neg y) y)))
-      (let ((prod   (#%* x y)))
+      (let ((prod   (#%mul-non-neg x y)))
         (cond ((and x-neg? y-neg?)
                prod)
               ((or x-neg? y-neg?)
