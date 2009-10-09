@@ -17,12 +17,12 @@ char *prim_name[64] =
     "prim #%*",
     "prim #%quotient",
     "prim #%remainder",
-    "prim #%neg",
+    "prim 6",
     "prim #%=",
     "prim #%<",
-    "prim #%<=",
+    "prim 9",
     "prim #%>",
-    "prim #%>=",
+    "prim 11",
     "prim #%pair?",
     "prim #%cons",
     "prim #%car",
@@ -118,12 +118,7 @@ void prim_sub () {
 
 void prim_mul () {
 #ifdef INFINITE_PRECISION_BIGNUMS
-  a1 = negp (arg1);
-  a2 = negp (arg2); // -1 if negative
-  arg1 = mulnonneg (a1 ? neg(arg1) : arg1,
-		    a2 ? neg(arg2) : arg2);
-  if (a1 + a2 == 1) // only one of the 2 was negative
-    arg1 = neg(arg1);
+  arg1 = mulnonneg (arg1, arg2);
 #else
   decode_2_int_args ();
   arg1 = encode_int (a1 * a2);
@@ -135,12 +130,7 @@ void prim_div () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   if (obj_eq(arg2, ZERO))
     ERROR("quotient", "divide by 0");
-  a1 = negp (arg1);
-  a2 = negp (arg2); // -1 if negative
-  arg1 = divnonneg (a1 ? neg(arg1) : arg1,
-		    a2 ? neg(arg2) : arg2);
-  if (a1 + a2 == 1) // only one of the 2 was negative
-    arg1 = neg(arg1);
+  arg1 = divnonneg (arg1, arg2);
 #else
   decode_2_int_args ();
   if (a2 == 0)
@@ -170,15 +160,6 @@ void prim_rem () {
   arg1 = encode_int (a1 % a2);
 #endif
   arg2 = OBJ_FALSE;
-}
-
-void prim_neg () {
-#ifdef INFINITE_PRECISION_BIGNUMS
-  arg1 = neg (arg1);
-#else
-  a1 = decode_int (arg1);
-  arg1 = encode_int (- a1);
-#endif
 }
 
 void prim_eq () {

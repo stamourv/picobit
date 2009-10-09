@@ -24,7 +24,7 @@
 (define +
   (lambda (x . rest)
     (if (#%pair? rest)
-        (#%+-aux (#%+ x (#%car rest)) (#%cdr rest))
+        (#%+-aux x rest)
         x)))
 
 (define #%+-aux
@@ -33,11 +33,15 @@
         (#%+-aux (#%+ x (#%car rest)) (#%cdr rest))
         x)))
 
+(define neg
+  (lambda (x)
+    (- 0 x)))
+
 (define -
   (lambda (x . rest)
     (if (#%pair? rest)
-        (#%--aux (#%- x (#%car rest)) (#%cdr rest))
-        (#%neg x))))
+        (#%--aux x rest)
+        (neg x))))
 
 (define #%--aux
   (lambda (x rest)
@@ -48,18 +52,44 @@
 (define *
   (lambda (x . rest)
     (if (#%pair? rest)
-        (#%*-aux (#%* x (#%car rest)) (#%cdr rest))
+        (#%*-aux x rest)
         x)))
 
 (define #%*-aux
   (lambda (x rest)
     (if (#%pair? rest)
-        (#%*-aux (#%* x (#%car rest)) (#%cdr rest))
+        (#%*-aux (#%mul x (#%car rest)) (#%cdr rest))
         x)))
 
-(define quotient
+(define #%mul
   (lambda (x y)
-    (#%quotient x y)))
+    (let* ((x-neg? (< x 0))
+           (y-neg? (< y 0))
+           (x      (if x-neg? (neg x) x))
+           (y      (if y-neg? (neg y) y)))
+      (let ((prod   (#%* x y)))
+        (cond ((and x-neg? y-neg?)
+               prod)
+              ((or x-neg? y-neg?)
+               (neg prod))
+              (else
+               prod))))))
+
+(define / quotient)
+
+(define quotient ;; TODO similar to #%mul, abstract ?
+  (lambda (x y)
+    (let* ((x-neg? (< x 0))
+           (y-neg? (< y 0))
+           (x      (if x-neg? (neg x) x))
+           (y      (if y-neg? (neg y) y)))
+      (let ((quot   (#%quotient x y)))
+        (cond ((and x-neg? y-neg?)
+               quot)
+              ((or x-neg? y-neg?)
+               (neg quot))
+              (else
+               quot))))))
 
 (define remainder
   (lambda (x y)
@@ -172,7 +202,7 @@
 
 (define abs
   (lambda (x)
-    (if (#%< x 0) (#%neg x) x)))
+    (if (#%< x 0) (neg x) x)))
 
 (define modulo
   (lambda (x y)
@@ -393,15 +423,15 @@
   (lambda (n)
     (#%list->string
      (if (#%< n 0)
-         (#%cons #\- (#%number->string-aux (#%neg n) '()))
+         (#%cons #\- (#%number->string-aux (neg n) '()))
          (#%number->string-aux n '())))))
 
 (define #%number->string-aux
   (lambda (n lst)
-    (let ((rest (#%cons (#%+ #\0 (#%remainder n 10)) lst)))
+    (let ((rest (#%cons (#%+ #\0 (remainder n 10)) lst)))
       (if (#%< n 10)
           rest
-          (#%number->string-aux (#%quotient n 10) rest)))))
+          (#%number->string-aux (quotient n 10) rest)))))
 
 (define pp
   (lambda (x)
@@ -497,7 +527,7 @@
 ;; TODO add bitwise-and ? bitwise-not ?
 
 (define current-time (lambda () (#%clock)))
-(define time->seconds (lambda (t) (#%quotient t 100)))
+(define time->seconds (lambda (t) (quotient t 100)))
 
 (define u8vector
   (lambda x

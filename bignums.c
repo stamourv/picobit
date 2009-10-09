@@ -287,12 +287,6 @@ integer sub (integer x, integer y) {
   return result;
 }
 
-integer neg (integer x) {
-  /* neg(x) returns the integer -x */
-
-  return sub (ZERO, x);
-}
-
 integer scale (digit n, integer x) {
   /* scale(n,x) returns the integer n*x */
 

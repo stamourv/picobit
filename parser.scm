@@ -273,7 +273,7 @@
 	  ;; binary arthimetic operations can use primitives directly
 	  ((and (pair? expr)
 		(= (length (cdr expr)) 2)
-		(assoc (car expr) '((+ . #%+) (- . #%-) (* . #%*))))
+		(assoc (car expr) '((+ . #%+) (- . #%-))))
 	   =>
 	   (lambda (prim)
 	     (parse use

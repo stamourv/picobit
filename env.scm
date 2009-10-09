@@ -34,7 +34,6 @@
      (make-var '#%* #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%quotient #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%remainder #t '() '() '() #f (make-primitive 2 #f #f))
-     (make-var '#%neg #t '() '() '() #f (make-primitive 1 #f #f))
      (make-var '#%= #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%< #t '() '() '() #f (make-primitive 2 #f #f))
      (make-var '#%> #t '() '() '() #f (make-primitive 2 #f #f))
@@ -89,7 +88,6 @@
 ;; (define foo car)
 (define substitute-primitives
   '((number? . #%number?)
-    (quotient . #%quotient)
     (remainder . #%remainder)
     (= . #%=)
     (< . #%<)

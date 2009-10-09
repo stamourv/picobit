@@ -494,8 +494,10 @@ void interpreter () {
       arg2 = pop();  arg1 = pop();  prim_div ();      push_arg1();  break;
     case 5:
       arg2 = pop();  arg1 = pop();  prim_rem ();      push_arg1();  break;
-    case 6:
-      arg1 = pop();  prim_neg ();      push_arg1();  break;
+#if 0
+    case 6: // FREE
+      break;
+#endif
     case 7:
       arg2 = pop();  arg1 = pop();  prim_eq ();       push_arg1();  break;
     case 8:
