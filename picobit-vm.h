@@ -614,14 +614,12 @@ char *prim_name[64];
 
 void prim_numberp ();
 void prim_add ();
-void prim_mul ();
-void prim_div ();
+void prim_mul_non_neg ();
+void prim_div_non_neg ();
 void prim_rem ();
-void prim_neg ();
 void prim_eq ();
 void prim_lt ();
 void prim_gt ();
-// TODO we have extra primitives, pring back geq, leq, and put them in a sensible place in the primitives
 void prim_ior ();
 void prim_xor ();
 
