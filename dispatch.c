@@ -41,6 +41,9 @@ uint8 handle_arity_and_rest_param (uint8 na) {
 
   np = rom_get (entry++);
 
+  if (arg1 != OBJ_NULL)
+    arg1 = ram_get_cdr(arg1); // closed environment
+
   if ((np & 0x80) == 0) {
     if (na != np)
       ERROR("handle_arity_and_rest_param.0", "wrong number of arguments");

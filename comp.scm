@@ -34,10 +34,7 @@
       (if (>= i 0)
           (gen-push-stack i ctx)
           (gen-push-stack
-	   ;; this +1 is needed because closures are in the environment, but
-	   ;; don't contain a value, and must therefore be skipped
-	   (+ 1
-	      (- -1 i)
+	   (+ (- -1 i)
 	      (length (stack-slots (env-local (context-env ctx))))) ctx)))))
 
 (define gen-push-stack
