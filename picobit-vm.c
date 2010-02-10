@@ -95,10 +95,6 @@ obj ram_get_entry (obj o) {
   uint16 tmp  = ram_get_field2 (o);
   return ((tmp << 8) | ram_get_field3 (o));
 }
-obj rom_get_entry (obj o){
-  uint16 tmp  = rom_get_field2 (o);
-  return ((tmp << 8) | rom_get_field3 (o));
-}
 
 obj get_global (uint8 i) {
 // globals occupy the beginning of ram, with 2 globals per word

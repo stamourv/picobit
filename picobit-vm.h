@@ -495,13 +495,12 @@ uint8 ROM_CONTINUATION(uint16 o) {return (ROM_COMPOSITE (o) && ((rom_get_field2 
 #endif
 
 // closure first byte : 01Gxxxxx
+// closures are only found in RAM
 #define CLOSURE_FIELD0 0x40
 #ifdef LESS_MACROS
 uint8 RAM_CLOSURE(uint16 o) {return ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0);}
-uint8 ROM_CLOSURE(uint16 o) {return ((rom_get_field0 (o) & 0xc0) == CLOSURE_FIELD0);}
 #else
 #define RAM_CLOSURE(o) ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
-#define ROM_CLOSURE(o) ((rom_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
 #endif
 
 /*---------------------------------------------------------------------------*/

@@ -31,7 +31,7 @@ void show_type (obj o) {
     else if (ROM_STRING(o)) printf("rom string");
     else if (ROM_VECTOR(o)) printf("rom vector");
     else if (ROM_CONTINUATION(o)) printf("rom continuation");
-    else if (RAM_CLOSURE(o)) printf("rom closure");
+    // ROM closures don't exist
   }
   printf("\n");
 }

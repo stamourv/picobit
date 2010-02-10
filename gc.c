@@ -86,7 +86,6 @@ void mark (obj temp) {
 	
       visit_field1:
 
-	// closures have the pointer in the cdr, not in the car as others
 	temp = ram_get_car (visit);
 	
 	if (IN_RAM(temp)) {

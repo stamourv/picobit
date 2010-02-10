@@ -554,16 +554,9 @@ void show (obj o) {
     else { // closure
       obj env;
       rom_addr pc;
-      
-      if (IN_RAM(o)) // TODO remove code for ROM closures
-	env = ram_get_car (o);
-      else
-	env = rom_get_car (o);
-      
-      if (IN_RAM(o))
-	pc = ram_get_entry (o);
-      else
-	pc = rom_get_entry (o);
+
+      env = ram_get_car (o);
+      pc = ram_get_entry (o);
       
       printf ("{0x%04x ", pc);
       show (env);

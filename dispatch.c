@@ -26,14 +26,8 @@ void pop_procedure () {
 
     entry = ram_get_entry (arg1) + CODE_START;
   }
-  else if (IN_ROM(arg1)) {
-    if (!ROM_CLOSURE(arg1))
-      TYPE_ERROR("pop_procedure.1", "procedure");
-
-    entry = rom_get_entry (arg1) + CODE_START;
-  }
   else
-    TYPE_ERROR("pop_procedure.2", "procedure");
+    TYPE_ERROR("pop_procedure.1", "procedure");
 }
 
 uint8 handle_arity_and_rest_param (uint8 na) {
