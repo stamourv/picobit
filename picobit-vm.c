@@ -92,14 +92,12 @@ void ram_set_cdr (obj o, obj val) {
 // function entry point
 // the temporary variables are necessary with SIXPIC, see above
 obj ram_get_entry (obj o) {
-  uint16 tmp  = ram_get_field0 (o) & 0x1f;
-  uint16 tmp2 = ram_get_field1 (o);
-  return ((tmp << 11) | (tmp2 << 3) | (ram_get_field2 (o) >> 5));
+  uint16 tmp  = ram_get_field2 (o);
+  return ((tmp << 8) | ram_get_field3 (o));
 }
 obj rom_get_entry (obj o){
-  uint16 tmp  = rom_get_field0 (o) & 0x1f;
-  uint16 tmp2 = rom_get_field1 (o);
-  return ((tmp << 11) | (tmp2 << 3) | (rom_get_field2 (o) >> 5));
+  uint16 tmp  = rom_get_field2 (o);
+  return ((tmp << 8) | rom_get_field3 (o));
 }
 
 obj get_global (uint8 i) {

@@ -555,10 +555,10 @@ void show (obj o) {
       obj env;
       rom_addr pc;
       
-      if (IN_RAM(o))
-	env = ram_get_cdr (o);
+      if (IN_RAM(o)) // TODO remove code for ROM closures
+	env = ram_get_car (o);
       else
-	env = rom_get_cdr (o);
+	env = rom_get_car (o);
       
       if (IN_RAM(o))
 	pc = ram_get_entry (o);

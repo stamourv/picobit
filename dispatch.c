@@ -42,7 +42,7 @@ uint8 handle_arity_and_rest_param (uint8 na) {
   np = rom_get (entry++);
 
   if (arg1 != OBJ_NULL)
-    arg1 = ram_get_cdr(arg1); // closed environment
+    arg1 = ram_get_car(arg1); // closed environment
 
   if ((np & 0x80) == 0) {
     if (na != np)
@@ -86,10 +86,10 @@ uint8 build_env (uint8 na) {
 
 void save_cont () {
   // the second half is a closure
-  arg3 = alloc_ram_cell_init (CLOSURE_FIELD0 | (pc >> 11),
-                              (pc >> 3) & 0xff,
-                              ((pc & 0x0007) << 5) | (env >> 8),
-                              env & 0xff);
+  arg3 = alloc_ram_cell_init (CLOSURE_FIELD0 | (env >> 8),
+			      env & 0xff,
+                              (pc >> 8),
+                              (pc & 0xff));
   cont = alloc_ram_cell_init (COMPOSITE_FIELD0 | (cont >> 8),
                               cont & 0xff,
                               CONTINUATION_FIELD2 | (arg3 >> 8),
@@ -311,10 +311,10 @@ void interpreter () {
 
       arg3 = pop(); // env
 
-      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (entry >> 11),
-                                  entry >> 3,
-                                  ((entry & 0x07) <<5) | ((arg3 >> 8) & 0x1f),
-                                  arg3 & 0xff);
+      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg3 >> 8),
+				  arg3 & 0xff,
+                                  entry >> 8,
+                                  (entry & 0xff));
 
       push_arg1();
 
@@ -575,7 +575,7 @@ void interpreter () {
 
       pc = ram_get_entry (arg2);
 
-      env = ram_get_cdr (arg2);
+      env = ram_get_car (arg2);
       cont = ram_get_car (cont);
 
       push_arg1();
@@ -674,7 +674,7 @@ void interpreter () {
       arg1 = pop();
       arg2 = ram_get_cdr (cont);
       pc = ram_get_entry (arg2);
-      env = ram_get_cdr (arg2);
+      env = ram_get_car (arg2);
       cont = ram_get_car (cont);
       push_arg1();
       arg2 = OBJ_FALSE;

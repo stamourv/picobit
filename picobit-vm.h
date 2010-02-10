@@ -378,14 +378,9 @@ void set_global (uint8 i, obj o);
   x is length of the vector, in bytes (stored raw, not encoded as an object)
   y is pointer to the elements themselves (stored in vector space)
 
-  closure      01Gaaaaa aaaaaaaa aaaxxxxx xxxxxxxx
+  closure      01Gxxxxx xxxxxxxx aaaaaaaa aaaaaaaa
   0x5ff<a<0x4000 is entry
   x is pointer to environment
-  the reason why the environment is on the cdr (and the entry is split on 3
-  bytes) is that, when looking for a variable, a closure is considered to be a
-  pair. The compiler adds an extra offset to any variable in the closure's
-  environment, so the car of the closure (which doesn't really exist) is never
-  checked, but the cdr is followed to find the other bindings
   
   continuation 1GGxxxxx xxxxxxxx 100yyyyy yyyyyyyy
   x is parent continuation

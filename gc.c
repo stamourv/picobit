@@ -87,18 +87,12 @@ void mark (obj temp) {
       visit_field1:
 
 	// closures have the pointer in the cdr, not in the car as others
-	if (RAM_CLOSURE(visit))
-	  temp = ram_get_cdr (visit);
-	else
-	  temp = ram_get_car (visit);
+	temp = ram_get_car (visit);
 	
 	if (IN_RAM(temp)) {
 	  IF_GC_TRACE(printf ("case 6\n"));
 	  ram_set_gc_tag0 (visit, GC_TAG_0_LEFT);
-	  if (RAM_CLOSURE(visit))
-	    ram_set_cdr (visit, stack);
-	  else 
-	    ram_set_car (visit, stack);		  
+	  ram_set_car (visit, stack);		  
 	  
 	  goto push;
 	}
@@ -130,18 +124,6 @@ void mark (obj temp) {
 	goto visit_field1;
       }
 
-      if (RAM_CLOSURE(stack)) {
-	// closures have one object field, but it's in the cdr
-	IF_GC_TRACE(printf ("case 10\n"));
-	
-	temp = ram_get_cdr (stack);  /* pop through cdr */
-	ram_set_cdr (stack, visit);
-	visit = stack;
-	stack = temp;
-	
-	goto pop;
-      }
-      
       IF_GC_TRACE(printf ("case 11\n"));
       
       temp = ram_get_car (stack);  /* pop through car */
