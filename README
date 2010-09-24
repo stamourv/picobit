@@ -41,13 +41,16 @@ USAGE:
 
 SEE ALSO:
 
+  * A paper describing PICOBIT has been presented to IFL 2009:
+    http://www.ccs.neu.edu/home/stamourv/picobit.pdf
+    Slides from the presentation:
+    http://www.ccs.neu.edu/home/stamourv/picobit-ifl.pdf
+
   * S3 (Small Scheme Stack) : A Scheme TCP/IP Stack Targeting Small
     Embedded Applications
-    http://www-etud.iro.umontreal.ca/~stamourv/sw08-tcp.pdf
-
-  * Slides from the presentation given at the 2008 Workshop on Scheme
-    and Functional Programming
-    http://www-etud.iro.umontreal.ca/~stamourv/s3.pdf
+    http://www.ccs.neu.edu/home/stamourv/sw08-tcp.pdf
+    Slides from the presentation:
+    http://www.ccs.neu.edu/home/stamourv/s3.pdf
 
  and maybe you find the papers about the BIT and PICBIT systems
  interesting, which have been written before PICOBIT and share some
