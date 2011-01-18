@@ -432,7 +432,7 @@
                             (- pos (length rev-bytes))
                             (reverse rev-bytes)))
             (print-line 1 0 '())
-            (if #t
+            (if #f
                 (begin
                   ;;;(pp (- 3447 (- pos asm-start-pos)));;;;;;;;;;;;
 
