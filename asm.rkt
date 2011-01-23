@@ -1,3 +1,5 @@
+#lang racket
+
 ;;; File: "asm.scm"
 ;;;
 ;;; This module implements the generic assembler.

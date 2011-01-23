@@ -1,3 +1,5 @@
+#lang racket
+
 ;;;; File: "comp.scm", Time-stamp: <2009-08-21 23:41:38 feeley>
 
 ;;;; Copyright (C) 2004-2009 by Marc Feeley and Vincent St-Amour

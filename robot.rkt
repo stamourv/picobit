@@ -1,3 +1,5 @@
+#lang racket
+
 ; File: "robot.scm", Time-stamp: <2006-03-01 15:57:44 feeley>
 
 ; Copyright (C) 2006 by Marc Feeley, All Rights Reserved.
