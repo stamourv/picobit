@@ -525,7 +525,7 @@
     (let ((prc (toplevel-prc? var)))
       (and prc
            (not (prc-rest? prc))
-           (every (lambda (r)
+           (andmap (lambda (r)
                     (let ((parent (node-parent r)))
                       (and (call? parent)
                            (eq? (child1 parent) r)
@@ -541,13 +541,13 @@
 (define global-fv
   (lambda (node)
     (list->varset
-     (keep var-global?
+     (filter var-global?
            (varset->list (fv node))))))
 
 (define non-global-fv
   (lambda (node)
     (list->varset
-     (keep (lambda (x) (not (var-global? x)))
+     (filter (lambda (x) (not (var-global? x)))
            (varset->list (fv node))))))
 
 (define fv

@@ -110,7 +110,7 @@
     (let ((size (stack-size stk)))
       (make-stack
        (+ size nb-slots)
-       (append (repeat nb-slots x) (stack-slots stk))))))
+       (append (make-list nb-slots x) (stack-slots stk))))))
 
 (define stack-discard
   (lambda (nb-slots stk)
@@ -140,6 +140,13 @@
   (lambda (env closed)
     (make-env (env-local env)
               closed)))
+
+(define pos-in-list
+  (lambda (x lst)
+    (let loop ((lst lst) (i 0))
+      (cond ((not (pair? lst)) #f)
+            ((eq? (car lst) x) i)
+            (else (loop (cdr lst) (+ i 1)))))))
 
 (define find-local-var
   (lambda (var env)

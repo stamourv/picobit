@@ -140,7 +140,7 @@
 
 (define (sort-constants constants)
   (let ((csts
-         (sort-list constants
+         (sort constants
                     (lambda (x y)
                       (> (vector-ref (cdr x) 2)
                          (vector-ref (cdr y) 2))))))
@@ -159,7 +159,7 @@
 
 (define (sort-globals globals) ;; TODO a lot in common with sort-constants, ABSTRACT
   (let ((glbs
-	 (sort-list globals
+	 (sort globals
 		    (lambda (x y)
 		      (> (vector-ref (cdr x) 1)
 			 (vector-ref (cdr y) 1))))))
@@ -644,7 +644,7 @@
 
             (if stats?
                 (pretty-print
-                 (sort-list (table->list instr-table)
+                 (sort (table->list instr-table)
                             (lambda (x y) (> (cdr x) (cdr y))))))
 
 ;;;;;;;;;            (asm-display-listing ##stdout-port);;;;;;;;;;;;;

@@ -1,5 +1,7 @@
 #lang racket
 
+(require racket/list) ;; take
+
 ;;;; File: "node.scm", Time-stamp: <2006-05-08 16:04:37 feeley>
 
 ;;;; Copyright (C) 2004-2009 by Marc Feeley and Vincent St-Amour
