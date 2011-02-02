@@ -1,10 +1,8 @@
 #lang racket
 
-(define-type context
-  code
-  env
-  env2
-)
+(provide (all-defined-out))
+(require "node.rkt")
+(require "env.rkt")
 
 (define context-change-code
   (lambda (ctx code)
@@ -48,15 +46,9 @@
 
 ;; Representation of code.
 
-(define-type code
-  last-label
-  rev-bbs
-)
+(define-struct code (last-label rev-bbs))
 
-(define-type bb
-  label
-  rev-instrs
-)
+(define-struct bb (label (rev-instrs #:mutable)))
 
 (define make-init-code
   (lambda ()
@@ -89,10 +81,10 @@
 
 ;; Representation of compile-time stack.
 
-(define-type stack
-  size  ; number of slots
-  slots ; for each slot, the variable (or #f) contained in the slot
-)
+;;; A stack is a (make-stack size slots) where:
+;;; - size is the number of slots
+;;; - slots is a list of variables or #f in each slot
+(define-struct stack (size slots))
 
 (define make-init-stack
   (lambda ()
@@ -112,12 +104,11 @@
        (- size nb-slots)
        (list-tail (stack-slots stk) nb-slots)))))
 
+
+
 ;; Representation of compile-time environment.
 
-(define-type env
-  local
-  closed
-)
+(define-struct env (local closed))
 
 (define make-init-env
   (lambda ()
@@ -147,12 +138,4 @@
       (or i
           (- (+ (pos-in-list var (env-closed env)) 1))))))
 
-(define prc->env
-  (lambda (prc)
-    (make-env
-     (let ((params (prc-params prc)))
-       (make-stack (length params)
-                   (append (map var-id params) '())))
-     (let ((vars (varset->list (non-global-fv prc))))
-;       (pp (map var-id vars))
-       (map var-id vars)))))
+
