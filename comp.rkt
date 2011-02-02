@@ -99,18 +99,6 @@
 
 ;-----------------------------------------------------------------------------
 
-(define child1
-  (lambda (node)
-    (car (node-children node))))
-
-(define child2
-  (lambda (node)
-    (cadr (node-children node))))
-
-(define child3
-  (lambda (node)
-    (caddr (node-children node))))
-
 (define comp-none
   (lambda (node ctx)
 

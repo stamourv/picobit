@@ -1,49 +1,54 @@
 #lang racket
 
+(provide (all-defined-out))
 (require racket/list) ;; take
+(require "utilities.rkt" "env.rkt")
 
 ;; Syntax-tree node representation.
 
-(define-type node
-  extender: define-type-of-node
-  (parent unprintable:)
-  children
-)
+(define self-eval?
+  (lambda (expr)
+    (or (number? expr)
+        (char? expr)
+        (boolean? expr)
+        (string? expr))))
 
-(define-type-of-node cst
-  val
-)
+(define-struct node
+  ((parent #:mutable)
+   (children #:mutable)))
 
-(define-type-of-node ref
-  var
-)
+(define child1
+  (lambda (node)
+    (car (node-children node))))
 
-(define-type-of-node def
-  var
-)
+(define child2
+  (lambda (node)
+    (cadr (node-children node))))
 
-(define-type-of-node set
-  var
-)
+(define child3
+  (lambda (node)
+    (caddr (node-children node))))
 
-(define-type-of-node if
-)
+(define-struct (cst node) (val))
 
-(define-type-of-node prc
-  params
-  rest?
-  entry-label
-)
+(define-struct (ref node) (var))
 
-(define-type-of-node call
-)
+(define-struct (def node) (var))
 
-(define-type-of-node seq
-)
+(define-struct (set node) (var))
 
-(define-type-of-node fix
-  vars
-)
+(define-struct (if node) ())
+
+(define-struct (prc node) 
+  ((params  #:mutable)
+   rest?
+   (entry-label #:mutable)))
+
+(define-struct (call node) ())
+
+(define-struct (seq node) ())
+
+(define-struct (fix node) (vars))
 
 (define node->expr
   (lambda (node)
