@@ -1,5 +1,11 @@
 #lang racket
 
+(provide (all-defined-out))
+(require "compiler-error.rkt")
+(require "context.rkt")
+(require "node.rkt")
+(require "env.rkt")
+
 (define gen-instruction
   (lambda (instr nb-pop nb-push ctx)
     (let* ((env
@@ -383,7 +389,7 @@
                                        label-entry)))
            (ctx7
             (comp-tail (child1 node) ctx6)))
-      (prc-entry-label-set! node label-entry)
+      (set-prc-entry-label! node label-entry)
       (context-add-bb (context-change-env ctx7 (context-env ctx5))
                       label-continue))))
 
@@ -517,10 +523,6 @@
                   (var-refs var))
            prc))))
 
-(define mutable-var?
-  (lambda (var)
-    (not (null? (var-sets var)))))
-
 (define global-fv
   (lambda (node)
     (list->varset
@@ -590,7 +592,7 @@
 			   (> (length (var-defs var)) 0)
 			   (cst? (child1 (car (var-defs var)))))))
             (begin
-              (var-needed?-set! var #t)
+              (set-var-needed?! var #t)
               (for-each
                (lambda (def)
                  (let ((val (child1 def)))
@@ -662,7 +664,7 @@
   set)
 
 (define (varset-size set)           ; return cardinality of set
-  (list-length set))
+  (length set))
 
 (define (varset-empty? set)         ; is 'x' the empty set?
   (null? set))
@@ -749,6 +751,16 @@
 
 ;------------------------------------------------------------------------------
 
+(define prc->env
+  (lambda (prc)
+    (make-env
+     (let ((params (prc-params prc)))
+       (make-stack (length params)
+                   (append (map var-id params) '())))
+     (let ((vars (varset->list (non-global-fv prc))))
+;       (pp (map var-id vars))
+       (map var-id vars)))))
+
 (define code->vector
   (lambda (code)
     (let ((v (make-vector (+ (code-last-label code) 1))))
@@ -793,7 +805,7 @@
       (if (< i (vector-length bbs))
           (let* ((bb (vector-ref bbs i))
                  (rev-instrs (bb-rev-instrs bb)))
-            (bb-rev-instrs-set!
+            (set-bb-rev-instrs!
              bb
              (map (lambda (instr)
                     (let ((opcode (car instr)))
@@ -1084,8 +1096,8 @@
                      (label (car label-pos))
                      (rest (cddr todo)))
                 (if (not (pair? rest))
-                    (set-car! todo todo))
-                (set-cdr! todo rest)
+                    (set! todo (cons todo (cdr todo))))
+                (set! todo (cons (car todo) rest))
                 label)
               (let loop ((x (cdr todo)) (best-label-pos #f))
                 #;
@@ -1119,12 +1131,12 @@
       (let ((label-pos (cons label pos)))
         (if tail?
             (let ((cell (cons label-pos '())))
-              (set-cdr! (car todo) cell)
-              (set-car! todo cell))
+              (set! todo (cons (cons (car todo) cell) (cdr todo)))
+              (set! todo (cons cell todo)))
             (let ((cell (cons label-pos (cdr todo))))
-              (set-cdr! todo cell)
+              (set! todo (cons (car todo) cell))
               (if (eq? (car todo) todo)
-                  (set-car! todo cell))))))
+                  (set! todo (cons cell (cdr todo))))))))
 
     (define (dump)
       (let loop ((fallthrough-to-next? #t))
@@ -1184,7 +1196,7 @@
                   (emit jump)
                   #f))))))
 
-    (set-car! todo todo) ;; make fifo
+    (set! todo (cons todo (cdr todo)));; make fifo
 
     (schedule! 0 #f)
 
