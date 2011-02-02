@@ -1,26 +1,24 @@
 #lang racket
 
+(provide (all-defined-out))
+
 ;; Environment representation.
+(define-struct var 
+  (id
+   global?
+   (refs #:mutable)
+   (sets #:mutable)
+   (defs #:mutable)
+   (needed? #:mutable)
+   primitive))
 
-(define-type var
-  id
-  global?
-  (refs unprintable:) 
-  (sets unprintable:)
-  (defs unprintable:)
-  needed?
-  primitive
-)
+(define mutable-var?
+  (lambda (var)
+    (not (null? (var-sets var)))))
 
-(define-type primitive
-  nargs
-  inliner
-  unspecified-result?
-)
+(define-struct primitive (nargs inliner unspecified-result?))
 
-(define-type renaming
-  renamings
-)
+(define-struct renaming (renamings))
 
 (define make-global-env
   (lambda ()
@@ -137,7 +135,8 @@
                b)
               ((null? (cdr lst))
                (let ((x (make-var id #t '() '() '() #f #f)))
-                 (set-cdr! lst (cons x '()))
+                 ;; (set-cdr! lst (cons x '())) -- No set-cdr! in racket!
+                 (set! lst (cons (car lst) (cons x '())))
                  x))
               (else
                (loop (cdr lst) id)))))))
@@ -154,3 +153,7 @@
     (cons (make-renaming renamings) env)))
 
 (define *macros* '())
+
+(define update-macros
+  (lambda (name code)
+    (set! *macros* (cons (cons name code) *macros*))))
