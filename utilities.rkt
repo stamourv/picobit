@@ -4,7 +4,7 @@
 
 (define compiler-error
   (lambda (msg . others)
-    (display "*** ERROR -- ")
+    (display "*** PICOBIT ERROR -- ")
     (display msg)
     (for-each (lambda (x) (display " ") (write x)) others)
     (newline)
