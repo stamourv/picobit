@@ -435,7 +435,7 @@
 	    
             (define big-endian? #f)
 
-            (define stats? #t)
+            (define stats? #f)
             (define instr-table (make-table))
 
             (asm-begin! code-start #f)
