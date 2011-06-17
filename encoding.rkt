@@ -1,10 +1,5 @@
 #lang racket
 
-;;;; File: "encoding.scm", Time-stamp: <2009-08-22 14:39:05 feeley>
-
-;;;; Copyright (C) 2004-2009 by Marc Feeley and Vincent St-Amour
-;;;; All Rights Reserved.
-
 (define min-fixnum-encoding 3)
 (define min-fixnum -1)
 (define max-fixnum 255)
