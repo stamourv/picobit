@@ -1,22 +1,6 @@
 #lang racket
 
-(define-macro (dummy)
-  (proper-tail-calls-set! #f)
-  #f)
-;(dummy)
-
-;-----------------------------------------------------------------------------
-
-(define compiler-error
-  (lambda (msg . others)
-    (display "*** ERROR -- ")
-    (display msg)
-    (for-each (lambda (x) (display " ") (write x)) others)
-    (newline)
-    (exit 1)))
-
-;-----------------------------------------------------------------------------
-
+(require "utilities.rkt")
 (include "node.rkt")
 (include "env.rkt")
 (include "parser.rkt")
