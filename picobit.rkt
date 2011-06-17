@@ -22,14 +22,13 @@
 
 ;-----------------------------------------------------------------------------
 
-(include "utilities.scm")
-(include "node.scm")
-(include "env.scm")
-(include "parser.scm")
-(include "context.scm")
-(include "comp.scm")
-(include "asm.scm")
-(include "encoding.scm")
+(include "node.rkt")
+(include "env.rkt")
+(include "parser.rkt")
+(include "context.rkt")
+(include "comp.rkt")
+(include "asm.rkt")
+(include "encoding.rkt")
 
 ;-----------------------------------------------------------------------------
 
