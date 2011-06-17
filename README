@@ -57,3 +57,14 @@ SEE ALSO:
  common concepts:
 
     http://w3.ift.ulaval.ca/~dadub100/
+
+
+HISTORY:
+
+ Marc Feeley originally wrote PICOBIT around 2006.
+ Vincent St-Amour took over development in 2008.
+ Jim Shargo worked on a port to Racket in 2011.
+
+LICENCE:
+
+ PICOBIT is released under the GPLv3.
