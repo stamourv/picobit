@@ -532,9 +532,8 @@
   (define readyq
     (env-lookup global-env '#%readyq))
 
-  (define mark-var!
-    (lambda (var)
-      (if (and (var-global? var)
+  (define (mark-var! var)
+    (when (and (var-global? var)
                (not (var-needed? var))
                ;; globals that obey the following conditions are considered
                ;; to be constants
@@ -542,58 +541,54 @@
                          ;; to weed out primitives, which have no definitions
                          (> (length (var-defs var)) 0)
                          (cst? (child1 (car (var-defs var)))))))
-          (begin
-            (set-var-needed?! var #t)
-            (for-each
-             (lambda (def)
-               (let ((val (child1 def)))
-                 (if (side-effect-less? val)
-                     (mark! val))))
-             (var-defs var))
-            (if (eq? var readyq)
-                (begin
-                  (mark-var!
-                   (env-lookup global-env '#%start-first-process))
-                  (mark-var!
-                   (env-lookup global-env '#%exit))))))))
+      (set-var-needed?! var #t)
+      (for-each
+       (lambda (def)
+         (let ((val (child1 def)))
+           (when (side-effect-less? val)
+             (mark! val))))
+       (var-defs var))
+      (when (eq? var readyq)
+        (mark-var!
+         (env-lookup global-env '#%start-first-process))
+        (mark-var!
+         (env-lookup global-env '#%exit)))))
 
-  (define side-effect-less?
-    (lambda (node)
-      (or (cst? node)
-          (ref? node)
-          (prc? node))))
+  (define (side-effect-less? node)
+    (or (cst? node)
+        (ref? node)
+        (prc? node)))
 
-  (define mark!
-    (lambda (node)
-      (cond ((cst? node))
-            ((ref? node)
-             (let ((var (ref-var node)))
-               (mark-var! var)))
-            ((def? node)
-             (let ((var (def-var node))
-                   (val (child1 node)))
-               (if (not (side-effect-less? val))
-                   (mark! val))))
-            ((set? node)
-             (let ((var (set-var node))
-                   (val (child1 node)))
-               (mark! val)))
-            ((if? node)
-             (let ((a (list-ref (node-children node) 0))
-                   (b (list-ref (node-children node) 1))
-                   (c (list-ref (node-children node) 2)))
-               (mark! a)
-               (mark! b)
-               (mark! c)))
-            ((prc? node)
-             (let ((body (list-ref (node-children node) 0)))
-               (mark! body)))
-            ((call? node)
-             (for-each mark! (node-children node)))
-            ((seq? node)
-             (for-each mark! (node-children node)))
-            (else
-             (compiler-error "unknown expression type" node)))))
+  (define (mark! node)
+    (cond ((cst? node))
+          ((ref? node)
+           (let ((var (ref-var node)))
+             (mark-var! var)))
+          ((def? node)
+           (let ((var (def-var node))
+                 (val (child1 node)))
+             (when (not (side-effect-less? val))
+               (mark! val))))
+          ((set? node)
+           (let ((var (set-var node))
+                 (val (child1 node)))
+             (mark! val)))
+          ((if? node)
+           (let ((a (list-ref (node-children node) 0))
+                 (b (list-ref (node-children node) 1))
+                 (c (list-ref (node-children node) 2)))
+             (mark! a)
+             (mark! b)
+             (mark! c)))
+          ((prc? node)
+           (let ((body (list-ref (node-children node) 0)))
+             (mark! body)))
+          ((call? node)
+           (for-each mark! (node-children node)))
+          ((seq? node)
+           (for-each mark! (node-children node)))
+          (else
+           (compiler-error "unknown expression type" node))))
 
   (mark! node))
 
@@ -724,22 +719,22 @@
       (lambda (label)
         (let ((ref-count (vector-ref ref-counts label)))
           (vector-set! ref-counts label (+ ref-count 1))
-          (if (= ref-count 0)
-              (let* ((bb (vector-ref bbs label))
-                     (rev-instrs (bb-rev-instrs bb)))
-                (for-each
-                 (lambda (instr)
-                   (let ((opcode (car instr)))
-                     (cond ((eq? opcode 'goto)
-                            (visit (cadr instr)))
-                           ((eq? opcode 'goto-if-false)
-                            (visit (cadr instr))
-                            (visit (caddr instr)))
-                           ((or (eq? opcode 'closure)
-                                (eq? opcode 'call-toplevel)
-                                (eq? opcode 'jump-toplevel))
-                            (visit (cadr instr))))))
-                 rev-instrs))))))
+          (when (= ref-count 0)
+            (let* ((bb (vector-ref bbs label))
+                   (rev-instrs (bb-rev-instrs bb)))
+              (for-each
+               (lambda (instr)
+                 (let ((opcode (car instr)))
+                   (cond ((eq? opcode 'goto)
+                          (visit (cadr instr)))
+                         ((eq? opcode 'goto-if-false)
+                          (visit (cadr instr))
+                          (visit (caddr instr)))
+                         ((or (eq? opcode 'closure)
+                              (eq? opcode 'call-toplevel)
+                              (eq? opcode 'jump-toplevel))
+                          (visit (cadr instr))))))
+               rev-instrs))))))
 
     (visit 0)
 
@@ -747,23 +742,23 @@
 
 (define (resolve-toplevel-labels! bbs)
   (let loop ((i 0))
-    (if (< i (vector-length bbs))
-        (let* ((bb (vector-ref bbs i))
-               (rev-instrs (bb-rev-instrs bb)))
-          (set-bb-rev-instrs!
-           bb
-           (map (lambda (instr)
-                  (let ((opcode (car instr)))
-                    (cond ((eq? opcode 'call-toplevel)
-                           (list opcode
-                                 (prc-entry-label (cadr instr))))
-                          ((eq? opcode 'jump-toplevel)
-                           (list opcode
-                                 (prc-entry-label (cadr instr))))
-                          (else
-                           instr))))
-                rev-instrs))
-          (loop (+ i 1))))))
+    (when (< i (vector-length bbs))
+      (let* ((bb (vector-ref bbs i))
+             (rev-instrs (bb-rev-instrs bb)))
+        (set-bb-rev-instrs!
+         bb
+         (map (lambda (instr)
+                (let ((opcode (car instr)))
+                  (cond ((eq? opcode 'call-toplevel)
+                         (list opcode
+                               (prc-entry-label (cadr instr))))
+                        ((eq? opcode 'jump-toplevel)
+                         (list opcode
+                               (prc-entry-label (cadr instr))))
+                        (else
+                         instr))))
+              rev-instrs))
+        (loop (+ i 1))))))
 
 (define (tighten-jump-cascades! bbs)
   (let ((ref-counts (bbs->ref-counts bbs)))
@@ -840,8 +835,8 @@
                                 changed?))))
                 (loop2 (+ i 1)
                        changed?))
-            (if changed?
-                (loop1)))))))
+            (when changed?
+              (loop1)))))))
 
 (define (remove-useless-bbs! bbs)
   (let ((ref-counts (bbs->ref-counts bbs)))
@@ -965,15 +960,15 @@
 
     (define schedule-todo
       (lambda (new-label todo)
-        (if (pair? todo)
-            (let ((label (car todo)))
-              (if (unscheduled? label)
-                  (schedule-somewhere label
-                                      new-label
-                                      (cdr todo)
-                                      schedule-todo)
-                  (schedule-todo new-label
-                                 (cdr todo)))))))
+        (when (pair? todo)
+          (let ((label (car todo)))
+            (if (unscheduled? label)
+                (schedule-somewhere label
+                                    new-label
+                                    (cdr todo)
+                                    schedule-todo)
+                (schedule-todo new-label
+                               (cdr todo)))))))
 
 
     (schedule-here 0 0 '() schedule-todo)
@@ -1033,8 +1028,8 @@
             (let* ((label-pos (cadr todo))
                    (label (car label-pos))
                    (rest (cddr todo)))
-              (if (not (pair? rest))
-                  (set! todo (cons todo (cdr todo))))
+              (unless (pair? rest)
+                (set! todo (cons todo (cdr todo))))
               (set! todo (cons (car todo) rest))
               label)
             (let loop ((x (cdr todo)) (best-label-pos #f))
@@ -1075,12 +1070,12 @@
   (define (dump)
     (let loop ((fallthrough-to-next? #t))
       (let ((label (get fallthrough-to-next?)))
-        (if label
-            (if (not (vector-ref dumped label))
-                (begin
-                  (vector-set! dumped label #t)
-                  (loop (dump-bb label)))
-                (loop fallthrough-to-next?))))))
+        (when label
+          (if (not (vector-ref dumped label))
+              (begin
+                (vector-set! dumped label #t)
+                (loop (dump-bb label)))
+              (loop fallthrough-to-next?))))))
 
   (define (dump-bb label)
     (let* ((bb (vector-ref bbs label))
