@@ -42,17 +42,15 @@
      parsed-prog
      (lambda (defs after-defs)
 
-       (define make-seq-preparsed
-         (lambda (exprs)
-           (let ((r (make-seq #f exprs)))
-             (for-each (lambda (x) (set-node-parent! x r)) exprs)
-             r)))
+       (define (make-seq-preparsed exprs)
+         (let ((r (make-seq #f exprs)))
+           (for-each (lambda (x) (set-node-parent! x r)) exprs)
+           r))
 
-       (define make-call-preparsed
-         (lambda (exprs)
-           (let ((r (make-call #f exprs)))
-             (for-each (lambda (x) (set-node-parent! x r)) exprs)
-             r)))
+       (define (make-call-preparsed exprs)
+         (let ((r (make-call #f exprs)))
+           (for-each (lambda (x) (set-node-parent! x r)) exprs)
+           r))
 
        (if (var-needed?
             (env-lookup global-env '#%readyq))
