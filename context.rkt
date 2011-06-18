@@ -3,7 +3,7 @@
 (provide (all-defined-out))
 (require "node.rkt" "env.rkt")
 
-(define-struct context (code env env2))
+(define-struct context (code env env2) #:transparent)
 
 (define (context-change-code ctx code)
   (make-context code
@@ -39,9 +39,9 @@
 
 ;; Representation of code.
 
-(define-struct code (last-label rev-bbs))
+(define-struct code (last-label rev-bbs) #:transparent)
 
-(define-struct bb (label (rev-instrs #:mutable)))
+(define-struct bb (label (rev-instrs #:mutable)) #:transparent)
 
 (define (make-init-code)
   (make-code 0
@@ -73,7 +73,7 @@
 ;;; A stack is a (make-stack size slots) where:
 ;;; - size is the number of slots
 ;;; - slots is a list of variables or #f in each slot
-(define-struct stack (size slots))
+(define-struct stack (size slots) #:transparent)
 
 (define (make-init-stack)
   (make-stack 0 '()))
@@ -94,7 +94,7 @@
 
 ;; Representation of compile-time environment.
 
-(define-struct env (local closed))
+(define-struct env (local closed) #:transparent)
 
 (define (make-init-env)
   (make-env (make-init-stack)

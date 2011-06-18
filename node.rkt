@@ -12,7 +12,7 @@
       (boolean? expr)
       (string?  expr)))
 
-(define-struct node (parent children) #:mutable)
+(define-struct node (parent children) #:mutable #:transparent)
 
 (define (child1 node) (car   (node-children node)))
 (define (child2 node) (cadr  (node-children node)))

@@ -11,13 +11,14 @@
    (sets #:mutable)
    (defs #:mutable)
    (needed? #:mutable)
-   primitive))
+   primitive)
+  #:transparent)
 
 (define (mutable-var? var) (not (null? (var-sets var))))
 
-(define-struct primitive (nargs inliner unspecified-result?))
+(define-struct primitive (nargs inliner unspecified-result?) #:transparent)
 
-(define-struct renaming (renamings))
+(define-struct renaming (renamings) #:transparent)
 
 
 ;; Environments are boxes containing lists of vars.
