@@ -1,10 +1,9 @@
-#lang racket
+#lang r5rs
 
-;;; File: "asm.scm"
-;;;
+(#%require (only racket error current-error-port))
+(#%provide (all-defined))
+
 ;;; This module implements the generic assembler.
-
-;;(##declare (standard-bindings) (fixnum) (block))
 
 (define compiler-internal-error error)
 
@@ -438,8 +437,8 @@
                 (begin
                   ;;;(pp (- 3447 (- pos asm-start-pos)));;;;;;;;;;;;
 
-                  (display (- pos asm-start-pos) ##stderr-port)
-                  (display " bytes\n" ##stderr-port)))))))))
+                  (display (- pos asm-start-pos) (current-error-port))
+                  (display " bytes\n" (current-error-port))))))))))
 
 ;; Utilities.
 
