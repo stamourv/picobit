@@ -323,9 +323,9 @@
       (let* ((parent (node-parent node)) (child (cadr (node-children node))))
         (set-node-parent! child parent)
         (when parent
-          (set-node-parent! parent
-                            (map (lambda (c) (if (eq? c node) child c))
-                                 (node-children parent))))
+          (set-node-children! parent
+                              (map (lambda (c) (if (eq? c node) child c))
+                                   (node-children parent))))
         child)
       (begin (for-each (lambda (n) (adjust-unmutable-references! n))
 		       (node-children node))
