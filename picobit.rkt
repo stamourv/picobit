@@ -114,4 +114,4 @@
         (assemble prog hex-filename)))))
 
 
-(define (main filename) (compile filename))
+(compile (vector-ref (current-command-line-arguments) 0))
