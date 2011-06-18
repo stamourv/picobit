@@ -33,7 +33,7 @@
                (val
                 (if (pair? (cadr expr))
                     (cons 'lambda (cons (cdr (cadr expr)) (cddr expr)))
-                    (caddr expr))))
+                    (cons 'begin (cddr expr)))))
            (let* ((var2 (env-lookup env var))
                   (val2 (parse 'value val env))
                   (r (make-def #f (list val2) var2)))
