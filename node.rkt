@@ -22,7 +22,7 @@
 (define-struct (ref node) (var))
 (define-struct (def node) (var))
 (define-struct (set node) (var))
-(define-struct (if  node) ())
+(define-struct (if* node) ())
 (define-struct (prc node) 
   ((params  #:mutable)
    rest?
@@ -47,7 +47,7 @@
          (list 'set!
                (var-id (set-var node))
                (node->expr (child1 node))))
-        ((if? node)
+        ((if*? node)
          (list 'if
                (node->expr (child1 node))
                (node->expr (child2 node))

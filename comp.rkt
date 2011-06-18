@@ -104,7 +104,7 @@
                  (gen-set-global (var-id var) ctx2))
                (comp-none (child1 node) ctx))))
         
-        ((if? node)
+        ((if*? node)
          (let* ((ctx2
                  (context-make-label ctx))
                 (label-then
@@ -178,7 +178,7 @@
              (prc? node))
          (gen-return (comp-push node ctx)))
 
-        ((if? node)
+        ((if*? node)
          (let* ((ctx2
                  (context-make-label ctx))
                 (label-then
@@ -239,7 +239,7 @@
              (set? node))
          (gen-push-unspecified (comp-none node ctx)))
 
-        ((if? node)
+        ((if*? node)
          (let* ((ctx2
                  (context-make-label ctx))
                 (label-then
@@ -439,7 +439,7 @@
         ((or (ref? node)
              (def? node)
              (set? node)
-             (if? node)
+             (if*? node)
              (call? node)
              (seq? node))
          (let* ((ctx2
@@ -508,7 +508,7 @@
            (varset-union
             (varset-singleton var)
             (fv val))))
-        ((if? node)
+        ((if*? node)
          (let ((a (list-ref (node-children node) 0))
                (b (list-ref (node-children node) 1))
                (c (list-ref (node-children node) 2)))
@@ -573,7 +573,7 @@
            (let ((var (set-var node))
                  (val (child1 node)))
              (mark! val)))
-          ((if? node)
+          ((if*? node)
            (let ((a (list-ref (node-children node) 0))
                  (b (list-ref (node-children node) 1))
                  (c (list-ref (node-children node) 2)))

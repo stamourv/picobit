@@ -104,7 +104,7 @@
                 (c (if (null? (cdddr expr))
                        (make-cst #f '() #f)
                        (parse use (cadddr expr) env)))
-                (r (make-if #f (list a b c))))
+                (r (make-if* #f (list a b c))))
            (set-node-parent! a r)
            (set-node-parent! b r)
            (set-node-parent! c r)
