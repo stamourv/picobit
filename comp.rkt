@@ -24,7 +24,6 @@
   (gen-push-constant #f ctx))
 
 (define (gen-push-local-var var ctx)
-  ;    (pp (list var: var local: (stack-slots (env-local (context-env ctx))) (env-closed (context-env ctx))))
   (let ((i (find-local-var var (context-env ctx))))
     (if (>= i 0)
         (gen-push-stack i ctx)
@@ -1018,28 +1017,28 @@
     (set! pos (+ pos 1))
     (set! rev-code (cons x rev-code)))
 
-  (define todo (cons '() '()))
+  (define todo (mcons '() '()))
 
   (define dumped (make-vector (vector-length bbs) #f))
 
   (define (get fallthrough-to-next?)
-    (if (pair? (cdr todo))
+    (if (pair? (mcdr todo))
         (if fallthrough-to-next?
             (let* ((label-pos (cadr todo))
                    (label (car label-pos))
-                   (rest (cddr todo)))
+                   (rest (mcdr (mcdr todo))))
               (unless (pair? rest)
-                (set! todo (cons todo (cdr todo))))
-              (set! todo (cons (car todo) rest))
+                (set-mcar! todo todo))
+              (set-mcdr! todo rest)
               label)
-            (let loop ((x (cdr todo)) (best-label-pos #f))
+            (let loop ((x (mcdr todo)) (best-label-pos #f))
               (if (pair? x)
-                  (loop (cdr x)
-                        (if (vector-ref dumped (car (car x)))
+                  (loop (mcdr x)
+                        (if (vector-ref dumped (car (mcar x)))
                             best-label-pos
                             (if (or (not best-label-pos)
-                                    (> (cdr (car x)) (cdr best-label-pos)))
-                                (car x)
+                                    (> (cdr (mcar x)) (cdr best-label-pos)))
+                                (mcar x)
                                 best-label-pos)))
                   (if (pair? best-label-pos)
                       (car best-label-pos)
@@ -1047,25 +1046,25 @@
         #f))
 
   (define (next)
-    (let loop ((x (cdr todo)))
+    (let loop ((x (mcdr todo)))
       (if (pair? x)
-          (let* ((label-pos (car x))
+          (let* ((label-pos (mcar x))
                  (label (car label-pos)))
             (if (not (vector-ref dumped label))
                 label
-                (loop (cdr x))))
+                (loop (mcdr x))))
           #f)))
 
   (define (schedule! label tail?)
     (let ((label-pos (cons label pos)))
       (if tail?
-          (let ((cell (cons label-pos '())))
-            (set! todo (cons (cons (car todo) cell) (cdr todo)))
-            (set! todo (cons cell todo)))
-          (let ((cell (cons label-pos (cdr todo))))
-            (set! todo (cons (car todo) cell))
-            (when (eq? (car todo) todo)
-              (set! todo (cons cell (cdr todo))))))))
+          (let ((cell (mcons label-pos '())))
+            (set-mcdr! (mcar todo) cell)
+            (set-mcar! todo cell))
+          (let ((cell (mcons label-pos (mcdr todo))))
+            (set-mcdr! todo cell)
+            (when (eq? (mcar todo) todo)
+              (set-mcar! todo cell))))))
 
   (define (dump)
     (let loop ((fallthrough-to-next? #t))
@@ -1125,7 +1124,7 @@
                 (emit jump)
                 #f))))))
 
-  (set! todo (cons todo (cdr todo)));; make fifo
+  (set-mcar! todo todo) ;; make fifo
 
   (schedule! 0 #f)
 
