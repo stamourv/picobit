@@ -361,12 +361,15 @@
                (ctx ctx))
       (if (pair? lst)
 
+          ;; push all the arguments
           (let ((arg (car lst)))
             (loop (cdr lst)
                   (comp-push arg ctx)))
 
-          (cond ((and (ref? op)
+          ;; generate the call itself
+          (cond [(and (ref? op)
                       (var-primitive (ref-var op)))
+                 ;; primitive call
                  (let* ((var (ref-var op))
                         (id (var-id var))
                         (primitive (var-primitive var))
@@ -400,7 +403,7 @@
                           id
                           prim-nargs
                           (primitive-unspecified-result? primitive)
-                          ctx))))))
+                          ctx)))))]
                 
                 
                 ((and (ref? op)
@@ -618,8 +621,7 @@
 (define (prc->env prc)
   (make-env
    (let ((params (prc-params prc)))
-     (make-stack (length params)
-                 (append (map var-id params) '())))
+     (make-stack (length params) (map var-id params)))
    (let ((vars (varset->list (non-global-fv prc))))
      (map var-id vars))))
 
