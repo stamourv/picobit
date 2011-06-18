@@ -139,7 +139,7 @@
              b)
             ((null? (cdr lst))
              (let ((x (make-var id #t '() '() '() #f #f)))
-               (set-box! env (append lst (list x)))
+               (set-box! env (append (unbox env) (list x)))
                x))
             (else
              (loop (cdr lst) id))))))
