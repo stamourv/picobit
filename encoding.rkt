@@ -1,5 +1,9 @@
 #lang racket
 
+(provide (all-defined-out))
+(require srfi/4) ; u8vector stuff
+(require "utilities.rkt" "asm.rkt")
+
 (define min-fixnum-encoding 3)
 (define min-fixnum -1)
 (define max-fixnum 255)
@@ -59,8 +63,8 @@
           (let ((x (assoc o constants)))
             (if x
                 (begin
-                  (if from-code?
-                      (vector-set! (cdr x) 2 (+ (vector-ref (cdr x) 2) 1)))
+                  (when from-code?
+                    (vector-set! (cdr x) 2 (+ (vector-ref (cdr x) 2) 1)))
                   (cont constants))
                 (let* ((descr
                         (vector #f
@@ -90,7 +94,7 @@
                                          new-constants
                                          #f
                                          cont)))
-			((u8vector? o)			 
+			((u8vector? o)
 			 (let ((elems (u8vector->list o)))
 			   (vector-set! descr 3 elems)
 			   (add-constant elems
@@ -123,7 +127,7 @@
 
 (define (add-global var globals cont)
   (let ((x (assq var globals)))
-    (if x	
+    (if x
         (begin
 	  ;; increment reference counter
 	  (vector-set! (cdr x) 1 (+ (vector-ref (cdr x) 1) 1))
@@ -163,7 +167,7 @@
       (if (null? lst)
 	  (if (> i 256) ;; the number of globals is encoded on a byte
 	      (compiler-error "too many global variables")
-	      glbs)	  
+	      glbs)
 	  (begin
 	    (vector-set! (cdr (car lst)) 0 i)
 	    (loop (+ i 1)
@@ -211,7 +215,6 @@
  		(globals   (sort-globals   globals)))
 
             (define (label-instr label opcode-rel4 opcode-rel8 opcode-rel12 opcode-abs16 opcode-sym)
-;;;;;;;;;;;;;;;;;              (if (eq? opcode-sym 'goto) (pp (list 'goto label)))
               (asm-at-assembly
 	       ;; if the distance from pc to the label fits in a single byte,
 	       ;; a short instruction is used, containing a relative address
@@ -223,10 +226,10 @@
                         1)))
 	       (lambda (self)
                  (let ((dist (- (asm-label-pos label) (+ self 1))))
-                   (if stats?
-                       (let ((key (list '---rel-4bit opcode-sym)))
-                         (let ((n (table-ref instr-table key 0)))
-                           (table-set! instr-table key (+ n 1)))))
+                   (when stats?
+                     (let* ([key (list '---rel-4bit opcode-sym)]
+                            [n (hash-ref instr-table key 0)])
+                       (hash-set! instr-table key (+ n 1))))
                    (asm-8 (+ opcode-rel4 dist))))
 
 	       (lambda (self)
@@ -236,10 +239,10 @@
                         2)))
 	       (lambda (self)
                  (let ((dist (+ 128 (- (asm-label-pos label) (+ self 2)))))
-                   (if stats?
-                       (let ((key (list '---rel-8bit opcode-sym)))
-                         (let ((n (table-ref instr-table key 0)))
-                           (table-set! instr-table key (+ n 1)))))
+                   (when stats?
+                     (let* ([key (list '---rel-8bit opcode-sym)]
+                            [n (hash-ref instr-table key 0)])
+                       (hash-set! instr-table key (+ n 1))))
                    (asm-8 opcode-rel8)
                    (asm-8 dist)))
 
@@ -250,10 +253,10 @@
                         2)))
 	       (lambda (self)
                  (let ((dist (+ 2048 (- (asm-label-pos label) (+ self 2)))))
-                   (if stats?
-                       (let ((key (list '---rel-12bit opcode-sym)))
-                         (let ((n (table-ref instr-table key 0)))
-                           (table-set! instr-table key (+ n 1)))))
+                   (when stats?
+                       (let* ([key (list '---rel-12bit opcode-sym)]
+                              [n (hash-ref instr-table key 0)])
+                         (hash-set! instr-table key (+ n 1))))
                    (asm-8 (+ opcode-rel12 (quotient dist 256)))
                    (asm-8 (modulo dist 256))))
 
@@ -261,10 +264,10 @@
 		 3)
                (lambda (self)
 		 (let ((pos (- (asm-label-pos label) code-start)))
-                   (if stats?
-                       (let ((key (list '---abs-16bit opcode-sym)))
-                         (let ((n (table-ref instr-table key 0)))
-                           (table-set! instr-table key (+ n 1)))))
+                   (when stats?
+                     (let* ([key (list '---abs-16bit opcode-sym)]
+                            [n (hash-ref instr-table key 0)])
+                       (hash-set! instr-table key (+ n 1))))
                    (asm-8 opcode-abs16)
                    (asm-8 (quotient pos 256))
                    (asm-8 (modulo pos 256))))))
@@ -272,16 +275,16 @@
             (define (push-constant n)
               (if (<= n 31)
                   (begin
-                    (if stats?
-                        (let ((key '---push-constant-1byte))
-                          (let ((n (table-ref instr-table key 0)))
-                            (table-set! instr-table key (+ n 1)))))
+                    (when stats?
+                      (let* ([key '---push-constant-1byte]
+                             [n (hash-ref instr-table key 0)])
+                        (hash-set! instr-table key (+ n 1))))
                     (asm-8 (+ #x00 n)))
                   (begin
-                    (if stats?
-                        (let ((key '---push-constant-2bytes))
-                          (let ((n (table-ref instr-table key 0)))
-                            (table-set! instr-table key (+ n 1)))))
+                    (when stats?
+                      (let* ([key '---push-constant-2bytes]
+                             [n (hash-ref instr-table key 0)])
+                        (hash-set! instr-table key (+ n 1))))
                     (asm-8 (+ #xa0 (quotient n 256)))
 		    (asm-8 (modulo n 256)))))
 
@@ -293,32 +296,32 @@
             (define (push-global n)
 	      (if (<= n 15)
                   (begin
-                    (if stats?
-                        (let ((key '---push-global-1byte))
-                          (let ((n (table-ref instr-table key 0)))
-                            (table-set! instr-table key (+ n 1)))))
+                    (when stats?
+                      (let* ([key '---push-global-1byte]
+                             [n (hash-ref instr-table key 0)])
+                        (hash-set! instr-table key (+ n 1))))
                     (asm-8 (+ #x40 n)))
 		  (begin
-                    (if stats?
-                        (let ((key '---push-global-2bytes))
-                          (let ((n (table-ref instr-table key 0)))
-                            (table-set! instr-table key (+ n 1)))))
+                    (when stats?
+                      (let* ([key '---push-global-2bytes]
+                             [n (hash-ref instr-table key 0)])
+                        (hash-set! instr-table key (+ n 1))))
                     (asm-8 #x8e)
                     (asm-8 n))))
 
             (define (set-global n)
               (if (<= n 15)
 	          (begin
-                    (if stats?
-                        (let ((key '---set-global-1byte))
-                          (let ((n (table-ref instr-table key 0)))
-                            (table-set! instr-table key (+ n 1)))))
+                    (when stats?
+                      (let* ([key '---set-global-1byte]
+                             [n (hash-ref instr-table key 0)])
+                        (hash-set! instr-table key (+ n 1))))
                     (asm-8 (+ #x50 n)))
 		  (begin
-                    (if stats?
-                        (let ((key '---set-global-2bytes))
-                          (let ((n (table-ref instr-table key 0)))
-                            (table-set! instr-table key (+ n 1)))))
+                    (when stats?
+                      (let* ([key '---set-global-2bytes]
+                             [n (hash-ref instr-table key 0)])
+                        (hash-set! instr-table key (+ n 1))))
                     (asm-8 #x8f)
                     (asm-8 n))))
 
@@ -429,11 +432,11 @@
 	    (define (prim.send-packet-from-u8vector)  (prim 52))
 	    (define (prim.ior)             (prim 53))
 	    (define (prim.xor)             (prim 54))
-	    
+
             (define big-endian? #f)
 
             (define stats? #f)
-            (define instr-table (make-table))
+            (define instr-table (make-hash))
 
             (asm-begin! code-start #f)
 
@@ -504,145 +507,141 @@
                         (compiler-error "unknown object type" obj)))))
              constants)
 
-            ;;(pp code);;;;;;;;;;;;
-
             (let loop2 ((lst code))
-              (if (pair? lst)
-                  (let ((instr (car lst)))
+              (when (pair? lst)
+                (let ((instr (car lst)))
 
-                    (if stats?
-                        (if (not (number? instr))
-                            (let ((key (car instr)))
-                              (let ((n (table-ref instr-table key 0)))
-                                (table-set! instr-table key (+ n 1))))))
+                  (when (and stats? (number? instr))
+                    (let* ([key (car instr)]
+                           [n (hash-ref instr-table key 0)])
+                      (hash-set! instr-table key (+ n 1))))
 
-                    (cond ((number? instr)
-                           (let ((label (cdr (assq instr labels))))
-                             (asm-label label)))
+                  (cond ((number? instr)
+                         (let ((label (cdr (assq instr labels))))
+                           (asm-label label)))
 
-                          ((eq? (car instr) 'entry)
-                           (let ((np (cadr instr))
-                                 (rest? (caddr instr)))
-                             (asm-8 (if rest? (- np) np))))
+                        ((eq? (car instr) 'entry)
+                         (let ((np (cadr instr))
+                               (rest? (caddr instr)))
+                           (asm-8 (if rest? (- np) np))))
 
-                          ((eq? (car instr) 'push-constant)
-                           (let ((n (encode-constant (cadr instr) constants)))
-                             (push-constant n)))
+                        ((eq? (car instr) 'push-constant)
+                         (let ((n (encode-constant (cadr instr) constants)))
+                           (push-constant n)))
 
-                          ((eq? (car instr) 'push-stack)
-                           (push-stack (cadr instr)))
+                        ((eq? (car instr) 'push-stack)
+                         (push-stack (cadr instr)))
 
-                          ((eq? (car instr) 'push-global)
-                           (push-global (vector-ref
-					 (cdr (assq (cadr instr) globals))
-					 0)))
+                        ((eq? (car instr) 'push-global)
+                         (push-global (vector-ref
+                                       (cdr (assq (cadr instr) globals))
+                                       0)))
 
-                          ((eq? (car instr) 'set-global)
-			   (set-global (vector-ref
-					(cdr (assq (cadr instr) globals))
-					0)))
+                        ((eq? (car instr) 'set-global)
+                         (set-global (vector-ref
+                                      (cdr (assq (cadr instr) globals))
+                                      0)))
 
-                          ((eq? (car instr) 'call)
-                           (call (cadr instr)))
+                        ((eq? (car instr) 'call)
+                         (call (cadr instr)))
 
-                          ((eq? (car instr) 'jump)
-                           (jump (cadr instr)))
+                        ((eq? (car instr) 'jump)
+                         (jump (cadr instr)))
 
-                          ((eq? (car instr) 'call-toplevel)
-                           (let ((label (cdr (assq (cadr instr) labels))))
-                             (call-toplevel label)))
+                        ((eq? (car instr) 'call-toplevel)
+                         (let ((label (cdr (assq (cadr instr) labels))))
+                           (call-toplevel label)))
 
-                          ((eq? (car instr) 'jump-toplevel)
-                           (let ((label (cdr (assq (cadr instr) labels))))
-                             (jump-toplevel label)))
+                        ((eq? (car instr) 'jump-toplevel)
+                         (let ((label (cdr (assq (cadr instr) labels))))
+                           (jump-toplevel label)))
 
-                          ((eq? (car instr) 'goto)
-                           (let ((label (cdr (assq (cadr instr) labels))))
-                             (goto label)))
+                        ((eq? (car instr) 'goto)
+                         (let ((label (cdr (assq (cadr instr) labels))))
+                           (goto label)))
 
-                          ((eq? (car instr) 'goto-if-false)
-                           (let ((label (cdr (assq (cadr instr) labels))))
-                             (goto-if-false label)))
+                        ((eq? (car instr) 'goto-if-false)
+                         (let ((label (cdr (assq (cadr instr) labels))))
+                           (goto-if-false label)))
 
-                          ((eq? (car instr) 'closure)
-                           (let ((label (cdr (assq (cadr instr) labels))))
-                             (closure label)))
+                        ((eq? (car instr) 'closure)
+                         (let ((label (cdr (assq (cadr instr) labels))))
+                           (closure label)))
 
-                          ((eq? (car instr) 'prim)
-                           (case (cadr instr)
-                             ((#%number?)         (prim.number?))
-                             ((#%+)               (prim.+))
-                             ((#%-)               (prim.-))
-                             ((#%mul-non-neg)     (prim.mul-non-neg))
-                             ((#%quotient)        (prim.quotient))
-                             ((#%remainder)       (prim.remainder))
-                             ((#%=)               (prim.=))
-                             ((#%<)               (prim.<))
-                             ((#%>)               (prim.>))
-                             ((#%pair?)           (prim.pair?))
-                             ((#%cons)            (prim.cons))
-                             ((#%car)             (prim.car))
-                             ((#%cdr)             (prim.cdr))
-                             ((#%set-car!)        (prim.set-car!))
-                             ((#%set-cdr!)        (prim.set-cdr!))
-                             ((#%null?)           (prim.null?))
-                             ((#%eq?)             (prim.eq?))
-                             ((#%not)             (prim.not))
-                             ((#%get-cont)        (prim.get-cont))
-                             ((#%graft-to-cont)   (prim.graft-to-cont))
-                             ((#%return-to-cont)  (prim.return-to-cont))
-                             ((#%halt)            (prim.halt))
-                             ((#%symbol?)         (prim.symbol?))
-                             ((#%string?)         (prim.string?))
-                             ((#%string->list)    (prim.string->list))
-                             ((#%list->string)    (prim.list->string))
-			     ((#%make-u8vector)   (prim.make-u8vector))
-			     ((#%u8vector-ref)    (prim.u8vector-ref))
-			     ((#%u8vector-set!)   (prim.u8vector-set!))
-                             ((#%print)           (prim.print))
-                             ((#%clock)           (prim.clock))
-                             ((#%motor)           (prim.motor))
-                             ((#%led)             (prim.led))
-			     ((#%led2-color)      (prim.led2-color))
-                             ((#%getchar-wait )   (prim.getchar-wait))
-                             ((#%putchar)         (prim.putchar))
-			     ((#%beep)            (prim.beep))
-                             ((#%adc)             (prim.adc))
-                             ((#%u8vector?)       (prim.u8vector?))
-                             ((#%sernum)          (prim.sernum))
-			     ((#%u8vector-length) (prim.u8vector-length))
-			     ((#%boolean?)        (prim.boolean?))
-			     ((#%network-init)    (prim.network-init))
-			     ((#%network-cleanup) (prim.network-cleanup))
-			     ((#%receive-packet-to-u8vector) (prim.receive-packet-to-u8vector))
-			     ((#%send-packet-from-u8vector)  (prim.send-packet-from-u8vector))
-			     ((#%ior)             (prim.ior))
-			     ((#%xor)             (prim.xor))
-                             (else
-                              (compiler-error "unknown primitive" (cadr instr)))))
+                        ((eq? (car instr) 'prim)
+                         (case (cadr instr)
+                           ((#%number?)         (prim.number?))
+                           ((#%+)               (prim.+))
+                           ((#%-)               (prim.-))
+                           ((#%mul-non-neg)     (prim.mul-non-neg))
+                           ((#%quotient)        (prim.quotient))
+                           ((#%remainder)       (prim.remainder))
+                           ((#%=)               (prim.=))
+                           ((#%<)               (prim.<))
+                           ((#%>)               (prim.>))
+                           ((#%pair?)           (prim.pair?))
+                           ((#%cons)            (prim.cons))
+                           ((#%car)             (prim.car))
+                           ((#%cdr)             (prim.cdr))
+                           ((#%set-car!)        (prim.set-car!))
+                           ((#%set-cdr!)        (prim.set-cdr!))
+                           ((#%null?)           (prim.null?))
+                           ((#%eq?)             (prim.eq?))
+                           ((#%not)             (prim.not))
+                           ((#%get-cont)        (prim.get-cont))
+                           ((#%graft-to-cont)   (prim.graft-to-cont))
+                           ((#%return-to-cont)  (prim.return-to-cont))
+                           ((#%halt)            (prim.halt))
+                           ((#%symbol?)         (prim.symbol?))
+                           ((#%string?)         (prim.string?))
+                           ((#%string->list)    (prim.string->list))
+                           ((#%list->string)    (prim.list->string))
+                           ((#%make-u8vector)   (prim.make-u8vector))
+                           ((#%u8vector-ref)    (prim.u8vector-ref))
+                           ((#%u8vector-set!)   (prim.u8vector-set!))
+                           ((#%print)           (prim.print))
+                           ((#%clock)           (prim.clock))
+                           ((#%motor)           (prim.motor))
+                           ((#%led)             (prim.led))
+                           ((#%led2-color)      (prim.led2-color))
+                           ((#%getchar-wait )   (prim.getchar-wait))
+                           ((#%putchar)         (prim.putchar))
+                           ((#%beep)            (prim.beep))
+                           ((#%adc)             (prim.adc))
+                           ((#%u8vector?)       (prim.u8vector?))
+                           ((#%sernum)          (prim.sernum))
+                           ((#%u8vector-length) (prim.u8vector-length))
+                           ((#%boolean?)        (prim.boolean?))
+                           ((#%network-init)    (prim.network-init))
+                           ((#%network-cleanup) (prim.network-cleanup))
+                           ((#%receive-packet-to-u8vector) (prim.receive-packet-to-u8vector))
+                           ((#%send-packet-from-u8vector)  (prim.send-packet-from-u8vector))
+                           ((#%ior)             (prim.ior))
+                           ((#%xor)             (prim.xor))
+                           (else
+                            (compiler-error "unknown primitive" (cadr instr)))))
 
-                          ((eq? (car instr) 'return)
-                           (prim.return))
+                        ((eq? (car instr) 'return)
+                         (prim.return))
 
-                          ((eq? (car instr) 'pop)
-                           (prim.pop))
+                        ((eq? (car instr) 'pop)
+                         (prim.pop))
 
-                          ((eq? (car instr) 'shift)
-                           (prim.shift))
+                        ((eq? (car instr) 'shift)
+                         (prim.shift))
 
-                          (else
-                           (compiler-error "unknown instruction" instr)))
+                        (else
+                         (compiler-error "unknown instruction" instr)))
 
-                    (loop2 (cdr lst)))))
+                  (loop2 (cdr lst)))))
 
             (asm-assemble)
 
-            (if stats?
-                (pretty-print
-                 (sort (table->list instr-table)
-                            (lambda (x y) (> (cdr x) (cdr y))))))
+            (when stats?
+              (pretty-print
+               (sort (hash->list instr-table)
+                     (lambda (x y) (> (cdr x) (cdr y))))))
 
-;;;;;;;;;            (asm-display-listing ##stdout-port);;;;;;;;;;;;;
             (asm-write-hex-file hex-filename)
 
             (asm-end!))))))
