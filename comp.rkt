@@ -595,103 +595,23 @@
 
 ;; Variable sets
 
-(define (varset-empty)              ; return the empty set
-  '())
-
-(define (varset-singleton x)        ; create a set containing only 'x'
-  (list x))
-
-(define (list->varset lst)          ; convert list to set
-  lst)
-
-(define (varset->list set)          ; convert set to list
-  set)
-
-(define (varset-size set)           ; return cardinality of set
-  (length set))
-
-(define (varset-empty? set)         ; is 'x' the empty set?
-  (null? set))
-
-(define (varset-member? x set)      ; is 'x' a member of the 'set'?
-  (and (not (null? set))
-       (or (eq? x (car set))
-           (varset-member? x (cdr set)))))
-
-(define (varset-adjoin set x)       ; add the element 'x' to the 'set'
-  (if (varset-member? x set) set (cons x set)))
-
-(define (varset-remove set x)       ; remove the element 'x' from 'set'
-  (cond ((null? set)
-         '())
-        ((eq? (car set) x)
-         (cdr set))
-        (else
-         (cons (car set) (varset-remove (cdr set) x)))))
-
-(define (varset-equal? s1 s2)       ; are 's1' and 's2' equal sets?
-  (and (varset-subset? s1 s2)
-       (varset-subset? s2 s1)))
-
-(define (varset-subset? s1 s2)      ; is 's1' a subset of 's2'?
-  (cond ((null? s1)
-         #t)
-        ((varset-member? (car s1) s2)
-         (varset-subset? (cdr s1) s2))
-        (else
-         #f)))
-
-(define (varset-difference set1 set2) ; return difference of sets
-  (cond ((null? set1)
-         '())
-        ((varset-member? (car set1) set2)
-         (varset-difference (cdr set1) set2))
-        (else
-         (cons (car set1) (varset-difference (cdr set1) set2)))))
-
-(define (varset-union set1 set2)    ; return union of sets
-  (define (union s1 s2)
-    (cond ((null? s1)
-           s2)
-          ((varset-member? (car s1) s2)
-           (union (cdr s1) s2))
-          (else
-           (cons (car s1) (union (cdr s1) s2)))))
-  (if (varset-smaller? set1 set2)
-    (union set1 set2)
-    (union set2 set1)))
-
-(define (varset-intersection set1 set2) ; return intersection of sets
-  (define (intersection s1 s2)
-    (cond ((null? s1)
-           '())
-          ((varset-member? (car s1) s2)
-           (cons (car s1) (intersection (cdr s1) s2)))
-          (else
-           (intersection (cdr s1) s2))))
-  (if (varset-smaller? set1 set2)
-    (intersection set1 set2)
-    (intersection set2 set1)))
-
-(define (varset-intersects? set1 set2) ; do sets 'set1' and 'set2' intersect?
-  (not (varset-empty? (varset-intersection set1 set2))))
-
-(define (varset-smaller? set1 set2)
-  (if (null? set1)
-    (not (null? set2))
-    (if (null? set2)
-      #f
-      (varset-smaller? (cdr set1) (cdr set2)))))
-
-(define (varset-union-multi sets)
-  (if (null? sets)
-    (varset-empty)
-    (n-ary varset-union (car sets) (cdr sets))))
-
-(define (n-ary function first rest)
-  (if (null? rest)
-    first
-    (n-ary function (function first (car rest)) (cdr rest))))
+(require (except-in racket/set
+                    set? set)) ; to avoid collision with the node type
+(define (varset-empty)                  (seteq))
+(define (varset-singleton x)            (seteq x))
+(define (list->varset lst)              (list->seteq lst))
+(define (varset->list set)              (set->list set))
+(define (varset-size set)               (set-count set))
+(define (varset-empty? set)             (set-empty? set))
+(define (varset-member? x set)          (set-member? set x))
+(define (varset-adjoin set x)           (set-add set x))
+(define (varset-remove set x)           (set-remove set x))
+(define (varset-equal? s1 s2)           (equal? s1 s2))
+(define (varset-subset? s1 s2)          (subset? s1 s2))
+(define (varset-difference set1 set2)   (set-subtract set1 set2))
+(define (varset-union set1 set2)        (set-union set1 set2))
+(define (varset-intersection set1 set2) (set-intersect set1 set2))
+(define (varset-union-multi sets)       (apply set-union sets))
 
 ;------------------------------------------------------------------------------
 
