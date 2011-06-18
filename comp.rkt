@@ -1,10 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require "utilities.rkt")
-(require "context.rkt")
-(require "node.rkt")
-(require "env.rkt")
+(require "utilities.rkt" "context.rkt" "node.rkt" "env.rkt")
 
 (define (gen-instruction instr nb-pop nb-push ctx)
   (let* ((env

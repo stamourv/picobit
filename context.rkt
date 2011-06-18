@@ -1,8 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require "node.rkt")
-(require "env.rkt")
+(require "node.rkt" "env.rkt")
 
 (define-struct context (code env env2))
 
