@@ -7,16 +7,15 @@
                   ;; skip emacs temp unsaved file backups
                   (not (regexp-match "^\\.#" file))))
   (let* [(file-str (path->string file))
-         (base (substring file-str 0 (- (string-length file-str) 4)))
-         (hex (string-append base ".hex"))
-         (expected (string-append base ".expected"))]
+         (hex (path-replace-suffix file ".hex"))
+         (expected (path-replace-suffix file ".expected"))]
     (if (file-exists? expected)
         (dynamic-wind
           (λ () (system* "./picobit" file-str))
           (λ () (if (file-exists? hex)
                     (check-equal? (file->string (string->path expected))
                                   (file->string (string->path hex))
-                                  base)
+                                  file-str)
                     (printf "~a did not compile!\n" file-str)))
           (λ () (if (file-exists? hex)
                     (delete-file hex)
