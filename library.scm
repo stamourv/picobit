@@ -1,22 +1,5 @@
 ; File: "library.scm"
 
-(define-macro (cond . a)
-  (if (null? a) '(if #f #f)
-      (cond ((eq? (caar a) 'else) `(begin . ,(cdar a)))
-            ((and (not (null? (cdar a))) (eq? (cadar a) '=>))
-             (let ((x (gensym)))
-               `(let ((,x ,(caar a)))
-                  (if ,x (,(caddar a) ,x) (cond . ,(cdr a))))))
-            (else `(if ,(caar a) (begin . ,(cdar a)) (cond . ,(cdr a)))))))
-
-(define-macro (case a . cs)
-  (let ((x (gensym)))
-    `(let ((,x ,a))
-       (cond . ,(map (lambda (c)
-                       (if (eq? (car c) 'else) c
-                           `((memq ,x ',(car c)) . ,(cdr c))))
-                     cs)))))
-
 (define number?
   (lambda (x)
     (#%number? x)))

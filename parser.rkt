@@ -16,11 +16,6 @@
 
 (define (parse-top expr env)
   (cond ((and (pair? expr)
-              (eq? (car expr) 'define-macro))
-         (update-macros (caadr expr)
-                        (eval `(lambda ,(cdadr expr) . ,(cddr expr))))
-         '())
-        ((and (pair? expr)
               (eq? (car expr) 'begin))
          (parse-top-list (cdr expr) env))
         ((and (pair? expr)
@@ -82,9 +77,6 @@
                  app)
                r)))
         ((and (pair? expr)
-              (assq (car expr) *macros*))
-         => (lambda (p) (parse use (apply (cdr p) (cdr expr)) env)))
-        ((and (pair? expr)
               (eq? (car expr) 'set!))
          (let ((var (env-lookup env (cadr expr))))
            (if (var-global? var)
@@ -117,6 +109,28 @@
            (set-node-parent! b r)
            (set-node-parent! c r)
            r))
+        ((and (pair? expr)
+              (eq? (car expr) 'cond)) ; should eventually be a macro
+         (let ([body (cdr expr)])
+           (if (null? body)
+               (parse use '(if #f #f) env)
+               (cond [(eq? (caar body) 'else)
+                      (parse use `(begin . ,(cdar body)) env)]
+                     [(and (not (null? (cdar body)))
+                           (eq? (cadar body) '=>))
+                      (let ([x (gensym)])
+                        (parse use
+                               `(let ((,x ,(caar body)))
+                                  (if ,x
+                                      (,(caddar body) ,x)
+                                      (cond . ,(cdr body))))
+                               env))]
+                     [else
+                      (parse use
+                             `(if ,(caar body)
+                                  (begin . ,(cdar body))
+                                  (cond . ,(cdr body)))
+                             env)]))))
         ((and (pair? expr)
               (eq? (car expr) 'lambda))
          (let* ((pattern (cadr expr))

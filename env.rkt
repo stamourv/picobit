@@ -153,8 +153,3 @@
 (define/contract (env-extend-renamings env renamings)
   (env/c list? . -> . env/c)
   (box (cons (make-renaming renamings) (unbox env))))
-
-(define *macros* '())
-
-(define (update-macros name code)
-  (set! *macros* (cons (cons name code) *macros*)))
