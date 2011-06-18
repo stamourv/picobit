@@ -1064,8 +1064,8 @@
             (set! todo (cons cell todo)))
           (let ((cell (cons label-pos (cdr todo))))
             (set! todo (cons (car todo) cell))
-            (if (eq? (car todo) todo)
-                (set! todo (cons cell (cdr todo))))))))
+            (when (eq? (car todo) todo)
+              (set! todo (cons cell (cdr todo))))))))
 
   (define (dump)
     (let loop ((fallthrough-to-next? #t))
