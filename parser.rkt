@@ -302,21 +302,16 @@
 
 (define (adjust-unmutable-references! node)
   (if (and (call? node)
-           '(display "call ")
            (ref? (car (node-children node)))
-           '(display "ref ")
            (eq? '#%unbox (var-id (ref-var (car (node-children node)))))
-           '(display "unbox")
            (ref? (cadr (node-children node)))
-           '(display "ref ")
-           (not (mutable-var? (ref-var (cadr (node-children node)))))
-           '(display "unmut! ")) 
+           (not (mutable-var? (ref-var (cadr (node-children node))))))
       (let* ((parent (node-parent node)) (child (cadr (node-children node))))
         (set-node-parent! child parent)
-        (if parent
-            (set-node-parent! parent
-                              (map (lambda (c) (if (eq? c node) child c))
-                                   (node-children parent))))
+        (when parent
+          (set-node-parent! parent
+                            (map (lambda (c) (if (eq? c node) child c))
+                                 (node-children parent))))
         child)
       (begin (for-each (lambda (n) (adjust-unmutable-references! n))
 		       (node-children node))
