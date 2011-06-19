@@ -109,6 +109,9 @@
 
     (let ((ctx (comp-none node (make-init-context))))
       (let ((prog (linearize (optimize-code (context-code ctx)))))
+        ;; r5rs's with-output-to-file (in asm.rkt) can't overwrite. bleh
+        (when (file-exists? hex-filename)
+          (delete-file hex-filename))
         (assemble prog hex-filename)))))
 
 
