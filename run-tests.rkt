@@ -13,8 +13,8 @@
         (dynamic-wind
           (λ () (system* "./picobit" file-str))
           (λ () (if (file-exists? hex)
-                    (check-equal? (file->string (string->path expected))
-                                  (file->string (string->path hex))
+                    (check-equal? (file->string expected)
+                                  (file->string hex)
                                   file-str)
                     (printf "~a did not compile!\n" file-str)))
           (λ () (if (file-exists? hex)
