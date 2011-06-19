@@ -944,17 +944,17 @@
   (define dumped (make-vector (vector-length bbs) #f))
 
   (define (get fallthrough-to-next?)
-    (if (pair? (mcdr todo))
+    (if (mpair? (mcdr todo))
         (if fallthrough-to-next?
-            (let* ((label-pos (cadr todo))
+            (let* ((label-pos (mcar (mcdr todo)))
                    (label (car label-pos))
                    (rest (mcdr (mcdr todo))))
-              (unless (pair? rest)
+              (unless (mpair? rest)
                 (set-mcar! todo todo))
               (set-mcdr! todo rest)
               label)
             (let loop ((x (mcdr todo)) (best-label-pos #f))
-              (if (pair? x)
+              (if (mpair? x)
                   (loop (mcdr x)
                         (if (vector-ref dumped (car (mcar x)))
                             best-label-pos
@@ -969,7 +969,7 @@
 
   (define (next)
     (let loop ((x (mcdr todo)))
-      (if (pair? x)
+      (if (mpair? x)
           (let* ((label-pos (mcar x))
                  (label (car label-pos)))
             (if (not (vector-ref dumped label))
