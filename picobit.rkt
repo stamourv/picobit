@@ -112,4 +112,4 @@
         (assemble prog hex-filename)))))
 
 
-(compile (vector-ref (current-command-line-arguments) 0))
+(void (compile (vector-ref (current-command-line-arguments) 0)))
