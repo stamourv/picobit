@@ -1,13 +1,7 @@
-# TODO make libpcap an option, can use -DNETWORKING
-
 all: picobit-vm
 
-# picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
-# 	cc -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o # -lpcap
-
-# TODO separate compilation does not work for the moment, see picobit-vm.c for details
-picobit-vm: picobit-vm.c gc.c bignums.c debug.c primitives.c dispatch.c picobit-vm.h
-	cc -o picobit-vm picobit-vm.c
+picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
+	cc -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
 
 .c.o:
 	$(CC) -O -c $*.c
