@@ -8,7 +8,8 @@
          "context.rkt"
          "comp.rkt"
          "asm.rkt"
-         "encoding.rkt")
+         "encoding.rkt"
+         "scheduling.rkt")
 
 ;-----------------------------------------------------------------------------
 
