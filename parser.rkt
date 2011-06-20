@@ -1,7 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require "utilities.rkt" "ast.rkt" "env.rkt")
+(require "utilities.rkt" "ast.rkt" "env.rkt" "analysis.rkt")
 
 (define (parse-program expr env)
   (let ((x (parse-top expr env)))

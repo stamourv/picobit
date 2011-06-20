@@ -15,8 +15,6 @@
    primitive)
   #:transparent)
 
-(define (mutable-var? var) (not (null? (var-sets var))))
-
 (define-struct primitive (nargs inliner unspecified-result?) #:transparent)
 
 (define-struct renaming (renamings) #:transparent)
