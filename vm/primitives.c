@@ -794,6 +794,7 @@ void prim_sernum () {
 /*---------------------------------------------------------------------------*/
 
 // networking primitives
+// to enable them, compilation must be done with the -lpcap option
 
 void prim_network_init () { // TODO maybe put in the initialization of the vm
 #ifdef NETWORKING
