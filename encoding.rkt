@@ -137,9 +137,35 @@
                      globals)))
 	  (cont new-globals)))))
 
+(define (sort-list l <?)
+
+  (define (mergesort l)
+
+    (define (merge l1 l2)
+      (cond ((null? l1) l2)
+            ((null? l2) l1)
+            (else
+             (let ((e1 (car l1)) (e2 (car l2)))
+               (if (<? e1 e2)
+                 (cons e1 (merge (cdr l1) l2))
+                 (cons e2 (merge l1 (cdr l2))))))))
+
+    (define (split l)
+      (if (or (null? l) (null? (cdr l)))
+        l
+        (cons (car l) (split (cddr l)))))
+
+    (if (or (null? l) (null? (cdr l)))
+      l
+      (let* ((l1 (mergesort (split l)))
+             (l2 (mergesort (split (cdr l)))))
+        (merge l1 l2))))
+
+  (mergesort l))
+
 (define (sort-constants constants)
   (let ((csts
-         (sort constants
+         (sort-list constants
                     (lambda (x y)
                       (> (vector-ref (cdr x) 2)
                          (vector-ref (cdr y) 2))))))
@@ -158,7 +184,7 @@
 
 (define (sort-globals globals) ;; TODO a lot in common with sort-constants, ABSTRACT
   (let ((glbs
-	 (sort globals
+	 (sort-list globals
 		    (lambda (x y)
 		      (> (vector-ref (cdr x) 1)
 			 (vector-ref (cdr y) 1))))))
