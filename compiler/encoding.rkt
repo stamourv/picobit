@@ -256,8 +256,8 @@
                    (let* ([key (list '---rel-12bit opcode-sym)]
                           [n (hash-ref instr-table key 0)])
                      (hash-set! instr-table key (+ n 1))))
-                 (asm-8 (+ opcode-rel12 (quotient dist 256)))
-                 (asm-8 (modulo dist 256))))
+                 ;; ooooxxxx xxxxxxxx
+                 (asm-16 (+ (* opcode-rel12 256) dist))))
 
              (lambda (self)
                3)
@@ -268,8 +268,7 @@
                           [n (hash-ref instr-table key 0)])
                      (hash-set! instr-table key (+ n 1))))
                  (asm-8 opcode-abs16)
-                 (asm-8 (quotient pos 256))
-                 (asm-8 (modulo pos 256))))))
+                 (asm-16 pos)))))
 
           (define (push-constant n)
             (if (<= n 31)
@@ -284,8 +283,7 @@
                     (let* ([key '---push-constant-2bytes]
                            [n (hash-ref instr-table key 0)])
                       (hash-set! instr-table key (+ n 1))))
-                  (asm-8 (+ #xa0 (quotient n 256)))
-                  (asm-8 (modulo n 256)))))
+                  (asm-16 (+ #xa000 n)))))
 
           (define (push-stack n)
             (if (> n 31)
@@ -434,10 +432,9 @@
           (define stats? #f)
           (define instr-table (make-hash))
 
-          (asm-begin! code-start #f)
+          (asm-begin! code-start #t)
 
-          (asm-8 #xfb)
-          (asm-8 #xd7)
+          (asm-16 #xfbd7)
           (asm-8 (length constants))
           (asm-8 (length globals))
 
@@ -452,40 +449,28 @@
                (cond ((and (integer? obj) (exact? obj))
                       (let ((hi (encode-constant (vector-ref descr 3)
                                                  constants)))
-                                        ; (pp (list ENCODE: (vector-ref descr 3) to: hi lo: obj))
-                        (asm-8 (+ 0 (arithmetic-shift hi -8))) ;; TODO -5 has low 16 at 00fb, should be fffb, 8 bits ar lost
-                        (asm-8 (bitwise-and hi  #xff)) ; pointer to hi
-                        (asm-8 (arithmetic-shift obj -8)) ; bits 8-15
-                        (asm-8 (bitwise-and obj #xff)))) ; bits 0-7
+                        (asm-16 hi)    ; pointer to hi
+                        (asm-16 obj))) ; bits 0-15
                      ((pair? obj)
                       (let ((obj-car (encode-constant (car obj) constants))
                             (obj-cdr (encode-constant (cdr obj) constants)))
-                        (asm-8 (+ #x80 (arithmetic-shift obj-car -8)))
-                        (asm-8 (bitwise-and obj-car #xff))
-                        (asm-8 (+ 0 (arithmetic-shift obj-cdr -8)))
-                        (asm-8 (bitwise-and obj-cdr #xff))))
+                        (asm-16 (+ #x8000 obj-car))
+                        (asm-16 (+ #x0000 obj-cdr))))
                      ((symbol? obj)
-                      (asm-8 #x80)
-                      (asm-8 0)
-                      (asm-8 #x20)
-                      (asm-8 0))
+                      (asm-32 #x80002000))
                      ((string? obj)
                       (let ((obj-enc (encode-constant (vector-ref descr 3)
                                                       constants)))
-                        (asm-8 (+ #x80 (arithmetic-shift obj-enc -8)))
-                        (asm-8 (bitwise-and obj-enc #xff))
-                        (asm-8 #x40)
-                        (asm-8 0)))
+                        (asm-16 (+ #x8000 obj-enc))
+                        (asm-16 #x4000)))
                      ((vector? obj) ; ordinary vectors are stored as lists
                       (let* ((elems (vector-ref descr 3))
                              (obj-car (encode-constant (car elems)
                                                        constants))
                              (obj-cdr (encode-constant (cdr elems)
                                                        constants)))
-                        (asm-8 (+ #x80 (arithmetic-shift obj-car -8)))
-                        (asm-8 (bitwise-and obj-car #xff))
-                        (asm-8 (+ 0 (arithmetic-shift obj-cdr -8)))
-                        (asm-8 (bitwise-and obj-cdr #xff))))
+                        (asm-16 (+ #x8000 obj-car))
+                        (asm-16 (+ #x0000 obj-cdr))))
                      ((u8vector? obj)
                       (let ((obj-enc (encode-constant (vector-ref descr 3)
                                                       constants))
@@ -493,10 +478,8 @@
                         ;; length is stored raw, not encoded as an object
                         ;; however, the bytes of content are encoded as
                         ;; fixnums
-                        (asm-8 (+ #x80 (arithmetic-shift l -8)))
-                        (asm-8 (bitwise-and l #xff))
-                        (asm-8 (+ #x60 (arithmetic-shift obj-enc -8)))
-                        (asm-8 (bitwise-and obj-enc #xff))))
+                        (asm-16 (+ #x8000 l))
+                        (asm-16 (+ #x6000 obj-enc))))
                      (else
                       (compiler-error "unknown object type" obj)))))
            constants)
