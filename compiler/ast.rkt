@@ -96,3 +96,15 @@
         (else
          (cons (var-id (car params))
                (build-pattern (cdr params) rest?)))))
+
+(define (extract-ids pattern)
+  (if (pair? pattern)
+      (cons (car pattern) (extract-ids (cdr pattern)))
+      (if (symbol? pattern)
+          (cons pattern '())
+          '())))
+
+(define (has-rest-param? pattern)
+  (if (pair? pattern)
+      (has-rest-param? (cdr pattern))
+      (symbol? pattern)))

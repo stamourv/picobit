@@ -1,78 +1,13 @@
 #lang racket
 
-(provide parse-file)
-(require "utilities.rkt" "env.rkt" "ast.rkt" "analysis.rkt")
+(provide parse-top-list parse)
+(require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt")
 
-(define (parse-file toplevel-exprs global-env)
-  (let ((parsed-prog
-         (parse-top-list toplevel-exprs global-env)))
-
-    (for-each
-     (lambda (node)
-       (mark-needed-global-vars! global-env node))
-     parsed-prog)
-
-    (extract-parts
-     parsed-prog
-     (lambda (defs after-defs)
-
-       (define (make-seq-preparsed exprs)
-         (let ((r (make-seq #f exprs)))
-           (for-each (lambda (x) (set-node-parent! x r)) exprs)
-           r))
-
-       (define (make-call-preparsed exprs)
-         (let ((r (make-call #f exprs)))
-           (for-each (lambda (x) (set-node-parent! x r)) exprs)
-           r))
-
-       (if (var-needed?
-            (env-lookup global-env '#%readyq))
-           (make-seq-preparsed
-            (list (make-seq-preparsed defs)
-                  (make-call-preparsed
-                   (list (parse 'value '#%start-first-process global-env)
-                         (let* ((pattern
-                                 '())
-                                (ids
-                                 (extract-ids pattern))
-                                (r
-                                 (make-prc #f
-                                           '()
-                                           #f
-                                           (has-rest-param? pattern)
-                                           #f))
-                                (new-env
-                                 (env-extend global-env ids r))
-                                (body
-                                 (make-seq-preparsed after-defs)))
-                           (set-prc-params!
-                            r
-                            (map (lambda (id) (env-lookup new-env id))
-                                 ids))
-                           (set-node-children! r (list body))
-                           (set-node-parent! body r)
-                           r)))
-                  (parse 'value
-                         '(#%exit)
-                         global-env)))
-           (make-seq-preparsed
-            (append defs
-                    after-defs
-                    (list (parse 'value
-                                 '(#%halt)
-                                 global-env)))))))))
-
-(define (extract-parts lst cont)
-  (if (or (null? lst)
-          (not (def? (car lst))))
-      (cont '() lst)
-      (extract-parts
-       (cdr lst)
-       (lambda (d ad)
-         (cont (cons (car lst) d) ad)))))
-
-;------------------------------------------------------------------------------
+(define (parse-top-list lst env)
+  (if (pair? lst)
+      (append (parse-top (car lst) env)
+              (parse-top-list (cdr lst) env))
+      '()))
 
 (define (parse-top expr env)
   (cond ((and (pair? expr)
@@ -102,12 +37,6 @@
              (list r))))
         (else
          (list (parse 'value expr env)))))
-
-(define (parse-top-list lst env)
-  (if (pair? lst)
-      (append (parse-top (car lst) env)
-              (parse-top-list (cdr lst) env))
-      '()))
 
 (define (parse-top-hide renamings body env)
   (append
@@ -361,15 +290,3 @@
 
 (define (parse-body exprs env)
   (parse 'value (cons 'begin exprs) env))
-
-(define (extract-ids pattern)
-  (if (pair? pattern)
-      (cons (car pattern) (extract-ids (cdr pattern)))
-      (if (symbol? pattern)
-          (cons pattern '())
-          '())))
-
-(define (has-rest-param? pattern)
-  (if (pair? pattern)
-      (has-rest-param? (cdr pattern))
-      (symbol? pattern)))
