@@ -4,6 +4,7 @@
          "ast.rkt"
          "env.rkt"
          "parser.rkt"
+         "front-end.rkt"
          "context.rkt"
          "comp.rkt"
          "encoding.rkt"
