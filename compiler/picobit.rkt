@@ -10,6 +10,7 @@
          "comp.rkt"
          "asm.rkt"
          "encoding.rkt"
+         "analysis.rkt"
          "scheduling.rkt"
          "tree-shaker.rkt")
 

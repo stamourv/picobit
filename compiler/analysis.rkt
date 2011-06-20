@@ -34,6 +34,74 @@
 
 ;-----------------------------------------------------------------------------
 
+(provide mark-needed-global-vars!)
+
+(define (mark-needed-global-vars! global-env node)
+  (define readyq
+    (env-lookup global-env '#%readyq))
+
+  (define (mark-var! var)
+    (when (and (var-global? var)
+               (not (var-needed? var))
+               ;; globals that obey the following conditions are considered
+               ;; to be constants
+               (not (and (not (mutable-var? var))
+                         ;; to weed out primitives, which have no definitions
+                         (> (length (var-defs var)) 0)
+                         (cst? (child1 (car (var-defs var)))))))
+      (set-var-needed?! var #t)
+      (for-each
+       (lambda (def)
+         (let ((val (child1 def)))
+           (when (side-effect-less? val)
+             (mark! val))))
+       (var-defs var))
+      (when (eq? var readyq)
+        (mark-var!
+         (env-lookup global-env '#%start-first-process))
+        (mark-var!
+         (env-lookup global-env '#%exit)))))
+
+  (define (side-effect-less? node)
+    (or (cst? node)
+        (ref? node)
+        (prc? node)))
+
+  (define (mark! node)
+    (cond ((cst? node))
+          ((ref? node)
+           (let ((var (ref-var node)))
+             (mark-var! var)))
+          ((def? node)
+           (let ((var (def-var node))
+                 (val (child1 node)))
+             (when (not (side-effect-less? val))
+               (mark! val))))
+          ((set? node)
+           (let ((var (set-var node))
+                 (val (child1 node)))
+             (mark! val)))
+          ((if*? node)
+           (let ((a (list-ref (node-children node) 0))
+                 (b (list-ref (node-children node) 1))
+                 (c (list-ref (node-children node) 2)))
+             (mark! a)
+             (mark! b)
+             (mark! c)))
+          ((prc? node)
+           (let ((body (list-ref (node-children node) 0)))
+             (mark! body)))
+          ((call? node)
+           (for-each mark! (node-children node)))
+          ((seq? node)
+           (for-each mark! (node-children node)))
+          (else
+           (compiler-error "unknown expression type" node))))
+
+  (mark! node))
+
+;-----------------------------------------------------------------------------
+
 ;; Free variable analysis.
 
 (provide global-fv
