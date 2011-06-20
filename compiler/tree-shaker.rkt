@@ -2,7 +2,7 @@
 
 (provide tree-shake!)
 
-(require "context.rkt" "back-end.rkt")
+(require "ir.rkt" "back-end.rkt")
 
 (define (tree-shake! bbs)
   (tighten-jump-cascades! bbs)

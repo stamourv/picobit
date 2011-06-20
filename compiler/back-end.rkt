@@ -2,7 +2,7 @@
 
 (provide (all-defined-out))
 
-(require "context.rkt")
+(require "ir.rkt")
 
 ;; Back-end utilities.
 

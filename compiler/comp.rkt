@@ -1,7 +1,7 @@
 #lang racket
 
 (provide comp-none code->vector resolve-toplevel-labels!)
-(require "utilities.rkt" "context.rkt" "code-gen.rkt" "ast.rkt" "env.rkt"
+(require "utilities.rkt" "ir.rkt" "code-gen.rkt" "ast.rkt" "env.rkt"
          "analysis.rkt")
 
 

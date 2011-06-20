@@ -6,7 +6,7 @@
          "reader.rkt"
          "parser.rkt"
          "front-end.rkt"
-         "context.rkt"
+         "ir.rkt"
          "comp.rkt"
          "encoding.rkt"
          "analysis.rkt"

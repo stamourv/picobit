@@ -1,7 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require "context.rkt")
+(require "ir.rkt")
 
 ;; Code generation utilities.
 ;; Each of these adds an IR instruction to the code stream.

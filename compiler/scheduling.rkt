@@ -2,7 +2,7 @@
 
 (provide (all-defined-out))
 
-(require "context.rkt" "back-end.rkt")
+(require "ir.rkt" "back-end.rkt")
 
 ;; Basic block scheduling.
 
