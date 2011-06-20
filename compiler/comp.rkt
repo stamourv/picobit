@@ -278,6 +278,12 @@
     (context-add-bb (context-change-env ctx7 (context-env ctx5))
                     label-continue)))
 
+(define (prc->env prc)
+  (make-env
+   (let ((params (prc-params prc)))
+     (make-stack (length params) (map var-id params)))
+   (map var-id (non-global-fv prc))))
+
 (define (comp-call node reason ctx)
   (let* ((op (child1 node))
          (args (cdr (node-children node)))
@@ -449,12 +455,6 @@
   (mark! node))
 
 ;-----------------------------------------------------------------------------
-
-(define (prc->env prc)
-  (make-env
-   (let ((params (prc-params prc)))
-     (make-stack (length params) (map var-id params)))
-   (map var-id (non-global-fv prc))))
 
 (define (code->vector code)
   (let ((v (make-vector (+ (code-last-label code) 1))))
