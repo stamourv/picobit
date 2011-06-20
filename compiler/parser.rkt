@@ -1,6 +1,6 @@
 #lang racket
 
-(provide (all-defined-out))
+(provide parse-file)
 (require (only-in unstable/port read-all)
          racket/runtime-path)
 (require "utilities.rkt" "ast.rkt" "env.rkt" "analysis.rkt")
