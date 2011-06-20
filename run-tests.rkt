@@ -2,6 +2,14 @@
 
 (require rackunit rackunit/text-ui)
 
+;; This tests for equality of _bytecode_ with the Gambit-based version
+;; of picobit. Bytecode equality was a useful notion to ensure that
+;; the Racket port was working correctly, but it's an overly
+;; restrictive notion in general.
+;; Since the Racket port is now complete, this test harness is not
+;; deprecated.
+;; A better test harness (and test suite) that checks the results of
+;; programs instead of the programs themselves should be written.
 (void
  (run-tests
   (make-test-suite
