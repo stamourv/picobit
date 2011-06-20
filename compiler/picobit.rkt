@@ -24,17 +24,13 @@
     (mark-needed-global-vars! global-env node)
 
     (let ([node (extract-parts-top node global-env parse)])
-
       (adjust-unmutable-references! node)
-
       (let* ([ctx  (comp-none node (make-init-context))]
              [code (context-code ctx)]
              [bbs  (code->vector code)])
-
         (resolve-toplevel-labels! bbs)
-
-        (let ([bbs  (tree-shake! bbs)]
-              [prog (linearize bbs)])
+        (let* ([bbs  (reorder! (tree-shake! bbs))]
+               [prog (linearize bbs)])
           ;; r5rs's with-output-to-file (in asm.rkt) can't overwrite. bleh
           (when (file-exists? hex-filename)
             (delete-file hex-filename))
