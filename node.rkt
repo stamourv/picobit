@@ -6,12 +6,6 @@
 
 ;; Syntax-tree node representation.
 
-(define (self-eval? expr)
-  (or (number?  expr)
-      (char?    expr)
-      (boolean? expr)
-      (string?  expr)))
-
 (define-struct node (parent children) #:mutable #:transparent)
 
 (define (child1 node) (car   (node-children node)))
