@@ -1,6 +1,7 @@
 #lang racket
 
-(provide (all-defined-out))
+(provide comp-none
+         mark-needed-global-vars! code->vector resolve-toplevel-labels!)
 (require "utilities.rkt" "context.rkt" "code-gen.rkt" "ast.rkt" "env.rkt"
          "analysis.rkt")
 
