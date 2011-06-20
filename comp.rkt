@@ -728,38 +728,6 @@
                      (make-vector (vector-length bbs) 1)
                      (vector-length bbs))))
 
-(define (linearize-old bbs)
-  (let loop ((label (- (vector-length bbs) 1))
-             (lst '()))
-    (if (>= label 0)
-        (let* ((bb (vector-ref bbs label))
-               (rev-instrs (bb-rev-instrs bb))
-               (jump (car rev-instrs))
-               (opcode (car jump)))
-          (loop (- label 1)
-                (append
-                 (list label)
-                 (reverse
-                  (cond ((eq? opcode 'goto)
-                         (if (= (cadr jump) (+ label 1))
-                             (cdr rev-instrs)
-                             rev-instrs))
-                        ((eq? opcode 'goto-if-false)
-                         (cond ((= (caddr jump) (+ label 1))
-                                (cons (list 'goto-if-false (cadr jump))
-                                      (cdr rev-instrs)))
-                               ((= (cadr jump) (+ label 1))
-                                (cons (list 'goto-if-not-false (caddr jump))
-                                      (cdr rev-instrs)))
-                               (else
-                                (cons (list 'goto (caddr jump))
-                                      (cons (list 'goto-if-false (cadr jump))
-                                            (cdr rev-instrs))))))
-                        (else
-                         rev-instrs)))
-                 lst)))
-        lst)))
-
 (define (linearize bbs)
   (define rev-code '())
 
