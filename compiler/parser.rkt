@@ -96,17 +96,6 @@
 
 ;------------------------------------------------------------------------------
 
-(define (parse-program expr env)
-  (let ((x (parse-top expr env)))
-    (cond ((null? x)
-           (parse 'value #f env))
-          ((null? (cdr x))
-           (car x))
-          (else
-           (let ((r  (make-seq #f x)))
-             (for-each (lambda (y) (set-node-parent! y r)) x)
-             r)))))
-
 (define (parse-top expr env)
   (cond ((and (pair? expr)
               (eq? (car expr) 'begin))
