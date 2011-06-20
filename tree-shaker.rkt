@@ -1,8 +1,13 @@
 #lang racket
 
-(provide tighten-jump-cascades! remove-useless-bbs! reorder!)
+(provide tree-shake!)
 
 (require "context.rkt")
+
+(define (tree-shake! bbs)
+  (tighten-jump-cascades! bbs)
+  (let ((bbs (remove-useless-bbs! bbs)))
+    (reorder! bbs)))
 
 (define (bbs->ref-counts bbs)
   (let ((ref-counts (make-vector (vector-length bbs) 0)))

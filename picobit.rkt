@@ -105,9 +105,7 @@
 (define (optimize-code code)
   (let ((bbs (code->vector code)))
     (resolve-toplevel-labels! bbs)
-    (tighten-jump-cascades! bbs)
-    (let ((bbs (remove-useless-bbs! bbs)))
-      (reorder! bbs))))
+    (tree-shake! bbs)))
 
 (define (compile filename)
   (let* ((node (parse-file filename))
