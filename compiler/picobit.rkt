@@ -8,7 +8,6 @@
          "parser.rkt"
          "context.rkt"
          "comp.rkt"
-         "asm.rkt"
          "encoding.rkt"
          "analysis.rkt"
          "scheduling.rkt"
