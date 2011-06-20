@@ -27,7 +27,7 @@
          (global-env
           (make-global-env))
          (parsed-prog
-          (parse-top (cons 'begin toplevel-exprs) global-env)))
+          (parse-top-list toplevel-exprs global-env)))
 
     (for-each
      (lambda (node)
