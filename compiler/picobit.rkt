@@ -3,6 +3,7 @@
 (require "utilities.rkt"
          "ast.rkt"
          "env.rkt"
+         "reader.rkt"
          "parser.rkt"
          "front-end.rkt"
          "context.rkt"
@@ -15,7 +16,8 @@
 ;-----------------------------------------------------------------------------
 
 (define (compile filename)
-  (let* ((node (parse-file filename))
+  (let* ((forms (read-file  filename))
+         (node  (parse-file forms))
          (hex-filename
           (path-replace-suffix filename ".hex")))
     
