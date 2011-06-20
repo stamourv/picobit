@@ -17,7 +17,7 @@
 
 (define (compile filename)
   (let* ((forms (read-file  filename))
-         (node  (parse-file forms))
+         (node  (parse-file forms (make-global-env)))
          (hex-filename
           (path-replace-suffix filename ".hex")))
     

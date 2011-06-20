@@ -1,13 +1,11 @@
 #lang racket
 
 (provide parse-file)
-(require "utilities.rkt" "ast.rkt" "env.rkt" "analysis.rkt")
+(require "utilities.rkt" "env.rkt" "ast.rkt" "analysis.rkt")
 
-(define (parse-file toplevel-exprs)
-  (let* ((global-env
-          (make-global-env))
-         (parsed-prog
-          (parse-top-list toplevel-exprs global-env)))
+(define (parse-file toplevel-exprs global-env)
+  (let ((parsed-prog
+         (parse-top-list toplevel-exprs global-env)))
 
     (for-each
      (lambda (node)
