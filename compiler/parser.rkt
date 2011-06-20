@@ -14,12 +14,6 @@
               (eq? (car expr) 'begin))
          (parse-top-list (cdr expr) env))
         ((and (pair? expr)
-              (eq? (car expr) 'hide))
-         (parse-top-hide (cadr expr)  (cddr expr) env))
-        ((and (pair? expr)
-              (eq? (car expr) 'rename))
-         (parse-top-rename (cadr expr)  (cddr expr) env))
-        ((and (pair? expr)
               (eq? (car expr) 'define))
          (let ((var
                 (if (pair? (cadr expr))
@@ -37,19 +31,6 @@
              (list r))))
         (else
          (list (parse 'value expr env)))))
-
-(define (parse-top-hide renamings body env)
-  (append
-   (parse-top-list body
-                   (env-extend-renamings env renamings))
-   ;; (parse-top-list
-   ;;       (map (lambda (x) (list 'define (car x) (cadr x))) renamings)
-   ;;       env)
-   ))
-
-(define (parse-top-rename renamings body env)
-  (parse-top-list body
-                  (env-extend-renamings env renamings)))
 
 (define (parse use expr env)
   (cond ((self-eval? expr)
