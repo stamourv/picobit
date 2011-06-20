@@ -9,7 +9,8 @@
          "comp.rkt"
          "asm.rkt"
          "encoding.rkt"
-         "scheduling.rkt")
+         "scheduling.rkt"
+         "tree-shaker.rkt")
 
 ;-----------------------------------------------------------------------------
 
@@ -100,6 +101,13 @@
          (cont (cons (car lst) d) ad)))))
 
 ;------------------------------------------------------------------------------
+
+(define (optimize-code code)
+  (let ((bbs (code->vector code)))
+    (resolve-toplevel-labels! bbs)
+    (tighten-jump-cascades! bbs)
+    (let ((bbs (remove-useless-bbs! bbs)))
+      (reorder! bbs))))
 
 (define (compile filename)
   (let* ((node (parse-file filename))
