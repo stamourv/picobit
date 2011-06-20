@@ -1,7 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require "utilities.rkt" "context.rkt" "code-gen.rkt" "node.rkt" "env.rkt")
+(require "utilities.rkt" "context.rkt" "code-gen.rkt" "ast.rkt" "env.rkt")
 
 
 (define (comp-none node ctx)
