@@ -13,11 +13,6 @@
 
 ;-----------------------------------------------------------------------------
 
-(define (optimize-code code)
-  (let ((bbs (code->vector code)))
-    (resolve-toplevel-labels! bbs)
-    (tree-shake! bbs)))
-
 (define (compile filename)
   (let* ((node (parse-file filename))
          (hex-filename
@@ -25,8 +20,14 @@
     
     (adjust-unmutable-references! node)
 
-    (let ((ctx (comp-none node (make-init-context))))
-      (let ((prog (linearize (optimize-code (context-code ctx)))))
+    (let* ((ctx  (comp-none node (make-init-context)))
+           (code (context-code ctx))
+           (bbs  (code->vector code)))
+
+      (resolve-toplevel-labels! bbs)
+
+      (let ([bbs  (tree-shake! bbs)]
+            [prog (linearize bbs)])
         ;; r5rs's with-output-to-file (in asm.rkt) can't overwrite. bleh
         (when (file-exists? hex-filename)
           (delete-file hex-filename))
