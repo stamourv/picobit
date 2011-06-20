@@ -4,37 +4,37 @@ microcontrollers, currently the PIC microcontroller.
 It consists of
 
 * a bytecode compiler which compiles Scheme source code to bytecode.
-  The bytecode compiler is run using the Gambit-C Scheme system,
-  usually on a PC/workstation.
+  The bytecode compiler is run using Racket, usually on a
+  PC/workstation.
 
 * a bytecode interpreter which can be either compiled to run on a
   microcontroller, or to be run on some common operating systems, at
   least GNU/Linux (Windows support hasn't been tested in a while,
   though, and especially the networking part might not work out of the
-  box).
+  box). It is written in (mostly) portable C.
 
 
 USAGE:
 
-1. Install the dependencies:
+1. Install Racket (needed to run the bytecode compiler)
+     racket-lang.org
 
-  * Gambit-C: needed to run the bytecode compiler.
-    See http://www.iro.umontreal.ca/~gambit/
-
-  * libpcap: optional, to test networking on PC's (GNU/Linux)
-    Be sure to also install the package containing the headers
-    (libpcap-dev or similar).
-    (TODO: add to makefile somehow)
-
-2a. Targetting a PC/workstation for testing:
-
-  * Build the VM: run
+2. Build the VM:
      make
 
-  * Compile and run a Scheme program: run
-     ./p schemefile
+2. Compile a Scheme program:
+     ./picobit prog.scm
 
-2b. Compile and run a Scheme program on PIC:
+3. Run the resulting program:
+     ./picobit-vm prog.hex
+
+Note: The `p' script is a shortcut for compiling and running programs:
+     ./p prog.scm
+ is equivalent to
+     ./picobit prog.scm ; ./picobit-vm prog.hex
+
+
+WORKING ON PIC:
 
   <TODO>
 
@@ -52,10 +52,8 @@ SEE ALSO:
     Slides from the presentation:
     http://www.ccs.neu.edu/home/stamourv/s3.pdf
 
- and maybe you find the papers about the BIT and PICBIT systems
- interesting, which have been written before PICOBIT and share some
- common concepts:
-
+ PICOBIT is a descendant of the BIT and PICBIT systems. You can find
+ papers describing these systems at:
     http://w3.ift.ulaval.ca/~dadub100/
 
 
@@ -64,6 +62,7 @@ HISTORY:
  Marc Feeley originally wrote PICOBIT around 2006.
  Vincent St-Amour took over development in 2008.
  Jim Shargo worked on a port to Racket in 2011.
+ The Racket port was completed in June 2011.
 
 LICENCE:
 
