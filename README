@@ -42,15 +42,15 @@ WORKING ON PIC:
 SEE ALSO:
 
   * A paper describing PICOBIT has been presented to IFL 2009:
-    http://www.ccs.neu.edu/home/stamourv/picobit.pdf
+    http://www.ccs.neu.edu/home/stamourv/papers/picobit.pdf
     Slides from the presentation:
-    http://www.ccs.neu.edu/home/stamourv/picobit-ifl.pdf
+    http://www.ccs.neu.edu/home/stamourv/slides/picobit-ifl09.pdf
 
   * S3 (Small Scheme Stack) : A Scheme TCP/IP Stack Targeting Small
     Embedded Applications
-    http://www.ccs.neu.edu/home/stamourv/sw08-tcp.pdf
+    http://www.ccs.neu.edu/home/stamourv/papers/s3.pdf
     Slides from the presentation:
-    http://www.ccs.neu.edu/home/stamourv/s3.pdf
+    http://www.ccs.neu.edu/home/stamourv/slides/s3-sw08.pdf
 
  PICOBIT is a descendant of the BIT and PICBIT systems. You can find
  papers describing these systems at:
