@@ -14,7 +14,7 @@
     [(cons 'begin body)
      (parse-top-list body env)]
     [(list-rest 'define (list-rest var params) body)
-     (parse-top (list 'define var `(lambda ,params ,@body)))]
+     (parse-top (list 'define var `(lambda ,params ,@body)) env)]
     [(list 'define (? symbol? var) val)
      (let* ([var2 (env-lookup env var)]
             [val2 (parse 'value val env)]
