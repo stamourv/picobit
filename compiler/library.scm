@@ -421,6 +421,8 @@
     (write x)
     (#%putchar #\newline 3)))
 
+(define (newline) (#%putchar #\newline 3))
+
 (define caar
   (lambda (p)
     (#%car (#%car p))))
