@@ -2,6 +2,8 @@
 
 (provide (all-defined-out))
 
+(require srfi/4)
+
 (define compiler-error
   (lambda (msg . others)
     (display "*** PICOBIT ERROR -- ")
@@ -11,7 +13,8 @@
     (exit 1)))
 
 (define (self-eval? expr)
-  (or (number?  expr)
-      (char?    expr)
-      (boolean? expr)
-      (string?  expr)))
+  (or (number?   expr)
+      (char?     expr)
+      (boolean?  expr)
+      (string?   expr)
+      (u8vector? expr)))
