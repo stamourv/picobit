@@ -1,0 +1,8 @@
+(displayln (= (- 2 2) 0))
+(displayln (= (- 5 3) 2))
+(displayln (= (- 5 7) -2))
+(displayln (= (- 4 0) 4))
+(displayln (= (- 0 4) -4))
+(displayln (= (- 2 -2) 4))
+(displayln (= (- -2 -5) 3))
+(displayln (= (- -5 -2) -3))

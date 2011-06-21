@@ -1,0 +1,10 @@
+(displayln (= (+ 2 2) 4))
+(displayln (= (+ 0 5) 5))
+(displayln (= (+ 2 7) 9))
+(displayln (= (+ 0 -5) -5))
+(displayln (= (+ 2 -5) -3))
+(displayln (= (+ 7 -5) 2))
+(displayln (= (+ -3 -7) -10))
+
+(displayln (= (+ 100000 1) (+ 50000 50001)))
+(displayln (= (+ 32768 32768) 65536))

@@ -1,0 +1,8 @@
+(define x '#(2 4 6 8 9))
+(displayln (vector-ref x 2))
+(displayln (bitwise-xor (vector-ref x 2) (vector-ref x 4)))
+(define y (vector 1 2 3 4))
+(displayln (vector-ref y 2))
+(vector-set! y 2 7)
+(displayln (vector-ref y 2))
+(displayln (+ (car x) (vector-ref x 1) (vector-ref y 3)))

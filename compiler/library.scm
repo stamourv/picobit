@@ -369,6 +369,10 @@
         (for-each putchar (#%string->list x))
         (write x))))
 
+(define (newline) (#%putchar #\newline 3))
+
+(define (displayln x) (display x) (newline))
+
 (define write
   (lambda (x)
     (cond ((#%string? x)
@@ -420,8 +424,6 @@
   (lambda (x)
     (write x)
     (#%putchar #\newline 3)))
-
-(define (newline) (#%putchar #\newline 3))
 
 (define caar
   (lambda (p)

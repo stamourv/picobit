@@ -1,0 +1,5 @@
+(define x (cons 2 3))
+(display (cdr x))
+(set-cdr! x 4)
+(display (cdr x))
+(newline)
