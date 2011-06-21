@@ -163,7 +163,7 @@ void type_error (char *prim, char *type);
 
 #define MIN_FIXNUM_ENCODING 3
 #define MIN_FIXNUM -1
-#define MAX_FIXNUM 256
+#define MAX_FIXNUM 255
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING + MAX_FIXNUM - MIN_FIXNUM + 1)
 
 #ifdef LESS_MACROS

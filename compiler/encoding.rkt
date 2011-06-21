@@ -6,7 +6,7 @@
 
 (define min-fixnum-encoding 3)
 (define min-fixnum -1)
-(define max-fixnum 256)
+(define max-fixnum 255)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
 (define min-ram-encoding 512)
 (define max-ram-encoding 1279)
