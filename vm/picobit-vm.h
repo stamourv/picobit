@@ -559,7 +559,7 @@ obj env;
 // GC can occur during bignum operations (they allocate).
 // Bignum ops can share variables as long as they don't interfere.
 obj bignum_tmp1; // ior xor add sub scale shr shl
-obj bignum_tmp2; // shift_left
+obj bignum_tmp2; // shift_left mul
 obj bignum_tmp3; // div mul
 obj bignum_tmp4; // div mul
 #endif

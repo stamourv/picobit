@@ -380,7 +380,9 @@ integer mulnonneg (integer x, integer y) {
     if (obj_eq (x, ZERO))
       break;
 
-    bignum_tmp4 = add (bignum_tmp4, scale (integer_lo (x), y));
+    // We need to register the result of scale because add can cause GC.
+    bignum_tmp2 = scale (integer_lo (x), y);
+    bignum_tmp4 = add (bignum_tmp4, bignum_tmp2);
   }
 
   obj tmp1 = bignum_tmp3;
