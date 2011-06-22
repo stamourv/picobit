@@ -553,21 +553,15 @@ obj arg3;
 obj arg4;
 obj cont;
 obj env;
-// temps in bignum algorithms must be registered as roots too, since
-// GC can occur during bignum operations (they allocate)
+
 #ifdef INFINITE_PRECISION_BIGNUMS
-obj bignum_shr_result;
-obj bignum_shl_result;
-obj bignum_shift_left_result;
-obj bignum_add_result;
-obj bignum_sub_result;
-obj bignum_scale_result;
-obj bignum_mul_result;
-obj bignum_mul_s;
-obj bignum_div_result;
-obj bignum_div_x;
-obj bignum_ior_result;
-obj bignum_xor_result;
+// Temps in bignum algorithms must be registered as roots too, since
+// GC can occur during bignum operations (they allocate).
+// Bignum ops can share variables as long as they don't interfere.
+obj bignum_tmp1; // ior xor add sub scale shr shl
+obj bignum_tmp2; // shift_left
+obj bignum_tmp3; // div mul
+obj bignum_tmp4; // div mul
 #endif
 
 
