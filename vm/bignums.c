@@ -387,6 +387,7 @@ integer mulnonneg (integer x, integer y) {
 
   obj tmp1 = bignum_tmp3;
   obj tmp2 = bignum_tmp4;
+  bignum_tmp2 = OBJ_FALSE;
   bignum_tmp3 = OBJ_FALSE;
   bignum_tmp4 = OBJ_FALSE;
   return norm (tmp1, tmp2);
