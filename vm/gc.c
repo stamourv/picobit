@@ -38,6 +38,21 @@ void init_ram_heap () {
   arg4 = OBJ_FALSE;
   cont = OBJ_FALSE;
   env  = OBJ_NULL;
+
+#ifdef INFINITE_PRECISION_BIGNUMS
+  bignum_shr_result = OBJ_FALSE;
+  bignum_shl_result = OBJ_FALSE;
+  bignum_shift_left_result = OBJ_FALSE;
+  bignum_add_result = OBJ_FALSE;
+  bignum_sub_result = OBJ_FALSE;
+  bignum_scale_result = OBJ_FALSE;
+  bignum_mul_result = OBJ_FALSE;
+  bignum_mul_s = OBJ_FALSE;
+  bignum_div_result = OBJ_FALSE;
+  bignum_div_x = OBJ_FALSE;
+  bignum_ior_result = OBJ_FALSE;
+  bignum_xor_result = OBJ_FALSE;
+#endif
 }
 
 
@@ -206,6 +221,33 @@ void gc () {
   mark (cont);
   IF_GC_TRACE(printf("env\n"));
   mark (env);
+
+#ifdef INFINITE_PRECISION_BIGNUMS
+  IF_GC_TRACE(printf("bignum_shr_result\n"));
+  mark (bignum_shr_result);
+  IF_GC_TRACE(printf("bignum_shl_result\n"));
+  mark (bignum_shl_result);
+  IF_GC_TRACE(printf("bignum_shift_left_result\n"));
+  mark (bignum_shift_left_result);
+  IF_GC_TRACE(printf("bignum_add_result\n"));
+  mark (bignum_add_result);
+  IF_GC_TRACE(printf("bignum_sub_result\n"));
+  mark (bignum_sub_result);
+  IF_GC_TRACE(printf("bignum_scale_result\n"));
+  mark (bignum_scale_result);
+  IF_GC_TRACE(printf("bignum_mul_result\n"));
+  mark (bignum_mul_result);
+  IF_GC_TRACE(printf("bignum_mul_s\n"));
+  mark (bignum_mul_s);
+  IF_GC_TRACE(printf("bignum_div_result\n"));
+  mark (bignum_div_result);
+  IF_GC_TRACE(printf("bignum_div_x\n"));
+  mark (bignum_div_x);
+  IF_GC_TRACE(printf("bignum_ior_result\n"));
+  mark (bignum_ior_result);
+  IF_GC_TRACE(printf("bignum_xor_result\n"));
+  mark (bignum_xor_result);
+#endif
 
   IF_GC_TRACE(printf("globals\n"));
   for (i=0; i<glovars; i++)

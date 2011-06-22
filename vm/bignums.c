@@ -134,23 +134,33 @@ uint16 integer_length (integer x) {
 integer shr (integer x) { // TODO have shift_right
   /* shr(x) returns the integer x shifted one bit to the right */
 
-  obj result = NIL;
+  // Note: we don't need to register x with the GC, even though we
+  //  assign it. Our caller registered the original value of x, and
+  //  we only cdr it down. Thus, any local value of x is pointed to
+  //  by the original x, so we're good. Same situation in most other
+  //  bignum operations.
+
+  bignum_shr_result = NIL;
   digit d;
 
   for (;;) {
     if (obj_eq (x, ZERO) || obj_eq (x, NEG1)) {
-      result = norm (result, x);
+      bignum_shr_result = norm (bignum_shr_result, x);
       break;
     }
 
     d = integer_lo (x);
     x = integer_hi (x);
-    result = make_integer ((d >> 1) |
-			   ((integer_lo (x) & 1) ? (1 << (digit_width-1)) : 0),
-			   result);
+    bignum_shr_result =
+      make_integer ((d >> 1) |
+		    ((integer_lo (x) & 1) ? (1 << (digit_width-1)) : 0),
+		    bignum_shr_result);
   }
-  
-  return result;
+
+  // clear the root then return
+  obj tmp = bignum_shr_result;
+  bignum_shr_result = OBJ_FALSE;
+  return tmp;
 }
 
 integer negative_carry (integer carry) {
@@ -163,14 +173,18 @@ integer negative_carry (integer carry) {
 integer shl (integer x) {
   /* shl(x) returns the integer x shifted one bit to the left */
 
+  // These two are always 0 or -1, never allocated values.
+  // No need to register them as GC roots.
+  // Same for other negc variables in other operations.
   integer negc = ZERO; /* negative carry */
   integer temp;
-  obj result = NIL;
+
+  bignum_shl_result = NIL;
   digit d;
 
   for (;;) {
     if (obj_eq (x, negc)) {
-      result = norm (result, x);
+      bignum_shl_result = norm (bignum_shl_result, x);
       break;
     }
 
@@ -178,10 +192,14 @@ integer shl (integer x) {
     x = integer_hi (x);
     temp = negc;
     negc = negative_carry (d & (1 << (digit_width-1)));
-    result = make_integer ((d << 1) | obj_eq (temp, NEG1), result);
+    bignum_shl_result =
+      make_integer ((d << 1) | obj_eq (temp, NEG1), bignum_shl_result);
   }
 
-  return result;
+  // clear the root then return
+  obj tmp = bignum_shl_result;
+  bignum_shl_result = OBJ_FALSE;
+  return tmp;
 }
 
 integer shift_left (integer x, uint16 n) {
@@ -190,35 +208,40 @@ integer shift_left (integer x, uint16 n) {
   if (obj_eq (x, ZERO))
     return x;
 
+  bignum_shift_left_result = x;
+
   while (n & (digit_width-1)) {
-    x = shl (x);
+    bignum_shift_left_result = shl (bignum_shift_left_result);
     n--;
   }
   
   while (n > 0) {
-    x = make_integer (0, x);
+    bignum_shift_left_result = make_integer (0, bignum_shift_left_result);
     n -= digit_width;
   }
 
-  return x;
+  // clear the root then return
+  obj tmp = bignum_shift_left_result;
+  bignum_shift_left_result = OBJ_FALSE;
+  return tmp;
 }
 
 integer add (integer x, integer y) {
   /* add(x,y) returns the sum of the integers x and y */
   
   integer negc = ZERO; /* negative carry */
-  obj result = NIL; /* nil terminated for the norm function */
+  bignum_add_result = NIL; /* nil terminated for the norm function */
   digit dx;
   digit dy;
 
   for (;;) {
     if (obj_eq (x, negc)) {
-      result = norm (result, y);
+      bignum_add_result = norm (bignum_add_result, y);
       break;
     }
 
     if (obj_eq (y, negc)) {
-      result = norm (result, x);
+      bignum_add_result = norm (bignum_add_result, x);
       break;
     }
 
@@ -235,11 +258,14 @@ integer add (integer x, integer y) {
 
     x = integer_hi (x);
     y = integer_hi (y);
-    
-    result = make_integer (dx, result);
+
+    bignum_add_result = make_integer (dx, bignum_add_result);
   }
-  
-  return result;
+
+  // clear the root then return
+  obj tmp = bignum_add_result;
+  bignum_add_result = OBJ_FALSE;
+  return tmp;
 }
 
 integer invert (integer x) {
@@ -250,20 +276,21 @@ integer invert (integer x) {
 }
 
 integer sub (integer x, integer y) {
+
   /* sub(x,y) returns the difference of the integers x and y */
   integer negc = NEG1; /* negative carry */
-  obj result = NIL;
+  bignum_sub_result = NIL;
   digit dx;
   digit dy;
 
   for (;;) {
     if (obj_eq (x, negc) && (obj_eq (y, ZERO) || obj_eq (y, NEG1))) {
-      result = norm (result, invert (y));
+      bignum_sub_result = norm (bignum_sub_result, invert (y));
       break;
     }
 
     if (obj_eq (y, invert (negc))) {
-      result = norm (result, x);
+      bignum_sub_result = norm (bignum_sub_result, x);
       break;
     }
 
@@ -281,16 +308,18 @@ integer sub (integer x, integer y) {
     x = integer_hi (x);
     y = integer_hi (y);
 
-    result = make_integer (dx, result);
+    bignum_sub_result = make_integer (dx, bignum_sub_result);
   }
 
-  return result;
+  // clear the root then return
+  obj tmp = bignum_sub_result;
+  bignum_sub_result = OBJ_FALSE;
+  return tmp; // TODO have macro for that.
 }
 
 integer scale (digit n, integer x) {
   /* scale(n,x) returns the integer n*x */
 
-  obj result;
   digit carry;
   two_digit m;
   
@@ -299,16 +328,18 @@ integer scale (digit n, integer x) {
   
   if (n == 1)
     return x;
-  
-  result = NIL;
+
+  bignum_scale_result = NIL;
   carry = 0;
   
   for (;;) {
     if (obj_eq (x, ZERO)){
       if (carry <= MAX_FIXNUM)
-	result = norm (result, ENCODE_FIXNUM (carry & 0xff));
+	bignum_scale_result =
+	  norm (bignum_scale_result, ENCODE_FIXNUM (carry & 0xff));
       else
-	result = norm (result, make_integer (carry, ZERO));
+	bignum_scale_result =
+	  norm (bignum_scale_result, make_integer (carry, ZERO));
       break;
     }
     
@@ -316,9 +347,11 @@ integer scale (digit n, integer x) {
       carry = carry - n;
       // -1 as a literal is wrong with SIXPIC, thus the double negative
       if (carry >= ((1<<digit_width) - (- MIN_FIXNUM)))
-	result = norm (result, ENCODE_FIXNUM (carry & 0xff));
+	bignum_scale_result =
+	  norm (bignum_scale_result, ENCODE_FIXNUM (carry & 0xff));
       else
-	result = norm (result, make_integer (carry, NEG1));
+	bignum_scale_result =
+	  norm (bignum_scale_result, make_integer (carry, NEG1));
       break;
     }
 
@@ -327,40 +360,51 @@ integer scale (digit n, integer x) {
     
     x = integer_hi (x);
     carry = m >> digit_width;
-    result = make_integer (m, result);
+    bignum_scale_result = make_integer (m, bignum_scale_result);
   }
 
-  return result;
+  // clear the root then return
+  obj tmp = bignum_scale_result;
+  bignum_scale_result = OBJ_FALSE;
+  return tmp;
 }
 
 integer mulnonneg (integer x, integer y) {
   /* mulnonneg(x,y) returns the product of the integers x and y
      where x is nonnegative */
 
-  obj result = NIL;
-  integer s = scale (integer_lo (x), y);
-  
+  bignum_mul_result = NIL;
+  bignum_mul_s = scale (integer_lo (x), y);
+
   for (;;) {
-    result = make_integer (integer_lo (s), result);
-    s = integer_hi (s);
+    bignum_mul_result =
+      make_integer (integer_lo (bignum_mul_s), bignum_mul_result);
+    bignum_mul_s = integer_hi (bignum_mul_s);
     x = integer_hi (x);
     
     if (obj_eq (x, ZERO))
       break;
-    
-    s = add (s, scale (integer_lo (x), y));
+
+    bignum_mul_s = add (bignum_mul_s, scale (integer_lo (x), y));
   }
-  
-  return norm (result, s);
+
+  obj tmp1 = bignum_mul_result;
+  obj tmp2 = bignum_mul_s;
+  bignum_mul_result = OBJ_FALSE;
+  bignum_mul_s = OBJ_FALSE;
+  return norm (tmp1, tmp2);
 }
 
-// TODO have functions mul and div that handle negative arguments ? currently, the logic is in prim_mul and prim_div
 integer divnonneg (integer x, integer y) {
   /* divnonneg(x,y) returns the quotient and remainder of
      the integers x and y where x and y are nonnegative */
 
-  integer result = ZERO;
-  uint16 lx = integer_length (x);
+  // x ends up pointing to newly allocated bignums, so we need to
+  // register it with the GC.
+  bignum_div_x = x;
+
+  bignum_div_result = ZERO;
+  uint16 lx = integer_length (bignum_div_x);
   uint16 ly = integer_length (y);
 
   if (lx >= ly) {
@@ -369,30 +413,39 @@ integer divnonneg (integer x, integer y) {
     y = shift_left (y, lx);
     
     do {
-      result = shl (result);
-      if (cmp (x, y) >= 1) {
-	x = sub (x, y);
-	result = add (POS1, result);
+      bignum_div_result = shl (bignum_div_result);
+      if (cmp (bignum_div_x, y) >= 1) {
+	bignum_div_x = sub (bignum_div_x, y);
+	bignum_div_result = add (POS1, bignum_div_result);
       }
       y = shr (y);
     } while (lx-- != 0);
   }
 
-  return result;
+  obj tmp = bignum_div_result;
+  bignum_div_result = OBJ_FALSE;
+  bignum_div_x = OBJ_FALSE;
+  return tmp;
 }
 
 integer bitwise_ior (integer x, integer y) {
   /* returns the bitwise inclusive or of x and y */
 
-  obj result = NIL;
-  
+  bignum_ior_result = NIL;
+
   for (;;){
-    if (obj_eq(x, ZERO))
-      return norm(result, y);
-    if (obj_eq(x, NEG1))
-      return norm(result, x);
-    result = make_integer(integer_lo(x) | integer_lo(y),
-			  result);
+    if (obj_eq(x, ZERO)) {
+      obj tmp = bignum_ior_result;
+      bignum_ior_result = OBJ_FALSE;
+      return norm(tmp, y);
+    }
+    if (obj_eq(x, NEG1)) {
+      obj tmp = bignum_ior_result;
+      bignum_ior_result = OBJ_FALSE;
+      return norm(tmp, x);
+    }
+    bignum_ior_result = make_integer(integer_lo(x) | integer_lo(y),
+				     bignum_ior_result);
     x = integer_hi(x);
     y = integer_hi(y);
   }
@@ -400,16 +453,22 @@ integer bitwise_ior (integer x, integer y) {
 
 integer bitwise_xor (integer x, integer y) { // TODO similar to ior (only diff is the test), abstract ?
   /* returns the bitwise inclusive or of x and y */
-  
-  obj result = NIL;
-  
+
+  bignum_xor_result = NIL;
+
   for (;;){
-    if (obj_eq(x, ZERO))
-      return norm(result, y);
-    if (obj_eq(x, NEG1))
-      return norm(result, x);
-    result = make_integer(integer_lo(x) ^ integer_lo(y),
-			  result);
+    if (obj_eq(x, ZERO)) {
+      obj tmp = bignum_xor_result;
+      bignum_xor_result = OBJ_FALSE;
+      return norm(tmp, y);
+    }
+    if (obj_eq(x, NEG1)) {
+      obj tmp = bignum_xor_result;
+      bignum_xor_result = OBJ_FALSE;
+      return norm(tmp, x);
+    }
+    bignum_xor_result = make_integer(integer_lo(x) ^ integer_lo(y),
+				     bignum_xor_result);
     x = integer_hi(x);
     y = integer_hi(y);
   }

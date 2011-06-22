@@ -553,6 +553,23 @@ obj arg3;
 obj arg4;
 obj cont;
 obj env;
+// temps in bignum algorithms must be registered as roots too, since
+// GC can occur during bignum operations (they allocate)
+#ifdef INFINITE_PRECISION_BIGNUMS
+obj bignum_shr_result;
+obj bignum_shl_result;
+obj bignum_shift_left_result;
+obj bignum_add_result;
+obj bignum_sub_result;
+obj bignum_scale_result;
+obj bignum_mul_result;
+obj bignum_mul_s;
+obj bignum_div_result;
+obj bignum_div_x;
+obj bignum_ior_result;
+obj bignum_xor_result;
+#endif
+
 
 rom_addr pc; /* interpreter variables */
 uint8 glovars;
