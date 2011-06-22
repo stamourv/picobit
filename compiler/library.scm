@@ -58,8 +58,6 @@
               (else
                prod))))))
 
-(define / quotient)
-
 (define quotient ;; TODO similar to #%mul, abstract ?
   (lambda (x y)
     (let* ((x-neg? (< x 0))
@@ -73,6 +71,9 @@
                (neg quot))
               (else
                quot))))))
+
+(define / quotient)
+
 
 (define remainder
   (lambda (x y)
