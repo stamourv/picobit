@@ -162,12 +162,8 @@ void test () {
   p (sub (enc (32768), enc (132768))); printf("\n"); // -100000
   p (add(sub (enc (32768), enc (32769)), enc(1000))); printf("\n"); // 999
 
-  // TODO mul was scrapped, logic is now in prim_mul
-/*   p (mul (enc (123456789), enc (1000000000))); printf("\n"); // 123456789000000000 */
-/*   p (mul (enc (123456789), enc (-1000000000))); printf("\n"); // -123456789000000000 */
-/*   p (mul (enc (-123456789), enc (1000000000))); printf("\n"); // -123456789000000000 */
-/*   p (mul (enc (-123456789), enc (-1000000000))); printf("\n"); // 123456789000000000 */
-/*   p (mul (enc (-123456789), neg (enc (1000000000)))); printf("\n"); // 123456789000000000 */
+  // Handling of sign is done at the Scheme level.
+  p (mulnonneg (enc (123456789), enc (1000000000))); printf("\n"); // 123456789000000000
 
   p (divnonneg (enc (10000000-1), enc (500000))); printf("\n"); // 19
 
