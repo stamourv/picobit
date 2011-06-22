@@ -129,6 +129,10 @@ char buf [MAX_PACKET_SIZE]; // buffer for writing
 #define IF_GC_TRACE(x)
 #endif
 
+#ifdef DEBUG_GC
+int max_live;
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 // error handling
