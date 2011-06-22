@@ -1,10 +1,10 @@
 all: picobit-vm
 
 picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
-	cc -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
+	cc $(CFLAGS) -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
 
 .c.o:
-	$(CC) -O -c $*.c
+	$(CC) $(CFLAGS) -O -c $*.c
 
 mcc18: picoboard2.c picobit-vm.c gc.c bignums.c debug.c primitives.c dispatch.c picobit-vm.h
 	wine ~/.wine/drive_c/MCC18/bin/mcc18.exe -DMCC18 -DLESS_MACROS -I=C:/MCC18/h -p=18f4550 picoboard2.c
