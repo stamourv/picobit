@@ -17,33 +17,39 @@
   (when (test-file? file)
     (let* ([file-str (path->string file)]
            [hex (path-replace-suffix file ".hex")]
-           [expected (path-replace-suffix file ".expected")])
+           [expected (path-replace-suffix file ".expected")]
+           [input    (path-replace-suffix file ".input")])
       (test-suite
        file-str
        (begin (test-case "no expected file"
                          (check-true (file-exists? expected)))
               (when (file-exists? expected)
-                (f file-str hex expected))
+                (f file-str hex expected input))
               (when (file-exists? hex)
                 (delete-file hex)))))))
 
 (define (run-succeed file)
   (run-one
    file
-   (lambda (file-str hex expected)
+   (lambda (file-str hex expected input)
      (system* "./picobit" file-str)
      (test-case "compilation" (check-true (file-exists? hex)))
      (when (file-exists? hex)
        (let ([out (with-output-to-string
                     (lambda ()
-                      (system* "./picobit-vm" hex)))])
+                      (parameterize
+                          ([current-input-port
+                            (if (file-exists? input)
+                                (open-input-file input)
+                                (open-input-string ""))])
+                        (system* "./picobit-vm" hex))))])
          (test-case "execution"
                     (check-equal? out (file->string expected))))))))
 
 (define (run-fail-compile file)
   (run-one
    file
-   (lambda (file-str hex expected)
+   (lambda (file-str hex expected input)
      (let ([out (with-output-to-string
                   (lambda ()
                     (system* "./picobit" file-str)))])
