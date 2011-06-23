@@ -829,7 +829,7 @@ void prim_receive_packet_to_u8vector () {
     ERROR("receive-packet-to-u8vector", "packet longer than vector");
     
   if (header.len > 0) { // we have received a packet, write it in the vector
-    arg2 = rom_get_cdr (arg1);
+    arg2 = ram_get_cdr (arg1);
     arg1 = header.len; // we return the length of the received packet
     a1 = 0;
     
@@ -855,17 +855,20 @@ void prim_send_packet_from_u8vector () {
 
   a2 = decode_int (arg2); // TODO fix for bignums
   a1 = 0; 
-  
+
+#ifdef NETWORKING
   // TODO test if the length of the packet is longer than the length of the vector
   if (ram_get_car (arg1) < a2)
     ERROR("send-packet-from-u8vector", "packet cannot be longer than vector");
 
   arg1 = ram_get_cdr (arg1);
 
-#ifdef NETWORKING
   // copy the packet to the output buffer
-  while (a1 < a2)
+  while (a1 < a2) {
     buf[a1] = ram_get_fieldn (arg1, a1 % 4);
+    a1++;
+    arg1 += (a1 % 4) ? 0 : 1;
+  }
   // TODO maybe I could just give pcap the pointer to the memory
 
   if (pcap_sendpacket(handle, buf, a2) < 0) // TODO an error has occurred, can we reuse the interface ?
