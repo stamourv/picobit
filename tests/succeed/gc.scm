@@ -1,0 +1,5 @@
+(let loop ((i 0))
+  (if (< i 20)
+      (begin (display i)
+             (displayln (= (* 21435 2141241) 45897500835))
+             (loop (+ i 1)))))
