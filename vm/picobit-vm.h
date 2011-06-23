@@ -162,6 +162,19 @@ void type_error (char *prim, char *type);
 // regular heap.
 // On the target device, vector space should be right after the
 // regular heap.
+
+// Boundaries between zones can be changed to better fit a target
+// sytems's or an application's needs.
+// Some invariants must be respected:
+//  - the order of the zones must not change
+//  - these constants must be kept in sync with the compiler's
+//    (in encoding.rkt)
+//  - -1 and 0 must be fixnums, otherwise bignums won't work
+//  - vector space can overlap with ram, rom, and constant encodings
+//    but all other zones must be distinct
+//  - the largest encoding is bounded by the pointer size in the
+//    object layout
+
 #define MAX_VEC_ENCODING 8191
 #define MIN_VEC_ENCODING 1
 // we need to start at 1 so that 0 can be the free-list terminator
