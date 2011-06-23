@@ -159,13 +159,13 @@ void type_error (char *prim, char *type);
 // Vector space is in RAM too, but separate from the regular heap.
 // It can reuse helper functions (ram_get_car, etc.) defined for the
 // regular heap.
-#define MAX_VEC_ENCODING 2047
-#define MIN_VEC_ENCODING 1280
+#define MAX_VEC_ENCODING 8191
+#define MIN_VEC_ENCODING 4096
 #define VEC_BYTES ((MAX_VEC_ENCODING - MIN_VEC_ENCODING + 1)*4)
 // if the pic has less than 8k of memory, start vector space lower
 
-#define MAX_RAM_ENCODING 1279
-#define MIN_RAM_ENCODING 512
+#define MAX_RAM_ENCODING 4095
+#define MIN_RAM_ENCODING 1280
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
 
 #define MIN_FIXNUM_ENCODING 3
@@ -181,6 +181,8 @@ uint16 OBJ_TO_ROM_ADDR(uint16 o, uint8 f) {return ((((o) - MIN_ROM_ENCODING) << 
 #define OBJ_TO_ROM_ADDR(o,f) ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
 #endif
 
+// SIXPIC cannot deal with amounts of RAM as big as the PICOBIT defaults.
+// Limits above should be modified according to application needs.
 #ifdef SIXPIC
 #ifdef LESS_MACROS
 uint8 ram_get(uint16 a) { return *(a+0x200); }
