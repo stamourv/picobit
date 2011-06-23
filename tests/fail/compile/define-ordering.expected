@@ -1,1 +1,1 @@
-*** PICOBIT ERROR -- undefined variable: bar
+*** PICOBIT ERROR -- variable referenced before its definition: bar

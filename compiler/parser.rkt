@@ -14,16 +14,24 @@
     [(cons 'begin body)
      (parse-top-list body env)]
     [(list-rest 'define (list-rest var params) body)
-     (parse-top (list 'define var `(lambda ,params ,@body)) env)]
+     (parse-define var `(lambda ,params ,@body) env)]
     [(list 'define (? symbol? var) val)
-     (let* ([var2 (env-lookup env var)]
-            [val2 (parse 'value val env)]
-            [r    (make-def #f (list val2) var2)])
-       (set-node-parent! val2 r)
-       (set-var-defs! var2 (cons r (var-defs var2)))
-       (list r))]
+     (parse-define
+      var val env
+      ;; If we're not defining a function, forward references are
+      ;; invalid.
+      (match val [`(lambda . ,rest) #t] [_ #f]))]
     [_
      (list (parse 'value expr env))]))
+
+(define (parse-define var val env [forward-references? #t])
+  (let ([var2 (env-lookup env var)])
+    (parameterize ([allow-forward-references? forward-references?])
+      (let* ([val2 (parse 'value val env)]
+             [r    (make-def #f (list val2) var2)])
+        (set-node-parent! val2 r)
+        (set-var-defs! var2 (cons r (var-defs var2)))
+        (list r)))))
 
 (define (parse use expr env)
   (match expr

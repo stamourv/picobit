@@ -2,6 +2,7 @@
 
 (provide (all-defined-out))
 (require racket/mpair)
+(require "utilities.rkt")
 
 ;; Environment representation.
 
@@ -120,6 +121,8 @@
     (send-packet-from-u8vector . #%send-packet-from-u8vector)
     ))
 
+(define allow-forward-references? (make-parameter #t))
+
 (define/contract (env-lookup env id) (mlist? symbol? . -> . var?)
   (let loop ((lst env) (id id))
     (let ((b (mcar lst)))
@@ -131,7 +134,12 @@
             ((and (var? b)
                   (eq? (var-id b) id))
              b)
+            ;; We didn't find it. If reasonable to do so, add it to the
+            ;; env. This makes it possible to have forward references
+            ;; at the top level.
             ((null? (mcdr lst))
+             (unless (allow-forward-references?)
+               (compiler-error "variable referenced before its definition:" id))
              (let ((x (make-var id #t '() '() '() #f #f)))
                (set-mcdr! lst (mlist x))
                x))
