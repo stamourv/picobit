@@ -156,15 +156,18 @@ void type_error (char *prim, char *type);
 // Address space layout.
 // For details, see IFL paper. Pointer in README.
 
-// Vector space is in RAM too, but separate from the regular heap.
+// Vector space is in RAM too, but separate from the regular heap
+// (address spaces are disjoint).
 // It can reuse helper functions (ram_get_car, etc.) defined for the
 // regular heap.
+// On the target device, vector space should be right after the
+// regular heap.
 #define MAX_VEC_ENCODING 8191
-#define MIN_VEC_ENCODING 4096
+#define MIN_VEC_ENCODING 1
+// we need to start at 1 so that 0 can be the free-list terminator
 #define VEC_BYTES ((MAX_VEC_ENCODING - MIN_VEC_ENCODING + 1)*4)
-// if the pic has less than 8k of memory, start vector space lower
 
-#define MAX_RAM_ENCODING 4095
+#define MAX_RAM_ENCODING 8191
 #define MIN_RAM_ENCODING 1280
 #define RAM_BYTES ((MAX_RAM_ENCODING - MIN_RAM_ENCODING + 1)*4)
 
@@ -176,9 +179,13 @@ void type_error (char *prim, char *type);
 #ifdef LESS_MACROS
 uint16 OBJ_TO_RAM_ADDR(uint16 o, uint8 f) {return ((((o) - MIN_RAM_ENCODING) << 2) + (f));}
 uint16 OBJ_TO_ROM_ADDR(uint16 o, uint8 f) {return ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)));}
+uint16 VEC_TO_RAM_OBJ(uint16 o) {return o + MAX_RAM_ENCODING;}
+uint16 RAM_TO_VEC_OBJ(uint16 o) {return o - MAX_RAM_ENCODING;}
 #else
 #define OBJ_TO_RAM_ADDR(o,f) ((((o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_ROM_ADDR(o,f) ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
+#define VEC_TO_RAM_OBJ(o) ((o) + MAX_RAM_ENCODING + 1)
+#define RAM_TO_VEC_OBJ(o) ((o) - MAX_RAM_ENCODING - 1)
 #endif
 
 // SIXPIC cannot deal with amounts of RAM as big as the PICOBIT defaults.
@@ -386,13 +393,11 @@ uint8  DECODE_FIXNUM(uint16 o) {return ((o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM)
 #endif
 
 #ifdef LESS_MACROS
-uint8 IN_VEC(uint16 o) {return ((o) >= MIN_VEC_ENCODING);}
-uint8 IN_RAM(uint16 o) {return (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING));}
-uint8 IN_ROM(uint16 o) {return (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING));}
+uint8 IN_RAM(uint16 o) {return ((o) >= MIN_RAM_ENCODING);}
+uint8 IN_ROM(uint16 o) {return (!IN_RAM(o) && ((o) >= MIN_ROM_ENCODING));}
 #else
-#define IN_VEC(o) ((o) >= MIN_VEC_ENCODING)
-#define IN_RAM(o) (!IN_VEC(o) && ((o) >= MIN_RAM_ENCODING))
-#define IN_ROM(o) (!IN_VEC(o) && !IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
+#define IN_RAM(o) ((o) >= MIN_RAM_ENCODING)
+#define IN_ROM(o) (!IN_RAM(o) && ((o) >= MIN_ROM_ENCODING))
 #endif
 
 // bignum first byte : 00Gxxxxx
@@ -445,7 +450,7 @@ uint8 ROM_STRING(uint16 o) {return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 
 #define ROM_STRING(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2))
 #endif
 
-// vector third byte : 011xxxxx
+// u8vector third byte : 011xxxxx
 #define VECTOR_FIELD2 0x60
 #ifdef LESS_MACROS
 uint8 RAM_VECTOR(uint16 o) {return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2));}
@@ -550,7 +555,10 @@ uint8 HAS_1_OBJECT_FIELD(uint16 visit)  {return (RAM_COMPOSITE(visit) || RAM_CLO
 #define NIL OBJ_FALSE
 
 obj free_list; /* list of unused cells */
-obj free_list_vec; /* list of unused cells in vector space */
+/* list of unused cells in vector space. */
+/* points into vector space using whole-RAM addressing  */
+/* its value should be over MAX_RAM_ENCODING */
+obj free_list_vec;
 
 obj arg1; /* root set */
 obj arg2;

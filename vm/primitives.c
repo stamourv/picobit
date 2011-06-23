@@ -332,7 +332,7 @@ void prim_u8vector_ref () {
       TYPE_ERROR("u8vector-ref.0", "vector");
     if (ram_get_car (arg1) <= a2)
       ERROR("u8vector-ref.0", "vector index invalid");
-    arg1 = ram_get_cdr (arg1);
+    arg1 = VEC_TO_RAM_OBJ(ram_get_cdr (arg1));
   }
   else if (IN_ROM(arg1)) {
     if (!ROM_VECTOR(arg1))
@@ -340,23 +340,23 @@ void prim_u8vector_ref () {
     if (rom_get_car (arg1) <= a2)
       ERROR("u8vector-ref.1", "vector index invalid");
     arg1 = rom_get_cdr (arg1);
-  }
-  else
-    TYPE_ERROR("u8vector-ref.2", "vector");
-
-  if (IN_VEC(arg1)) {
-    arg1 += (a2 >> 2);
-    a2 %= 4;
-    
-    arg1 = encode_int (ram_get_fieldn (arg1, a2));
-  }
-  else { // rom vector, stored as a list
     while (a2--)
       arg1 = rom_get_cdr (arg1);
     
     // the contents are already encoded as fixnums
     arg1 = rom_get_car (arg1);
+    arg2 = OBJ_FALSE;
+    arg3 = OBJ_FALSE;
+    arg4 = OBJ_FALSE;
+    return;
   }
+  else
+    TYPE_ERROR("u8vector-ref.2", "vector");
+
+  arg1 += (a2 >> 2);
+  a2 %= 4;
+
+  arg1 = encode_int (ram_get_fieldn (arg1, a2));
 
   arg2 = OBJ_FALSE;
   arg3 = OBJ_FALSE;
@@ -375,7 +375,7 @@ void prim_u8vector_set () { // TODO a lot in common with ref, abstract that
       TYPE_ERROR("u8vector-set!.0", "vector");
     if (ram_get_car (arg1) <= a2)
       ERROR("u8vector-set!", "vector index invalid");
-    arg1 = ram_get_cdr (arg1);
+    arg1 = VEC_TO_RAM_OBJ(ram_get_cdr (arg1));
   }
   else
     TYPE_ERROR("u8vector-set!.1", "vector");
@@ -829,7 +829,7 @@ void prim_receive_packet_to_u8vector () {
     ERROR("receive-packet-to-u8vector", "packet longer than vector");
     
   if (header.len > 0) { // we have received a packet, write it in the vector
-    arg2 = ram_get_cdr (arg1);
+    arg2 = VEC_TO_RAM_OBJ(ram_get_cdr (arg1));
     arg1 = header.len; // we return the length of the received packet
     a1 = 0;
     
@@ -861,7 +861,7 @@ void prim_send_packet_from_u8vector () {
   if (ram_get_car (arg1) < a2)
     ERROR("send-packet-from-u8vector", "packet cannot be longer than vector");
 
-  arg1 = ram_get_cdr (arg1);
+  arg1 = VEC_TO_RAM_OBJ(ram_get_cdr (arg1));
 
   // copy the packet to the output buffer
   while (a1 < a2) {

@@ -22,7 +22,7 @@ void init_ram_heap () {
     o--;
   }
 
-  free_list_vec = MIN_VEC_ENCODING;
+  free_list_vec = VEC_TO_RAM_OBJ(MIN_VEC_ENCODING);
   ram_set_car (free_list_vec, 0);
   // each node of the free list must know the free length that follows it
   // this free length is stored in words, not in bytes
@@ -165,9 +165,9 @@ void sweep () {
       /* unmarked? */
       if (RAM_VECTOR(visit)) {
 	// when we sweep a vector, we also have to sweep its contents
-	obj o = ram_get_cdr (visit);
+	obj o = VEC_TO_RAM_OBJ(ram_get_cdr (visit));
 	uint16 i = ram_get_car (visit); // number of elements
-	ram_set_car (o, free_list_vec);
+	ram_set_car (o, RAM_TO_VEC_OBJ(free_list_vec));
 	ram_set_cdr (o, ((i + 3) >> 2)); // free length, in words
 	free_list_vec = o;
 	// TODO merge free spaces
@@ -288,7 +288,7 @@ obj alloc_vec_cell (uint16 n) {
       continue;
     } // TODO merge adjacent free spaces, maybe compact ?
     prec = o;
-    o = ram_get_car (o);
+    o = VEC_TO_RAM_OBJ(ram_get_car (o));
   }
 
   // case 1 : the new vector fills every free word advertized, we remove the
@@ -304,7 +304,7 @@ obj alloc_vec_cell (uint16 n) {
   else {
     obj new_free = o + ((n + 3) >> 2);
     if (prec)
-      ram_set_car (prec, new_free);
+      ram_set_car (prec, RAM_TO_VEC_OBJ(new_free));
     else
       free_list_vec = new_free;
     ram_set_car (new_free, ram_get_car (o));
