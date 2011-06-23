@@ -9,9 +9,6 @@
 (define max-fixnum 255)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
 (define min-ram-encoding 512)
-(define max-ram-encoding 1279)
-(define min-vec-encoding 1280)
-(define max-vec-encoding 2047)
 
 (define code-start #x8000)
 
