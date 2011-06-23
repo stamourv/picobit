@@ -153,9 +153,12 @@ void type_error (char *prim, char *type);
 
 /*---------------------------------------------------------------------------*/
 
-// address space layout
-// TODO document each zone, also explain that since vector space is in ram, it uses the ram primitives
+// Address space layout.
+// For details, see IFL paper. Pointer in README.
 
+// Vector space is in RAM too, but separate from the regular heap.
+// It can reuse helper functions (ram_get_car, etc.) defined for the
+// regular heap.
 #define MAX_VEC_ENCODING 2047
 #define MIN_VEC_ENCODING 1280
 #define VEC_BYTES ((MAX_VEC_ENCODING - MIN_VEC_ENCODING + 1)*4)
