@@ -165,10 +165,11 @@ void sweep () {
       /* unmarked? */
       if (RAM_VECTOR(visit)) {
 	// when we sweep a vector, we also have to sweep its contents
-	obj o = VEC_TO_RAM_OBJ(ram_get_cdr (visit));
+	// we subtract 1 to get to the header of the block, before the data
+	obj o = VEC_TO_RAM_OBJ(ram_get_cdr (visit) - 1);
 	uint16 i = ram_get_car (visit); // number of elements
 	ram_set_car (o, RAM_TO_VEC_OBJ(free_list_vec));
-	ram_set_cdr (o, ((i + 3) >> 2)); // free length, in words
+	ram_set_cdr (o, ((i + 3) >> 2) + 1); // free length in blocks, + header
 	free_list_vec = o;
 	// TODO merge free spaces
       }
@@ -275,7 +276,9 @@ obj alloc_vec_cell (uint16 n) {
   gc_done = 1;
 #endif
 
-  n = (n+3) >> 2; // get minimum number of 4-byte blocks (round to nearest 4)
+  // get minimum number of 4-byte blocks (round to nearest 4)
+  // this includes a 4-byte vector space header
+  n = ((n+3) >> 2) + 1;
 
   while (ram_get_cdr (o) < n) { // free space too small
     if (o == 0) { // no free space, or none big enough
@@ -315,6 +318,7 @@ obj alloc_vec_cell (uint16 n) {
     ram_set_car (new_free, car_o);
     ram_set_cdr (new_free, cdr_o - n);
   }
-  
-  return o;
+
+  // return pointer to start of data, skipping the header
+  return o+1;
 }
