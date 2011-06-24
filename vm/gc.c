@@ -169,7 +169,8 @@ void sweep () {
 	obj o = VEC_TO_RAM_OBJ(ram_get_cdr (visit) - 1);
 	uint16 i = ram_get_car (visit); // number of elements
 	ram_set_car (o, RAM_TO_VEC_OBJ(free_list_vec));
-	ram_set_cdr (o, ((i + 3) >> 2) + 1); // free length in blocks, + header
+	// No need to set the block length, it's already there from when
+	// the used block was initialized.
 	free_list_vec = o;
 	// TODO merge free spaces
       }
@@ -266,7 +267,7 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3) {
   return o;
 }
 
-obj alloc_vec_cell (uint16 n) {
+obj alloc_vec_cell (uint16 n, obj from) {
   obj o = free_list_vec;
   obj prec = 0;
   uint8 gc_done = 0;
@@ -296,8 +297,8 @@ obj alloc_vec_cell (uint16 n) {
     o = VEC_TO_RAM_OBJ(ram_get_car (o));
   }
 
-  obj car_o = ram_get_cdr(o);
-  obj cdr_o = ram_get_cdr(o);
+  obj car_o = ram_get_cdr(o); // next on free list
+  obj cdr_o = ram_get_cdr(o); // block size
 
   // case 1 : the new vector fills every free word advertized, we remove the
   //  node from the free list
@@ -305,7 +306,7 @@ obj alloc_vec_cell (uint16 n) {
     if (prec)
       ram_set_car (prec, car_o);
     else
-      free_list_vec = car_o;
+      free_list_vec = VEC_TO_RAM_OBJ(car_o);
   }
   // case 2 : there is still some space left in the free section, create a new
   //  node to represent this space
@@ -319,6 +320,12 @@ obj alloc_vec_cell (uint16 n) {
     ram_set_cdr (new_free, cdr_o - n);
   }
 
+  // set up pointer back to the regular heap header
+  // stored in the car, instead of the free list pointer
+  ram_set_car (o, from);
+  // store size of the taken block. this includes header size
+  ram_set_cdr (o, n);
+
   // return pointer to start of data, skipping the header
-  return o+1;
+  return RAM_TO_VEC_OBJ(o+1);
 }

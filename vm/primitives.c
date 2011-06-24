@@ -316,11 +316,12 @@ void prim_make_u8vector () {
   a1 = decode_int (arg1); // arg1 is length
   // TODO adapt for the new bignums
   
-  arg2 = alloc_vec_cell (a1);
   arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | (a1 >> 8),
 			      a1 & 0xff,
-			      VECTOR_FIELD2 | (arg2 >> 8),
-			      arg2 & 0xff);
+			      VECTOR_FIELD2,
+			      0); // will be filled in later
+  arg2 = alloc_vec_cell (a1, arg1);
+  ram_set_cdr(arg1, arg2);
   arg2 = OBJ_FALSE;
 }
 
