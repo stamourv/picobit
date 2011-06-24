@@ -292,7 +292,7 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3) {
 
 obj alloc_vec_cell (uint16 n, obj from) {
   obj o = free_list_vec;
-  obj prec = 0;
+  obj prev = 0;
   uint8 gc_done = 0;
   
 #ifdef DEBUG_GC
@@ -313,10 +313,10 @@ obj alloc_vec_cell (uint16 n, obj from) {
       gc_done = 1;
 #endif
       o = free_list_vec;
-      prec = 0;
+      prev = 0;
       continue;
     } // TODO merge adjacent free spaces, maybe compact ?
-    prec = o;
+    prev = o;
     o = VEC_TO_RAM_OBJ(ram_get_car (o));
   }
 
@@ -326,8 +326,8 @@ obj alloc_vec_cell (uint16 n, obj from) {
   // case 1 : the new vector fills every free word advertized, we remove the
   //  node from the free list
   if (!(cdr_o - n)) {
-    if (prec)
-      ram_set_car (prec, car_o);
+    if (prev)
+      ram_set_car (prev, car_o);
     else
       free_list_vec = VEC_TO_RAM_OBJ(car_o);
   }
@@ -335,8 +335,8 @@ obj alloc_vec_cell (uint16 n, obj from) {
   //  node to represent this space
   else {
     obj new_free = o + n;
-    if (prec)
-      ram_set_car (prec, RAM_TO_VEC_OBJ(new_free));
+    if (prev)
+      ram_set_car (prev, RAM_TO_VEC_OBJ(new_free));
     else
       free_list_vec = new_free;
     ram_set_car (new_free, car_o);
