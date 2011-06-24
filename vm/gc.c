@@ -319,6 +319,9 @@ void compact () {
 	  cur += cur_size;
 	}
 	else { // prev is free, but not cur, move cur to start at prev
+	  // fix header in the object heap to point to the data's new
+	  // location
+	  ram_set_cdr(ram_get_car(cur), prev+1);
 	  while(cur_size--) { // copy cur's data, which includes header
 	    ram_set_field0(prev, ram_get_field0(cur));
 	    ram_set_field1(prev, ram_get_field1(cur));
