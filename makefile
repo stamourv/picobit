@@ -12,3 +12,7 @@ vm:
 
 clean:
 	cd vm && make clean
+
+test:
+	raco make run-tests.rkt
+	racket run-tests.rkt
