@@ -167,7 +167,6 @@ void sweep () {
 	// when we sweep a vector, we also have to sweep its contents
 	// we subtract 1 to get to the header of the block, before the data
 	obj o = VEC_TO_RAM_OBJ(ram_get_cdr (visit) - 1);
-	uint16 i = ram_get_car (visit); // number of elements
 	ram_set_car (o, RAM_TO_VEC_OBJ(free_list_vec));
 	// No need to set the block length, it's already there from when
 	// the used block was initialized.
