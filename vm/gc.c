@@ -173,7 +173,6 @@ void sweep () {
 	// the used block was initialized.
 	ram_set_gc_tag0 (o, 0); // mark the block as free
 	free_list_vec = o;
-	// TODO merge free spaces
       }
       ram_set_car (visit, free_list);
       free_list = visit;
@@ -379,7 +378,7 @@ obj alloc_vec_cell (uint16 n, obj from) {
       o = free_list_vec;
       prev = 0;
       continue;
-    } // TODO merge adjacent free spaces, maybe compact ?
+    }
     prev = o;
     o = VEC_TO_RAM_OBJ(ram_get_car (o));
   }
