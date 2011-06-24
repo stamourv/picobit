@@ -267,6 +267,27 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3) {
   return o;
 }
 
+
+/*
+  Vector space layout.
+
+  Vector space is divided into blocks of 4-byte words.
+  A block can be free, in which case it can be found by traversing the free
+  list, or taken, in which case it holds useful data.
+
+  All blocks start with a 4-byte header.
+  The car of this header is a pointer.
+  In the case of free blocks, it points to the next block on the free list.
+  (Using vector space indexing, not RAM addressing, so starting from 0.)
+  In the case of used blocks, it points to its vector header object in the
+  regular heap.
+
+  The vector space starts as a single free block of the size of the entire
+  vector space, minus one 4-byte word.
+  The word at address 0 is unused, since address 0 serves as the free list
+  terminator.
+ */
+
 obj alloc_vec_cell (uint16 n, obj from) {
   obj o = free_list_vec;
   obj prec = 0;
