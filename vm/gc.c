@@ -290,10 +290,69 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3) {
   terminator.
  */
 
+// move all used blocks to the left
+// this is done by scanning the heap, and moving any taken block to the
+// left if there's free space before it
+// at the end, a single free block will remain, at the right of the space
+void compact () {
+  obj cur = VEC_TO_RAM_OBJ(MIN_VEC_ENCODING);
+  obj prev = 0;
+
+  obj cur_free;
+  obj prev_free;
+  obj cur_size;
+  uint16 prev_size;
+
+  while (cur) {
+    cur_free = ram_get_gc_tag0 (cur);
+    prev_free = ram_get_gc_tag0 (prev);
+    cur_size  = ram_get_cdr(cur);
+      if (prev && prev_free) {
+	prev_size = ram_get_cdr(prev);
+	if (cur_free) { // merge free spaces
+	  // if prev stays free until the end of compaction, it will be
+	  // the last (only) block on the free list, terminate the list,
+	  // just in case
+	  ram_set_car(prev, 0);
+	  // new free size is the sum of the old ones
+	  ram_set_cdr(prev, prev_size + cur_size);
+	  // advance cur, but prev stays in place
+	  cur += cur_size;
+	}
+	else { // prev is free, but not cur, move cur to start at prev
+	  while(cur_size--) { // copy cur's data, which includes header
+	    ram_set_field0(prev, ram_get_field0(cur));
+	    ram_set_field1(prev, ram_get_field1(cur));
+	    ram_set_field2(prev, ram_get_field2(cur));
+	    ram_set_field3(prev, ram_get_field3(cur));
+	    cur++; prev++;
+	  }
+
+	  // set up a free block where the end of cur's data was
+	  // (prev is already there from the iteration above)
+	  ram_set_gc_tag0(prev, 0);
+	  ram_set_car(prev, 0); // could be the last free block, see above
+	  ram_set_cdr(prev, prev_size); // size of new free block
+	  // at this point, cur is after the new free space, where the
+	  // next block is
+	}
+      }
+      else {
+	// Go to the next block, which is <size> away from cur.
+	prev = cur;
+	cur += cur_size;
+      }
+  }
+
+  // free space is now all at the end
+  free_list_vec = prev;
+}
+
 obj alloc_vec_cell (uint16 n, obj from) {
   obj o = free_list_vec;
   obj prev = 0;
   uint8 gc_done = 0;
+  uint8 compact_done = 0;
   
 #ifdef DEBUG_GC
   gc ();
@@ -306,12 +365,17 @@ obj alloc_vec_cell (uint16 n, obj from) {
 
   while (ram_get_cdr (o) < n) { // free space too small
     if (o == 0) { // no free space, or none big enough
-      if (gc_done) // we gc'd, but no space is big enough for the vector
+      if (compact_done) // really no space left
 	ERROR("alloc_vec_cell", "no room for vector");
+      if (gc_done) { // we gc'd, but no space is big enough for the vector
+	compact();
+	compact_done = 1;
+      }
 #ifndef DEBUG_GC
       gc ();
       gc_done = 1;
 #endif
+      // start again, maybe we can allocate now
       o = free_list_vec;
       prev = 0;
       continue;
