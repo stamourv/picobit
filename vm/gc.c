@@ -23,7 +23,8 @@ void init_ram_heap () {
   }
 
   free_list_vec = VEC_TO_RAM_OBJ(MIN_VEC_ENCODING);
-  ram_set_car (free_list_vec, 0);
+  ram_set_gc_tag0 (free_list_vec, 0); // block is free
+  ram_set_car (free_list_vec, 0); // free list terminator
   // each node of the free list must know the free length that follows it
   // this free length is stored in words, not in bytes
   // if we did count in bytes, the number might need more than 13 bits
@@ -170,6 +171,7 @@ void sweep () {
 	ram_set_car (o, RAM_TO_VEC_OBJ(free_list_vec));
 	// No need to set the block length, it's already there from when
 	// the used block was initialized.
+	ram_set_gc_tag0 (o, 0); // mark the block as free
 	free_list_vec = o;
 	// TODO merge free spaces
       }
@@ -280,6 +282,7 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3) {
   (Using vector space indexing, not RAM addressing, so starting from 0.)
   In the case of used blocks, it points to its vector header object in the
   regular heap.
+  GC tag 0 is 0 for free blocks, 1 for used block.
 
   The vector space starts as a single free block of the size of the entire
   vector space, minus one 4-byte word.
@@ -338,13 +341,17 @@ obj alloc_vec_cell (uint16 n, obj from) {
       free_list_vec = new_free;
     ram_set_car (new_free, car_o);
     ram_set_cdr (new_free, cdr_o - n);
+    // mark new block as free
+    ram_set_gc_tag0 (new_free, 0);
+
+    // store size of the taken block. this includes header size
+    ram_set_cdr (o, n);
   }
 
   // set up pointer back to the regular heap header
   // stored in the car, instead of the free list pointer
   ram_set_car (o, from);
-  // store size of the taken block. this includes header size
-  ram_set_cdr (o, n);
+  ram_set_gc_tag0 (o, 1); // mark block as used
 
   // return pointer to start of data, skipping the header
   return RAM_TO_VEC_OBJ(o+1);
