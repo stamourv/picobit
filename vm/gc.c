@@ -275,7 +275,9 @@ obj alloc_vec_cell (uint16 n) {
   gc_done = 1;
 #endif
 
-  while ((ram_get_cdr (o) * 4) < n) { // free space too small
+  n = (n+3) >> 2; // get minimum number of 4-byte blocks (round to nearest 4)
+
+  while (ram_get_cdr (o) < n) { // free space too small
     if (o == 0) { // no free space, or none big enough
       if (gc_done) // we gc'd, but no space is big enough for the vector
 	ERROR("alloc_vec_cell", "no room for vector");
@@ -291,24 +293,27 @@ obj alloc_vec_cell (uint16 n) {
     o = VEC_TO_RAM_OBJ(ram_get_car (o));
   }
 
+  obj car_o = ram_get_cdr(o);
+  obj cdr_o = ram_get_cdr(o);
+
   // case 1 : the new vector fills every free word advertized, we remove the
   //  node from the free list
-  if (((ram_get_cdr(o) * 4) - n) < 4) {
+  if (!(cdr_o - n)) {
     if (prec)
-      ram_set_car (prec, ram_get_car (o));
+      ram_set_car (prec, car_o);
     else
-      free_list_vec = ram_get_car (o);
+      free_list_vec = car_o;
   }
   // case 2 : there is still some space left in the free section, create a new
   //  node to represent this space
   else {
-    obj new_free = o + ((n + 3) >> 2);
+    obj new_free = o + n;
     if (prec)
       ram_set_car (prec, RAM_TO_VEC_OBJ(new_free));
     else
       free_list_vec = new_free;
-    ram_set_car (new_free, ram_get_car (o));
-    ram_set_cdr (new_free, ram_get_cdr (o) - ((n + 3) >> 2));
+    ram_set_car (new_free, car_o);
+    ram_set_cdr (new_free, cdr_o - n);
   }
   
   return o;
