@@ -162,7 +162,8 @@ void sweep () {
     // we don't want to sweep the global variables area
     if ((RAM_COMPOSITE(visit)
 	 && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) // 2 mark bit
-	|| !(ram_get_gc_tags (visit) & GC_TAG_0_LEFT)) { // 1 mark bit
+	|| (!RAM_COMPOSITE(visit)
+	    && !(ram_get_gc_tags (visit) & GC_TAG_0_LEFT))) { // 1 mark bit
       /* unmarked? */
       if (RAM_VECTOR(visit)) {
 	// when we sweep a vector, we also have to sweep its contents
