@@ -27,6 +27,7 @@ char *prim_name[64] =
     "prim #%cons",
     "prim #%car",
     "prim #%cdr",
+
     "prim #%set-car!",
     "prim #%set-cdr!",
     "prim #%null?",
@@ -43,6 +44,7 @@ char *prim_name[64] =
     "prim #%make-u8vector",
     "prim #%u8vector-ref",
     "prim #%u8vector-set!",
+
     "prim #%print",
     "prim #%clock",
     "prim #%motor",
@@ -59,6 +61,7 @@ char *prim_name[64] =
     "shift",
     "pop",
     "return",
+
     "prim #%boolean?",
     "prim #%network-init",
     "prim #%network-cleanup",
