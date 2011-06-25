@@ -681,7 +681,7 @@ void interpreter () {
 
   case PRIM4 :
 
-    IF_TRACE(printf("  (%s)\n", prim_name[bytecode_lo4]));
+    IF_TRACE(printf("  (%s)\n", prim_name[bytecode_lo4+48]));
 
     switch (bytecode_lo4) {
     case 0:
