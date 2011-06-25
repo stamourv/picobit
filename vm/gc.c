@@ -22,13 +22,7 @@ void init_ram_heap () {
     o--;
   }
 
-  free_list_vec = VEC_TO_RAM_OBJ(MIN_VEC_ENCODING);
-  ram_set_gc_tag0 (free_list_vec, 0); // block is free
-  ram_set_car (free_list_vec, 0); // free list terminator
-  // each node of the free list must know the free length that follows it
-  // this free length is stored in words, not in bytes
-  // if we did count in bytes, the number might need more than 13 bits
-  ram_set_cdr (free_list_vec, (VEC_BYTES >> 2));
+  free_vec_pointer = VEC_TO_RAM_OBJ(MIN_VEC_ENCODING);
   
   for (i=0; i<glovars; i++)
     set_global (i, OBJ_FALSE);
@@ -166,14 +160,10 @@ void sweep () {
 	    && !(ram_get_gc_tags (visit) & GC_TAG_0_LEFT))) { // 1 mark bit
       /* unmarked? */
       if (RAM_VECTOR(visit)) {
-	// when we sweep a vector, we also have to sweep its contents
+	// when we sweep a vector, we also have to mark its contents as free
 	// we subtract 1 to get to the header of the block, before the data
 	obj o = VEC_TO_RAM_OBJ(ram_get_cdr (visit) - 1);
-	ram_set_car (o, RAM_TO_VEC_OBJ(free_list_vec));
-	// No need to set the block length, it's already there from when
-	// the used block was initialized.
 	ram_set_gc_tag0 (o, 0); // mark the block as free
-	free_list_vec = o;
       }
       ram_set_car (visit, free_list);
       free_list = visit;
@@ -273,92 +263,80 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3) {
   Vector space layout.
 
   Vector space is divided into blocks of 4-byte words.
-  A block can be free, in which case it can be found by traversing the free
-  list, or taken, in which case it holds useful data.
+  A block can be free or used, in which case it holds useful data.
 
   All blocks start with a 4-byte header.
-  The car of this header is a pointer.
-  In the case of free blocks, it points to the next block on the free list.
-  (Using vector space indexing, not RAM addressing, so starting from 0.)
-  In the case of used blocks, it points to its vector header object in the
-  regular heap.
-  GC tag 0 is 0 for free blocks, 1 for used block.
+  The GC tag 0 is 0 for free blocks, 1 for used block.
+  The car of this header is the size (in 4-byte words, including header) of
+  the block.
+  Used blocks have a pointer to their header in the object heap in the cdr.
 
-  The vector space starts as a single free block of the size of the entire
-  vector space, minus one 4-byte word.
-  The word at address 0 is unused, since address 0 serves as the free list
-  terminator.
+  free_vec_pointer points (using RAM addressing) to the first free word.
+  Allocation involves bumping that pointer and setting the header of the new
+  used block.
+  Freeing is done as part of the object heap GC. Any time a vector header in
+  the object heap is freed, the vector space block corresponding to its
+  contents is marked as free.
+  When the vector space is full (free pointer would go out of bounds after
+  an allocation), object heap GC is triggered and the vector space is
+  compacted.
  */
 
-// move all used blocks to the left
-// this is done by scanning the heap, and moving any taken block to the
-// left if there's free space before it
-// at the end, a single free block will remain, at the right of the space
 void compact () {
+  /*
+    Move all used blocks to the left.
+    This is done by scanning the heap, and moving any taken block to the
+    left if there's free space before it.
+  */
 
   obj cur = VEC_TO_RAM_OBJ(MIN_VEC_ENCODING);
   obj prev = 0;
 
-  obj cur_free;
-  obj prev_free;
-  obj cur_size;
-  uint16 prev_size;
+  uint16 cur_size;
 
-  while (cur < VEC_TO_RAM_OBJ(MAX_VEC_ENCODING)) {
-    cur_free = !ram_get_gc_tag0 (cur);
-    prev_free = !ram_get_gc_tag0 (prev);
-    cur_size  = ram_get_cdr(cur);
-      if (prev && prev_free) {
-	prev_size = ram_get_cdr(prev);
-	if (cur_free) { // merge free spaces
-	  // if prev stays free until the end of compaction, it will be
-	  // the last (only) block on the free list, terminate the list,
-	  // just in case
-	  ram_set_car(prev, 0);
-	  // new free size is the sum of the old ones
-	  ram_set_cdr(prev, prev_size + cur_size);
-	  // advance cur, but prev stays in place
-	  cur += cur_size;
-	}
-	else { // prev is free, but not cur, move cur to start at prev
-	  // fix header in the object heap to point to the data's new
-	  // location
-	  ram_set_cdr(ram_get_car(cur), RAM_TO_VEC_OBJ(prev+1));
-	  while(cur_size--) { // copy cur's data, which includes header
-	    ram_set_field0(prev, ram_get_field0(cur));
-	    ram_set_field1(prev, ram_get_field1(cur));
-	    ram_set_field2(prev, ram_get_field2(cur));
-	    ram_set_field3(prev, ram_get_field3(cur));
-	    cur++; prev++;
-	  }
-
-	  // set up a free block where the end of cur's data was
-	  // (prev is already there from the iteration above)
-	  ram_set_gc_tag0(prev, 0);
-	  ram_set_car(prev, 0); // could be the last free block, see above
-	  ram_set_cdr(prev, prev_size); // size of new free block
-	  // at this point, cur is after the new free space, where the
-	  // next block is
-	}
-      }
-      else {
-	// Go to the next block, which is <size> away from cur.
-	prev = cur;
+  while (cur < free_vec_pointer) {
+    cur_size  = ram_get_car(cur);
+    if (prev && !ram_get_gc_tag0 (prev)) { // previous block is free
+      if (!ram_get_gc_tag0 (cur)) { // current is free too, merge free spaces
+	// advance cur, but prev stays in place
 	cur += cur_size;
       }
+      else { // prev is free, but not cur, move cur to start at prev
+	// fix header in the object heap to point to the data's new
+	// location
+	ram_set_cdr(ram_get_cdr(cur), RAM_TO_VEC_OBJ(prev+1));
+	while(cur_size--) { // copy cur's data, which includes header
+	  ram_set_field0(prev, ram_get_field0(cur));
+	  ram_set_field1(prev, ram_get_field1(cur));
+	  ram_set_field2(prev, ram_get_field2(cur));
+	  ram_set_field3(prev, ram_get_field3(cur));
+	  cur++; prev++;
+	}
+
+	// set up a free block where the end of cur's data was
+	// (prev is already there from the iteration above)
+	ram_set_gc_tag0(prev, 0);
+	// at this point, cur is after the new free space, where the
+	// next block is
+      }
+    }
+    else {
+      // Go to the next block, which is <size> away from cur.
+      prev = cur;
+      cur += cur_size;
+    }
   }
 
   // free space is now all at the end
-  free_list_vec = prev;
+  free_vec_pointer = prev;
 }
 
 obj alloc_vec_cell (uint16 n, obj from) {
-  obj o = free_list_vec;
-  obj prev = 0;
   uint8 gc_done = 0;
 
 #ifdef DEBUG_GC
   gc ();
+  compact();
   gc_done = 1;
 #endif
 
@@ -366,56 +344,28 @@ obj alloc_vec_cell (uint16 n, obj from) {
   // this includes a 4-byte vector space header
   n = ((n+3) >> 2) + 1;
 
-  while (ram_get_cdr (o) < n) { // free space too small
-    if (o == VEC_TO_RAM_OBJ(0)) { // no free space, or none big enough
-      if (gc_done) { // we gc'd, but no space is big enough for the vector
-	ERROR("alloc_vec_cell", "no room for vector");
-      }
-#ifndef DEBUG_GC
-      gc ();
-      compact();
-      gc_done = 1;
-#endif
-      // start again, maybe we can allocate now
-      o = free_list_vec;
-      prev = 0;
-      continue;
+  while ((VEC_TO_RAM_OBJ(MAX_RAM_ENCODING) - free_vec_pointer) < n) {
+    // free space too small, trigger gc
+    if (gc_done) { // we gc'd, but no space is big enough for the vector
+      ERROR("alloc_vec_cell", "no room for vector");
     }
-    prev = o;
-    o = VEC_TO_RAM_OBJ(ram_get_car (o));
+#ifndef DEBUG_GC
+    gc ();
+    compact();
+    gc_done = 1;
+#endif
   }
 
-  obj car_o = ram_get_car(o); // next on free list
-  obj cdr_o = ram_get_cdr(o); // block size
+  obj o = free_vec_pointer;
 
-  // case 1 : the new vector fills every free word advertized, we remove the
-  //  node from the free list
-  if (!(cdr_o - n)) {
-    if (prev)
-      ram_set_car (prev, car_o);
-    else
-      free_list_vec = VEC_TO_RAM_OBJ(car_o);
-  }
-  // case 2 : there is still some space left in the free section, create a new
-  //  node to represent this space
-  else {
-    obj new_free = o + n;
-    if (prev)
-      ram_set_car (prev, RAM_TO_VEC_OBJ(new_free));
-    else
-      free_list_vec = new_free;
-    ram_set_car (new_free, car_o);
-    ram_set_cdr (new_free, cdr_o - n);
-    // mark new block as free
-    ram_set_gc_tag0 (new_free, 0);
+  // advance the free pointer
+  free_vec_pointer += n;
 
-    // store size of the taken block. this includes header size
-    ram_set_cdr (o, n);
-  }
-
+  // store block size
+  ram_set_car (o, n);
   // set up pointer back to the regular heap header
   // stored in the car, instead of the free list pointer
-  ram_set_car (o, from);
+  ram_set_cdr (o, from);
   ram_set_gc_tag0 (o, GC_TAG_0_LEFT); // mark block as used
 
   // return pointer to start of data, skipping the header

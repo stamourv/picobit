@@ -176,8 +176,7 @@ void type_error (char *prim, char *type);
 //    object layout
 
 #define MAX_VEC_ENCODING 8191
-#define MIN_VEC_ENCODING 1
-// we need to start at 1 so that 0 can be the free-list terminator
+#define MIN_VEC_ENCODING 0
 #define VEC_BYTES ((MAX_VEC_ENCODING - MIN_VEC_ENCODING + 1)*4)
 
 #define MAX_RAM_ENCODING 8191
@@ -568,10 +567,10 @@ uint8 HAS_1_OBJECT_FIELD(uint16 visit)  {return (RAM_COMPOSITE(visit) || RAM_CLO
 #define NIL OBJ_FALSE
 
 obj free_list; /* list of unused cells */
-/* list of unused cells in vector space. */
+/* first unused cell in vector space. */
 /* points into vector space using whole-RAM addressing  */
 /* its value should be over MAX_RAM_ENCODING */
-obj free_list_vec;
+obj free_vec_pointer;
 
 obj arg1; /* root set */
 obj arg2;
