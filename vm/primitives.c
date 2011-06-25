@@ -57,7 +57,7 @@ char *prim_name[64] =
     "prim #%u8vector?",
     "prim #%sernum",
     "prim #%u8vector-length",
-    "prim 44"
+    "prim 44",
     "shift",
     "pop",
     "return",
