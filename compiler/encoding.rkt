@@ -210,6 +210,9 @@
         (let ((constants (sort-constants constants))
               (globals   (sort-globals   globals)))
 
+          (define (inc-instr-count! k)
+            (hash-update! instr-table k add1 (lambda () 0)))
+
           (define (label-instr label opcode-rel4 opcode-rel8 opcode-rel12 opcode-abs16 opcode-sym)
             (asm-at-assembly
              ;; if the distance from pc to the label fits in a single byte,
@@ -222,10 +225,8 @@
                       1)))
              (lambda (self)
                (let ((dist (- (asm-label-pos label) (+ self 1))))
-                 (when stats?
-                   (let* ([key (list '---rel-4bit opcode-sym)]
-                          [n (hash-ref instr-table key 0)])
-                     (hash-set! instr-table key (+ n 1))))
+                 (when (stats?)
+                   (inc-instr-count! (list '---rel-4bit opcode-sym)))
                  (asm-8 (+ opcode-rel4 dist))))
 
              (lambda (self)
@@ -235,10 +236,8 @@
                       2)))
              (lambda (self)
                (let ((dist (+ 128 (- (asm-label-pos label) (+ self 2)))))
-                 (when stats?
-                   (let* ([key (list '---rel-8bit opcode-sym)]
-                          [n (hash-ref instr-table key 0)])
-                     (hash-set! instr-table key (+ n 1))))
+                 (when (stats?)
+                   (inc-instr-count! (list '---rel-8bit opcode-sym)))
                  (asm-8 opcode-rel8)
                  (asm-8 dist)))
 
@@ -249,10 +248,8 @@
                       2)))
              (lambda (self)
                (let ((dist (+ 2048 (- (asm-label-pos label) (+ self 2)))))
-                 (when stats?
-                   (let* ([key (list '---rel-12bit opcode-sym)]
-                          [n (hash-ref instr-table key 0)])
-                     (hash-set! instr-table key (+ n 1))))
+                 (when (stats?)
+                   (inc-instr-count! (list '---rel-12bit opcode-sym)))
                  ;; ooooxxxx xxxxxxxx
                  (asm-16 (+ (* opcode-rel12 256) dist))))
 
@@ -260,26 +257,20 @@
                3)
              (lambda (self)
                (let ((pos (- (asm-label-pos label) code-start)))
-                 (when stats?
-                   (let* ([key (list '---abs-16bit opcode-sym)]
-                          [n (hash-ref instr-table key 0)])
-                     (hash-set! instr-table key (+ n 1))))
+                 (when (stats?)
+                   (inc-instr-count! (list '---abs-16bit opcode-sym)))
                  (asm-8 opcode-abs16)
                  (asm-16 pos)))))
 
           (define (push-constant n)
             (if (<= n 31)
                 (begin
-                  (when stats?
-                    (let* ([key '---push-constant-1byte]
-                           [n (hash-ref instr-table key 0)])
-                      (hash-set! instr-table key (+ n 1))))
+                  (when (stats?)
+                    (inc-instr-count! '---push-constant-1byte))
                   (asm-8 (+ #x00 n)))
                 (begin
-                  (when stats?
-                    (let* ([key '---push-constant-2bytes]
-                           [n (hash-ref instr-table key 0)])
-                      (hash-set! instr-table key (+ n 1))))
+                  (when (stats?)
+                    (inc-instr-count! '---push-constant-2bytes))
                   (asm-16 (+ #xa000 n)))))
 
           (define (push-stack n)
@@ -290,32 +281,24 @@
           (define (push-global n)
             (if (<= n 15)
                 (begin
-                  (when stats?
-                    (let* ([key '---push-global-1byte]
-                           [n (hash-ref instr-table key 0)])
-                      (hash-set! instr-table key (+ n 1))))
+                  (when (stats?)
+                    (inc-instr-count! '---push-global-1byte))
                   (asm-8 (+ #x40 n)))
                 (begin
-                  (when stats?
-                    (let* ([key '---push-global-2bytes]
-                           [n (hash-ref instr-table key 0)])
-                      (hash-set! instr-table key (+ n 1))))
+                  (when (stats?)
+                    (inc-instr-count! '---push-global-2bytes))
                   (asm-8 #x8e)
                   (asm-8 n))))
 
           (define (set-global n)
             (if (<= n 15)
                 (begin
-                  (when stats?
-                    (let* ([key '---set-global-1byte]
-                           [n (hash-ref instr-table key 0)])
-                      (hash-set! instr-table key (+ n 1))))
+                  (when (stats?)
+                    (inc-instr-count! '---set-global-1byte))
                   (asm-8 (+ #x50 n)))
                 (begin
-                  (when stats?
-                    (let* ([key '---set-global-2bytes]
-                           [n (hash-ref instr-table key 0)])
-                      (hash-set! instr-table key (+ n 1))))
+                  (when (stats?)
+                    (inc-instr-count! '---set-global-2bytes))
                   (asm-8 #x8f)
                   (asm-8 n))))
 
@@ -426,7 +409,6 @@
 
           (define big-endian? #f)
 
-          (define stats? #f)
           (define instr-table (make-hash))
 
           (asm-begin! code-start #t)
@@ -485,10 +467,8 @@
             (when (pair? lst)
               (let ((instr (car lst)))
 
-                (when (and stats? (number? instr))
-                  (let* ([key (car instr)]
-                         [n (hash-ref instr-table key 0)])
-                    (hash-set! instr-table key (+ n 1))))
+                (when (and (stats?) (not (number? instr)))
+                  (inc-instr-count! (car instr)))
 
                 (cond ((number? instr)
                        (let ((label (cdr (assq instr labels))))
@@ -611,7 +591,7 @@
 
           (asm-assemble)
 
-          (when stats?
+          (when (stats?)
             (pretty-print
              (sort (hash->list instr-table)
                    (lambda (x y) (> (cdr x) (cdr y))))))

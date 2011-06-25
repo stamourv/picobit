@@ -36,5 +36,8 @@
             (delete-file hex-filename))
           (assemble prog hex-filename))))))
 
-
-(void (compile (vector-ref (current-command-line-arguments) 0)))
+(command-line
+ #:once-each
+ [("--stats") "Display statistics about generated instructions." (stats? #t)]
+ #:args (filename)
+ (void (compile filename)))

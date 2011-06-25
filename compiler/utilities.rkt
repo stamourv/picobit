@@ -18,3 +18,7 @@
       (boolean?  expr)
       (string?   expr)
       (u8vector? expr)))
+
+
+;; to control output level
+(define stats? (make-parameter #f))
