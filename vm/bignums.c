@@ -472,6 +472,7 @@ integer bitwise_xor (integer x, integer y) { // TODO similar to ior (only diff i
   }
 }
 
+// supports up to 16 bits
 // used only in primitives that use small numbers only
 // for example, vector primitives
 uint16 decode_int (obj o) {
@@ -485,12 +486,12 @@ uint16 decode_int (obj o) {
   if (IN_RAM(o)) {
     if (!RAM_BIGNUM(o))
       TYPE_ERROR("decode_int.1", "integer");
-    return ram_get_field3 (o);
+    return (ram_get_field2 (o) << 8) | ram_get_field3 (o);
   }
   else if (IN_ROM(o)) {
     if (!ROM_BIGNUM(o))
       TYPE_ERROR("decode_int.2", "integer");
-    return rom_get_field3 (o);
+    return (rom_get_field2 (o) << 8) | rom_get_field3 (o);
   }
   else
     TYPE_ERROR("decode_int.3", "integer");
@@ -502,7 +503,8 @@ obj encode_int (uint16 n) {
     return ENCODE_FIXNUM(n);
   }
   
-  return alloc_ram_cell_init (BIGNUM_FIELD0, ENCODE_FIXNUM(0), n >> 8, n);
+  return alloc_ram_cell_init (BIGNUM_FIELD0, ENCODE_FIXNUM(0),
+			      n >> 8, n & 0xff);
 }
 
 #else
