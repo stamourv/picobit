@@ -1,6 +1,8 @@
+(define x (make-u8vector 2 56))
 (let loop ((i 0))
   (if (< i 10000)
       (begin (if (not (= (u8vector-ref (u8vector 1 2 3) 2) 3))
                  (displayln "BAD!"))
              (loop (+ i 1)))))
 (displayln "DONE")
+(displayln (u8vector-ref x 1))
