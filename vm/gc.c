@@ -294,6 +294,7 @@ obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3) {
 // left if there's free space before it
 // at the end, a single free block will remain, at the right of the space
 void compact () {
+
   obj cur = VEC_TO_RAM_OBJ(MIN_VEC_ENCODING);
   obj prev = 0;
 
@@ -302,9 +303,9 @@ void compact () {
   obj cur_size;
   uint16 prev_size;
 
-  while (cur) {
-    cur_free = ram_get_gc_tag0 (cur);
-    prev_free = ram_get_gc_tag0 (prev);
+  while (cur < VEC_TO_RAM_OBJ(MAX_VEC_ENCODING)) {
+    cur_free = !ram_get_gc_tag0 (cur);
+    prev_free = !ram_get_gc_tag0 (prev);
     cur_size  = ram_get_cdr(cur);
       if (prev && prev_free) {
 	prev_size = ram_get_cdr(prev);
@@ -354,8 +355,7 @@ obj alloc_vec_cell (uint16 n, obj from) {
   obj o = free_list_vec;
   obj prev = 0;
   uint8 gc_done = 0;
-  uint8 compact_done = 0;
-  
+
 #ifdef DEBUG_GC
   gc ();
   gc_done = 1;
@@ -366,15 +366,13 @@ obj alloc_vec_cell (uint16 n, obj from) {
   n = ((n+3) >> 2) + 1;
 
   while (ram_get_cdr (o) < n) { // free space too small
-    if (o == 0) { // no free space, or none big enough
-      if (compact_done) // really no space left
-	ERROR("alloc_vec_cell", "no room for vector");
+    if (o == VEC_TO_RAM_OBJ(0)) { // no free space, or none big enough
       if (gc_done) { // we gc'd, but no space is big enough for the vector
-	compact();
-	compact_done = 1;
+	ERROR("alloc_vec_cell", "no room for vector");
       }
 #ifndef DEBUG_GC
       gc ();
+      compact();
       gc_done = 1;
 #endif
       // start again, maybe we can allocate now
@@ -386,7 +384,7 @@ obj alloc_vec_cell (uint16 n, obj from) {
     o = VEC_TO_RAM_OBJ(ram_get_car (o));
   }
 
-  obj car_o = ram_get_cdr(o); // next on free list
+  obj car_o = ram_get_car(o); // next on free list
   obj cdr_o = ram_get_cdr(o); // block size
 
   // case 1 : the new vector fills every free word advertized, we remove the
