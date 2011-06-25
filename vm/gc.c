@@ -323,7 +323,7 @@ void compact () {
 	else { // prev is free, but not cur, move cur to start at prev
 	  // fix header in the object heap to point to the data's new
 	  // location
-	  ram_set_cdr(ram_get_car(cur), prev+1);
+	  ram_set_cdr(ram_get_car(cur), RAM_TO_VEC_OBJ(prev+1));
 	  while(cur_size--) { // copy cur's data, which includes header
 	    ram_set_field0(prev, ram_get_field0(cur));
 	    ram_set_field1(prev, ram_get_field1(cur));
@@ -416,7 +416,7 @@ obj alloc_vec_cell (uint16 n, obj from) {
   // set up pointer back to the regular heap header
   // stored in the car, instead of the free list pointer
   ram_set_car (o, from);
-  ram_set_gc_tag0 (o, 1); // mark block as used
+  ram_set_gc_tag0 (o, GC_TAG_0_LEFT); // mark block as used
 
   // return pointer to start of data, skipping the header
   return RAM_TO_VEC_OBJ(o+1);
