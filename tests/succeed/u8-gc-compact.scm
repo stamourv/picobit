@@ -12,11 +12,17 @@
 ;; next vector to be allocated
 
 ;; for a 32k vector heap, 300 vectors should be enough
-(define (loop i)
-  (if (< i 300)
-      (begin
-        (if (not (= (u8vector-ref (make-u8vector i 3) (- i 1)) 3))
+(define l (list (make-u8vector 30 3)))
+(define x (make-u8vector 30 67))
+(define (loop i v)
+  (if (< i 500)
+      (let ([v2 (make-u8vector i (modulo i 256))])
+        (if (= (modulo i 50) 0) ; save some, to not always free everything
+            (set! l (cons v2 l)))
+        (if (not (= (u8vector-ref v2 (- i 1)) (modulo i 256)))
             (displayln "BAD"))
-        (loop (+ i 1)))
-      (displayln "DONE")))
-(loop 1)
+        (loop (+ i 1) v2))))
+(loop 1 (make-u8vector 1 3))
+(displayln "DONE")
+(displayln (u8vector-ref x 17))
+(displayln (map (lambda (x) (u8vector-ref x 0)) l))
