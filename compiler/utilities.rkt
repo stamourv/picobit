@@ -22,3 +22,4 @@
 
 ;; to control output level
 (define stats? (make-parameter #f))
+(define size?  (make-parameter #f))

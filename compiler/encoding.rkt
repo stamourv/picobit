@@ -596,6 +596,5 @@
              (sort (hash->list instr-table)
                    (lambda (x y) (> (cdr x) (cdr y))))))
 
-          (asm-write-hex-file hex-filename)
-
-          (asm-end!)))))
+          (begin0 (asm-write-hex-file hex-filename)
+            (asm-end!))))))

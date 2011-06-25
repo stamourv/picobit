@@ -433,12 +433,7 @@
                             (- pos (length rev-bytes))
                             (reverse rev-bytes)))
             (print-line 1 0 '())
-            (if #f
-                (begin
-                  ;;;(pp (- 3447 (- pos asm-start-pos)));;;;;;;;;;;;
-
-                  (display (- pos asm-start-pos) (current-error-port))
-                  (display " bytes\n" (current-error-port))))))))))
+            (- pos asm-start-pos)))))))
 
 ;; Utilities.
 
