@@ -21,5 +21,7 @@
 
 
 ;; to control output level
-(define stats? (make-parameter #f))
-(define size?  (make-parameter #f))
+(define show-size?   (make-parameter #f))
+(define show-asm?    (make-parameter #f))
+(define show-parsed? (make-parameter #f))
+(define stats?       (make-parameter #f))
