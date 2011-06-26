@@ -185,7 +185,7 @@ void type_error (char *prim, char *type);
 
 #define MIN_FIXNUM_ENCODING 3
 #define MIN_FIXNUM -1
-#define MAX_FIXNUM 255
+#define MAX_FIXNUM 256
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING + MAX_FIXNUM - MIN_FIXNUM + 1)
 
 #ifdef LESS_MACROS
@@ -397,7 +397,7 @@ void set_global (uint8 i, obj o);
 // fixnum definitions in picobit-vm.h , address space layout section
 
 #ifdef LESS_MACROS
-uint16 ENCODE_FIXNUM(uint8  n) {return ((n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM));}
+uint16 ENCODE_FIXNUM(uint16 n) {return ((n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM));}
 uint8  DECODE_FIXNUM(uint16 o) {return ((o) - (MIN_FIXNUM_ENCODING - MIN_FIXNUM));}
 #else
 #define ENCODE_FIXNUM(n) ((n) + (MIN_FIXNUM_ENCODING - MIN_FIXNUM))

@@ -8,7 +8,7 @@
 ;; These definitions must match those in the VM (in picobit-vm.h).
 (define min-fixnum-encoding 3)
 (define min-fixnum -1)
-(define max-fixnum 255)
+(define max-fixnum 256)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
 (define min-ram-encoding 1280)
 

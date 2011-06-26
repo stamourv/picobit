@@ -49,7 +49,7 @@ integer norm (obj prefix, integer n) {
     
     if (obj_eq (n, ZERO)) {
       if (d <= MAX_FIXNUM) {
-	n = ENCODE_FIXNUM (d & 0xff);
+	n = ENCODE_FIXNUM (d);
 	continue;
       }
     }
@@ -335,7 +335,7 @@ integer scale (digit n, integer x) {
   for (;;) {
     if (obj_eq (x, ZERO)){
       if (carry <= MAX_FIXNUM)
-	bignum_tmp1 = norm (bignum_tmp1, ENCODE_FIXNUM (carry & 0xff));
+	bignum_tmp1 = norm (bignum_tmp1, ENCODE_FIXNUM (carry));
       else
 	bignum_tmp1 = norm (bignum_tmp1, make_integer (carry, ZERO));
       break;
@@ -345,7 +345,7 @@ integer scale (digit n, integer x) {
       carry = carry - n;
       // -1 as a literal is wrong with SIXPIC, thus the double negative
       if (carry >= ((1<<digit_width) - (- MIN_FIXNUM)))
-	bignum_tmp1 = norm (bignum_tmp1, ENCODE_FIXNUM (carry & 0xff));
+	bignum_tmp1 = norm (bignum_tmp1, ENCODE_FIXNUM (carry));
       else
 	bignum_tmp1 = norm (bignum_tmp1, make_integer (carry, NEG1));
       break;
