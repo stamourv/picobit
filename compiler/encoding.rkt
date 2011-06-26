@@ -131,158 +131,114 @@
 
 ;-----------------------------------------------------------------------------
 
+(define instr-table (make-hash))
 (define (inc-instr-count! k)
   (hash-update! instr-table k add1 (lambda () 0)))
 
-(define (label-instr label opcode-rel4 opcode-rel8 opcode-rel12 opcode-abs16 opcode-sym)
+(define (label-instr label
+                     opcode-rel4 opcode-rel8 opcode-rel12 opcode-abs16
+                     opcode-sym)
   (asm-at-assembly
-   ;; if the distance from pc to the label fits in a single byte,
-   ;; a short instruction is used, containing a relative address
-   ;; if not, the full 16-bit label is used
+   ;; Args are procedures that go 2 by 2.
+   ;; The first one of each pair checks if a given strategy is applicable.
+   ;; If so, it returns the size of the code to be generated, and the
+   ;; second procedure of the pair generates code. Otherwise, the assembler
+   ;; tries the next pair, and so on.
+
+   ;; target is less than 16 bytecodes ahead:
+   ;; 4 bit opcode, 4 bit operand
    (lambda (self)
-     (let ((dist (- (asm-label-pos label) (+ self 1))))
-       (and opcode-rel4
-            (<= 0 dist 15) ;; TODO go backwards too ?
-            1)))
+     (let ([dist (- (asm-label-pos label) (+ self 1))])
+       (and opcode-rel4 (<= 0 dist 15) 1))) ; size 1 byte total
    (lambda (self)
-     (let ((dist (- (asm-label-pos label) (+ self 1))))
-       (when (stats?)
-         (inc-instr-count! (list '---rel-4bit opcode-sym)))
+     (let ([dist (- (asm-label-pos label) (+ self 1))])
+       (inc-instr-count! (list '---rel-4bit opcode-sym))
        (asm-8 (+ opcode-rel4 dist))))
 
+   ;; distance is less than 128 in either direction:
+   ;; 1 byte opcode, 1 byte operand
    (lambda (self)
-     (let ((dist (+ 128 (- (asm-label-pos label) (+ self 2)))))
-       (and opcode-rel8
-            (<= 0 dist 255)
-            2)))
+     (let ([dist (+ 128 (- (asm-label-pos label) (+ self 2)))])
+       (and opcode-rel8 (<= 0 dist 255) 2))) ; size 2 bytes total
    (lambda (self)
-     (let ((dist (+ 128 (- (asm-label-pos label) (+ self 2)))))
-       (when (stats?)
-         (inc-instr-count! (list '---rel-8bit opcode-sym)))
+     (let ([dist (+ 128 (- (asm-label-pos label) (+ self 2)))])
+       (inc-instr-count! (list '---rel-8bit opcode-sym))
        (asm-8 opcode-rel8)
        (asm-8 dist)))
 
+   ;; distance is less than 2048 in either direction:
+   ;; 4 bit opcode, 12 bit operand
    (lambda (self)
-     (let ((dist (+ 2048 (- (asm-label-pos label) (+ self 2)))))
-       (and opcode-rel12
-            (<= 0 dist 4095)
-            2)))
+     (let ([dist (+ 2048 (- (asm-label-pos label) (+ self 2)))])
+       (and opcode-rel12 (<= 0 dist 4095) 2))) ; size 2 bytes total
    (lambda (self)
-     (let ((dist (+ 2048 (- (asm-label-pos label) (+ self 2)))))
-       (when (stats?)
-         (inc-instr-count! (list '---rel-12bit opcode-sym)))
-       ;; ooooxxxx xxxxxxxx
+     (let ([dist (+ 2048 (- (asm-label-pos label) (+ self 2)))])
+       (inc-instr-count! (list '---rel-12bit opcode-sym))
        (asm-16 (+ (* opcode-rel12 256) dist))))
 
+   ;; target is too far, fallback on absolute jump:
+   ;; 1 byte opcode, 2 bytes operand
    (lambda (self)
-     3)
+     3) ; size 3 bytes total
    (lambda (self)
-     (let ((pos (- (asm-label-pos label) code-start)))
-       (when (stats?)
-         (inc-instr-count! (list '---abs-16bit opcode-sym)))
+     (let ([pos (- (asm-label-pos label) code-start)])
+       (inc-instr-count! (list '---abs-16bit opcode-sym))
        (asm-8 opcode-abs16)
        (asm-16 pos)))))
 
 (define (push-constant n)
-  (if (<= n 31)
-      (begin
-        (when (stats?)
-          (inc-instr-count! '---push-constant-1byte))
-        (asm-8 (+ #x00 n)))
-      (begin
-        (when (stats?)
-          (inc-instr-count! '---push-constant-2bytes))
-        (asm-16 (+ #xa000 n)))))
+  (cond [(<= n 31) ; 3 bit opcode, 5 bit operand. first 32 constants.
+         (inc-instr-count! '---push-constant-1byte)
+         (asm-8 (+ #x00 n))]
+        [else ; 4 bit opcode, 12 bits operand.
+         (inc-instr-count! '---push-constant-2bytes)
+         (asm-16 (+ #xa000 n))]))
 
 (define (push-stack n)
-  (if (> n 31)
+  (if (> n 31) ; 3 bit opcode, 5 bits operand
       (compiler-error "stack is too deep")
       (asm-8 (+ #x20 n))))
 
 (define (push-global n)
-  (if (<= n 15)
-      (begin
-        (when (stats?)
-          (inc-instr-count! '---push-global-1byte))
-        (asm-8 (+ #x40 n)))
-      (begin
-        (when (stats?)
-          (inc-instr-count! '---push-global-2bytes))
-        (asm-8 #x8e)
-        (asm-8 n))))
+  (cond [(<= n 15) ; 4 bit opcode, 4 bit operand. first 16 globals.
+         (inc-instr-count! '---push-global-1byte)
+         (asm-8 (+ #x40 n))]
+        [else ; 8 bit opcode, 8 bit operand. 256 globals max.
+         (inc-instr-count! '---push-global-2bytes)
+         (asm-8 #x8e)
+         (asm-8 n)]))
 
 (define (set-global n)
-  (if (<= n 15)
-      (begin
-        (when (stats?)
-          (inc-instr-count! '---set-global-1byte))
-        (asm-8 (+ #x50 n)))
-      (begin
-        (when (stats?)
-          (inc-instr-count! '---set-global-2bytes))
-        (asm-8 #x8f)
-        (asm-8 n))))
+  (cond [(<= n 15) ; 4 bit opcode, 4 bit operand. first 16 globals.
+         (inc-instr-count! '---set-global-1byte)
+         (asm-8 (+ #x50 n))]
+        [else ; 8 bit opcode, 8 bit operand. 256 globals max.
+         (inc-instr-count! '---set-global-2bytes)
+         (asm-8 #x8f)
+         (asm-8 n)]))
 
 (define (call n)
-  (if (> n 15)
+  (if (> n 15) ; 4 bit opcode, 4 bit argument (n of args to the call)
       (compiler-error "call has too many arguments")
       (asm-8 (+ #x60 n))))
 
 (define (jump n)
-  (if (> n 15)
+  (if (> n 15) ; 4 bit opcode, 4 bit argument (n of args to the call)
       (compiler-error "call has too many arguments")
       (asm-8 (+ #x70 n))))
 
 (define (call-toplevel label)
-  (label-instr label
-               #f ;; saves 36 (22)
-               #xb5 ;; saves 60, 78 (71)
-               #f ;; saves 150, 168 (161)
-               #xb0
-               'call-toplevel))
-
+  (label-instr label #f   #xb5 #f #xb0 'call-toplevel))
 (define (jump-toplevel label)
-  (label-instr label
-               #x80 ;; saves 62 (62)
-               #xb6 ;; saves 45, 76 (76)
-               #f ;; saves 67, 98 (98)
-               #xb1
-               'jump-toplevel))
-
+  (label-instr label #x80 #xb6 #f #xb1 'jump-toplevel))
 (define (goto label)
-  (label-instr label
-               #f ;; saves 0 (2)
-               #xb7 ;; saves 21, 21 (22)
-               #f ;; saves 30, 30 (31)
-               #xb2
-               'goto))
-
+  (label-instr label #f   #xb7 #f #xb2 'goto))
 (define (goto-if-false label)
-  (label-instr label
-               #x90 ;; saves 54 (44)
-               #xb8 ;; saves 83, 110 (105)
-               #f ;; saves 109, 136 (131)
-               #xb3
-               'goto-if-false))
-
+  (label-instr label #x90 #xb8 #f #xb3 'goto-if-false))
 (define (closure label)
-  (label-instr label
-               #f ;; saves 50 (48)
-               #f ;; #xb9 ;; #f;; does not work!!! #xb9 ;; saves 27, 52 (51) TODO
-               #f ;; saves 34, 59 (58)
-               #xb4
-               'closure))
+  (label-instr label #f   #f   #f #xb4 'closure))
 
-(define (prim p)
-  (encode-prim (dict-ref primitive-encodings p
-                         (lambda ()
-                           (compiler-error "unknown primitive" p)))))
-
-(define (encode-prim n) (asm-8 (+ #xc0 n)))
-
-(define big-endian? #f)
-
-(define instr-table (make-hash))
+(define (prim n) (asm-8 (+ #xc0 n)))
 
 ;-----------------------------------------------------------------------------
 
@@ -313,6 +269,10 @@
                         globals
                         labels))))
 
+        ;; Constants and globals are sorted by frequency of reference.
+        ;; That way, the most often referred to constants and globals get
+        ;; the lowest encodings. Low encodings mean that they can be
+        ;; pushed/set with short instructions, reducing overall code size.
         (let ((constants (sort-constants constants))
               (globals   (sort-globals   globals)))
 
@@ -428,13 +388,17 @@
                          (closure label)))
 
                       ((eq? (car instr) 'prim)
-                       (prim (cadr instr)))
+                       (let ([p (cadr instr)])
+                         (prim (dict-ref
+                                primitive-encodings p
+                                (lambda ()
+                                  (compiler-error "unknown primitive" p))))))
 
                       ((eq? (car instr) 'return)
-                       (encode-prim 47))
+                       (prim 47))
 
                       ((eq? (car instr) 'pop)
-                       (encode-prim 46))
+                       (prim 46))
 
                       (else
                        (compiler-error "unknown instruction" instr)))
