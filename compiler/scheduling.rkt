@@ -1,8 +1,8 @@
 #lang racket
 
-(provide (all-defined-out))
-
 (require "ir.rkt" "back-end.rkt")
+
+(provide reorder! linearize)
 
 ;; Basic block scheduling.
 

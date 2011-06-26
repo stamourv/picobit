@@ -1,8 +1,9 @@
 #lang racket
 
-(provide (all-defined-out))
 (require srfi/4) ; u8vector stuff
 (require "utilities.rkt" "asm.rkt")
+
+(provide assemble)
 
 (define min-fixnum-encoding 3)
 (define min-fixnum -1)

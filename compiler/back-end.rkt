@@ -1,10 +1,10 @@
 #lang racket
 
-(provide (all-defined-out))
-
 (require "ir.rkt")
 
 ;; Back-end utilities.
+
+(provide renumber-labels)
 
 (define (renumber-labels bbs ref-counts n)
   (let ((new-bbs (make-vector n)))
