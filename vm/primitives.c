@@ -15,8 +15,8 @@ char *prim_name[64] =
     "prim #%+",
     "prim #%-",
     "prim #%mul-non-neg",
-    "prim #%quotient",
-    "prim #%remainder",
+    "prim #%div-non-neg",
+    "prim #%rem-non-neg",
     "prim 6",
     "prim #%=",
     "prim #%<",
@@ -143,12 +143,10 @@ void prim_div_non_neg () {
   arg2 = OBJ_FALSE;
 }
 
-void prim_rem () {
+void prim_rem_non_neg () {
 #ifdef INFINITE_PRECISION_BIGNUMS
   if (obj_eq(arg2, ZERO))
     ERROR("remainder", "divide by 0");
-  if (negp(arg1) || negp(arg2))
-    ERROR("remainder", "only positive numbers are supported");
   arg3 = divnonneg (arg1, arg2);
   arg4 = mulnonneg (arg2, arg3);
   arg1 = sub(arg1, arg4);

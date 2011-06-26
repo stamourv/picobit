@@ -613,7 +613,7 @@ void prim_numberp ();
 void prim_add ();
 void prim_mul_non_neg ();
 void prim_div_non_neg ();
-void prim_rem ();
+void prim_rem_non_neg ();
 void prim_eq ();
 void prim_lt ();
 void prim_gt ();
