@@ -372,21 +372,19 @@ void interpreter () {
 
       break;
 
-    // TODO why does this not work?  don't worry about it now, as it is disabled in the compiler
-
     case 9: // closure-rel8
       FETCH_NEXT_BYTECODE();
 
-      entry = pc + bytecode - 128;
+      entry = pc - CODE_START + bytecode - 128;
 
       IF_TRACE(printf("  (closure-rel8 0x%04x)\n", entry));
 
       arg3 = pop(); // env
 
-      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (entry >> 11),
-                                  entry >> 3,
-                                  ((entry & 0x07) << 5) | ((arg3 >> 8) & 0x1f),
-                                  arg3 & 0xff);
+      arg1 = alloc_ram_cell_init (CLOSURE_FIELD0 | (arg3 >> 8),
+				  arg3 & 0xff,
+                                  entry >> 8,
+                                  (entry & 0xff));
 
       push_arg1();
 

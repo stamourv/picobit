@@ -236,7 +236,7 @@
 (define (goto-if-false label)
   (label-instr label #x90 #xb8 #f #xb3 'goto-if-false))
 (define (closure label)
-  (label-instr label #f   #f   #f #xb4 'closure))
+  (label-instr label #f   #xb9 #f #xb4 'closure))
 
 (define (prim n) (asm-8 (+ #xc0 n)))
 
