@@ -18,19 +18,13 @@
 (define (predef-globals) (list))
 
 (define (encode-direct obj)
-  (cond ((eq? obj #f)
-         0)
-        ((eq? obj #t)
-         1)
-        ((eq? obj '())
-         2)
-        ((and (integer? obj)
-              (exact? obj)
-              (>= obj min-fixnum)
-              (<= obj max-fixnum))
-         (+ obj (- min-fixnum-encoding min-fixnum)))
-        (else
-         #f)))
+  (cond [(eq? obj #f)  0]
+        [(eq? obj #t)  1]
+        [(eq? obj '()) 2]
+        [(and (exact-integer? obj)
+              (<= min-fixnum obj max-fixnum))
+         (+ obj (- min-fixnum-encoding min-fixnum))]
+        [else #f])) ; can't encode directly
 
 (define (translate-constant obj)
   (if (char? obj)
@@ -38,14 +32,12 @@
       obj))
 
 (define (encode-constant obj constants)
-  (let ((o (translate-constant obj)))
-    (let ((e (encode-direct o)))
-      (if e
-          e
-          (let ((x (assoc o constants)))
-            (if x
-                (vector-ref (cdr x) 0)
-                (compiler-error "unknown object" obj)))))))
+  (let* ([o (translate-constant obj)]
+         [e (encode-direct o)])
+    (cond [e e] ; can be encoded directly
+          [(assoc o constants)
+           => (lambda (x) (vector-ref (cdr x) 0))]
+          [else (compiler-error "unknown object" obj)])))
 
 ;; TODO actually, seem to be in a pair, scheme object in car, vector in cdr
 ;; constant objects are represented by vectors
@@ -53,66 +45,64 @@
 ;; 1 : TODO asm label constant ?
 ;; 2 : number of occurences of this constant in the code
 ;; 3 : pointer to content, used at encoding time
-(define (add-constant obj constants from-code? cont)
-  (let ((o (translate-constant obj)))
-    (let ((e (encode-direct o)))
-      (if e
-          (cont constants)
-          (let ((x (assoc o constants)))
-            (if x
-                (begin
-                  (when from-code?
-                    (vector-set! (cdr x) 2 (+ (vector-ref (cdr x) 2) 1)))
-                  (cont constants))
-                (let* ((descr
-                        (vector #f
-                                (asm-make-label 'constant)
-                                (if from-code? 1 0)
-                                #f))
-                       (new-constants
-                        (cons (cons o descr)
-                              constants)))
-                  (cond ((pair? o)
-                         (add-constants (list (car o) (cdr o))
-                                        new-constants
-                                        cont))
-                        ((symbol? o)
-                         (cont new-constants))
-                        ((string? o)
-                         (let ((chars (map char->integer (string->list o))))
-                           (vector-set! descr 3 chars)
-                           (add-constant chars
-                                         new-constants
-                                         #f
-                                         cont)))
-                        ((vector? o) ; ordinary vectors are stored as lists
-                         (let ((elems (vector->list o)))
-                           (vector-set! descr 3 elems)
-                           (add-constant elems
-                                         new-constants
-                                         #f
-                                         cont)))
-			((u8vector? o)
-			 (let ((elems (u8vector->list o)))
-			   (vector-set! descr 3 elems)
-			   (add-constant elems
-					 new-constants
-					 #f
-					 cont)))
-			((and (number? o) (exact? o))
-			 ; (pp (list START-ENCODING: o))
-			 (let ((hi (arithmetic-shift o -16)))
-			   (vector-set! descr 3 hi)
-			   ;; recursion will stop once we reach 0 or -1 as the
-			   ;; high part, which will be matched by encode-direct
-			   (add-constant hi
-					 new-constants
-					 #f
-					 cont)))
-                        (else
-                         (cont new-constants))))))))))
+(define (add-constant obj constants from-code? [cont values])
+  (define o (translate-constant obj))
+  (define e (encode-direct o))
+  (cond [e (cont constants)] ; can be encoded directly
+        [(dict-ref constants o #f)
+         =>
+         (lambda (x)
+           (when from-code?
+             (vector-set! x 2 (+ (vector-ref x 2) 1)))
+           (cont constants))]
+        [else
+         (define descr
+           (vector #f
+                   (asm-make-label 'constant)
+                   (if from-code? 1 0)
+                   #f))
+         (define new-constants (dict-set constants o descr))
+         (cond ((pair? o)
+                (add-constants (list (car o) (cdr o))
+                               new-constants
+                               cont))
+               ((symbol? o)
+                (cont new-constants))
+               ((string? o)
+                (let ((chars (map char->integer (string->list o))))
+                  (vector-set! descr 3 chars)
+                  (add-constant chars
+                                new-constants
+                                #f
+                                cont)))
+               ((vector? o) ; ordinary vectors are stored as lists
+                (let ((elems (vector->list o)))
+                  (vector-set! descr 3 elems)
+                  (add-constant elems
+                                new-constants
+                                #f
+                                cont)))
+               ((u8vector? o)
+                (let ((elems (u8vector->list o)))
+                  (vector-set! descr 3 elems)
+                  (add-constant elems
+                                new-constants
+                                #f
+                                cont)))
+               ((and (number? o) (exact? o))
+                                        ; (pp (list START-ENCODING: o))
+                (let ((hi (arithmetic-shift o -16)))
+                  (vector-set! descr 3 hi)
+                  ;; recursion will stop once we reach 0 or -1 as the
+                  ;; high part, which will be matched by encode-direct
+                  (add-constant hi
+                                new-constants
+                                #f
+                                cont)))
+               (else
+                (cont new-constants)))]))
 
-(define (add-constants objs constants cont)
+(define (add-constants objs constants [cont values])
   (if (null? objs)
       (cont constants)
       (add-constant (car objs)
@@ -186,14 +176,9 @@
                         (cons (cons instr (asm-make-label 'label))
                               labels)))
                 ((eq? (car instr) 'push-constant)
-                 (add-constant (cadr instr)
-                               constants
-                               #t
-                               (lambda (new-constants)
-                                 (loop1 (cdr lst)
-                                        new-constants
-                                        globals
-                                        labels))))
+                 (let ([new-constants
+                        (add-constant (cadr instr) constants #t)])
+                   (loop1 (cdr lst) new-constants globals labels)))
                 ((memq (car instr) '(push-global set-global))
                  (add-global (cadr instr)
                              globals
