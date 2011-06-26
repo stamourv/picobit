@@ -70,11 +70,6 @@
                    (if unspec-result? 0 1)
                    ctx))
 
-(define (gen-shift n ctx)
-  (if (> n 0)
-      (gen-instruction (list 'shift) 1 0 (gen-shift (- n 1) ctx))
-      ctx))
-
 (define (gen-pop ctx)
   (gen-instruction (list 'pop) 1 0 ctx))
 

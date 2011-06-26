@@ -650,15 +650,14 @@ void interpreter () {
     case 11:
       /* prim #%u8vector-length */
       arg1 = pop(); prim_u8vector_length (); push_arg1(); break;
+#if 0
     case 12:
       // FREE
       break;
     case 13:
-      /* shift */
-      arg1 = pop();
-      pop();
-      push_arg1();
+      // FREE
       break;
+#endif
     case 14:
       /* pop */
       pop();

@@ -485,9 +485,6 @@
                       ((eq? (car instr) 'pop)
                        (encode-prim 46))
 
-                      ((eq? (car instr) 'shift)
-                       (encode-prim 45))
-
                       (else
                        (compiler-error "unknown instruction" instr)))
 
