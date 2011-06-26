@@ -9,7 +9,7 @@
          "ir.rkt"
          "comp.rkt"
          "back-end.rkt"
-         "encoding.rkt"
+         "assembler.rkt"
          "analysis.rkt"
          "scheduling.rkt"
          "tree-shaker.rkt")
