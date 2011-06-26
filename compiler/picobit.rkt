@@ -8,6 +8,7 @@
          "front-end.rkt"
          "ir.rkt"
          "comp.rkt"
+         "back-end.rkt"
          "encoding.rkt"
          "analysis.rkt"
          "scheduling.rkt"

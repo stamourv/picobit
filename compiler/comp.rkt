@@ -1,6 +1,6 @@
 #lang racket
 
-(provide comp-none code->vector resolve-toplevel-labels!)
+(provide comp-none)
 (require "utilities.rkt" "ir.rkt" "code-gen.rkt" "ast.rkt" "env.rkt"
          "analysis.rkt")
 
@@ -251,26 +251,3 @@
        (context-change-env2 ctx2 (context-env ctx2)))]
     [_
      (compiler-error "unknown expression type" node)]))
-
-;-----------------------------------------------------------------------------
-
-(define (code->vector code)
-  (let ((v (make-vector (+ (code-last-label code) 1))))
-    (for-each
-     (lambda (bb)
-       (vector-set! v (bb-label bb) bb))
-     (code-rev-bbs code))
-    v))
-
-(define (resolve-toplevel-labels! bbs)
-  (for ([i (in-range (vector-length bbs))])
-    (let* ([bb (vector-ref bbs i)]
-           [rev-instrs (bb-rev-instrs bb)])
-      (set-bb-rev-instrs!
-       bb
-       (map (match-lambda
-              [`(,(and opcode (or 'call-toplevel 'jump-toplevel)) ,arg)
-               `(,opcode ,(prc-entry-label arg))]
-              [instr
-               instr])
-            rev-instrs)))))
