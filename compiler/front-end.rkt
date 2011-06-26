@@ -96,7 +96,7 @@
 
 ;------------------------------------------------------------------------------
 
-(provide extract-parts-top extract-ids)
+(provide extract-parts-top)
 
 ;; Last argument is always the parse function from parse.rkt, taken as argument
 ;; to avoid circular dependencies.
