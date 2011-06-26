@@ -5,6 +5,7 @@
 
 (provide assemble)
 
+;; These definitions must match those in the VM (in picobit-vm.h).
 (define min-fixnum-encoding 3)
 (define min-fixnum -1)
 (define max-fixnum 255)
@@ -49,10 +50,10 @@
   (define o (translate-constant obj))
   (define e (encode-direct o))
   (cond [e constants] ; can be encoded directly
-        [(dict-ref constants o #f)
+        [(dict-ref constants o #f) ; did we encode this already?
          =>
          (lambda (x)
-           (when from-code?
+           (when from-code? ; increment its reference counter
              (vector-set! x 2 (+ (vector-ref x 2) 1)))
            constants)]
         [else
@@ -62,94 +63,70 @@
                    (if from-code? 1 0)
                    #f))
          (define new-constants (dict-set constants o descr))
-         (cond ((pair? o)
-                (add-constants (list (car o) (cdr o))
-                               new-constants))
-               ((symbol? o)
-                new-constants)
-               ((string? o)
-                (let ((chars (map char->integer (string->list o))))
+         (cond [(pair? o)
+                ;; encode both parts as well
+                (add-constants (list (car o) (cdr o)) new-constants)]
+               [(symbol? o) new-constants] ; symbols don't store information
+               [(string? o)
+                ;; encode each character as well
+                (let ([chars (map char->integer (string->list o))])
                   (vector-set! descr 3 chars)
-                  (add-constant chars
-                                new-constants
-                                #f)))
-               ((vector? o) ; ordinary vectors are stored as lists
-                (let ((elems (vector->list o)))
+                  (add-constant chars new-constants #f))]
+               [(vector? o) ; ordinary vectors are stored as lists
+                (let ([elems (vector->list o)])
                   (vector-set! descr 3 elems)
-                  (add-constant elems
-                                new-constants
-                                #f)))
-               ((u8vector? o)
-                (let ((elems (u8vector->list o)))
+                  (add-constant elems new-constants #f))]
+               [(u8vector? o) ; ROM u8vectors are lists as well, so O(n) access
+                (let ([elems (u8vector->list o)])
                   (vector-set! descr 3 elems)
-                  (add-constant elems
-                                new-constants
-                                #f)))
-               ((and (number? o) (exact? o))
-                                        ; (pp (list START-ENCODING: o))
-                (let ((hi (arithmetic-shift o -16)))
+                  (add-constant elems new-constants #f))]
+               [(exact-integer? o)
+                (let ([hi (arithmetic-shift o -16)])
                   (vector-set! descr 3 hi)
-                  ;; recursion will stop once we reach 0 or -1 as the
-                  ;; high part, which will be matched by encode-direct
-                  (add-constant hi
-                                new-constants
-                                #f)))
+                  ;; Recursion will stop once we reach 0 or -1 as the
+                  ;; high part, which will be matched by encode-direct.
+                  ;; Only the high part needs to be registered as a new
+                  ;; constant. The low part will be filled in at
+                  ;; encoding time.
+                  (add-constant hi new-constants #f))]
                (else
                 new-constants))]))
 
 (define (add-constants objs constants)
-  (if (null? objs)
-      constants
-      (let ([new-constants (add-constant (car objs) constants #f)])
-        (add-constants (cdr objs) new-constants))))
+  (for/fold ([constants constants])
+      ([o objs])
+    (add-constant o constants #f)))
 
 (define (add-global var globals)
-  (let ((x (assq var globals)))
-    (if x
-        (begin
-	  ;; increment reference counter
-	  (vector-set! (cdr x) 1 (+ (vector-ref (cdr x) 1) 1))
-	  globals)
-        (let ((new-globals
-               (cons (cons var (vector (length globals) 1))
-                     globals)))
-	  new-globals))))
+  (cond [(dict-ref globals var #f)
+         =>
+         (lambda (x)
+           ;; increment reference counter
+           (vector-set! x 1 (+ (vector-ref x 1) 1))
+           globals)]
+        [else (dict-set globals var (vector (length globals) 1))]))
 
 (define (sort-constants constants)
-  (let ((csts
-         (sort constants
-               (lambda (x y)
-                 (> (vector-ref (cdr x) 2)
-                    (vector-ref (cdr y) 2))))))
-    (let loop ((i min-rom-encoding)
-               (lst csts))
-      (if (null? lst)
-	  ;; constants can use all the rom addresses up to 256 constants since
-	  ;; their number is encoded in a byte at the beginning of the bytecode
-          (if (or (> i min-ram-encoding) (> (- i min-rom-encoding) 256))
-	      (compiler-error "too many constants")
-	      csts)
-          (begin
-            (vector-set! (cdr (car lst)) 0 i)
-            (loop (+ i 1)
-                  (cdr lst)))))))
+  (let ([csts (sort constants > #:key (lambda (x) (vector-ref (cdr x) 2)))])
+    (for ([i   (in-naturals min-rom-encoding)]
+          [cst (in-list csts)])
+      ;; Constants can use all the rom addresses up to 256 constants since
+      ;; their number is encoded in a byte at the beginning of the bytecode.
+      ;; The rest of the ROM encodings are used for the contents of these
+      ;; constants.
+      (when (or (> i min-ram-encoding) (> (- i min-rom-encoding) 256))
+        (compiler-error "too many constants"))
+      (vector-set! (cdr cst) 0 i))
+    csts))
 
-(define (sort-globals globals) ;; TODO a lot in common with sort-constants, ABSTRACT
-  (let ((glbs
-	 (sort globals
-               (lambda (x y)
-                 (> (vector-ref (cdr x) 1)
-                    (vector-ref (cdr y) 1))))))
-    (let loop ((i 0)
-	       (lst glbs))
-      (if (null? lst)
-	  (if (> i 256) ;; the number of globals is encoded on a byte
-	      (compiler-error "too many global variables")
-	      glbs)
-	  (begin
-	    (vector-set! (cdr (car lst)) 0 i)
-	    (loop (+ i 1)
-		  (cdr lst)))))))
+(define (sort-globals globals)
+  (let ([glbs (sort globals > #:key (lambda (x) (vector-ref (cdr x) 1)))])
+    (for ([i (in-naturals)]
+          [g (in-list glbs)])
+      (when (> i 256) ;; the number of globals is encoded in a byte
+        (compiler-error "too many global variables"))
+      (vector-set! (cdr g) 0 i))
+    glbs))
 
 (define (assemble code hex-filename)
   (let loop1 ((lst code)
