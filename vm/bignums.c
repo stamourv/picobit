@@ -397,26 +397,27 @@ integer divnonneg (integer x, integer y) {
   /* divnonneg(x,y) returns the quotient and remainder of
      the integers x and y where x and y are nonnegative */
 
-  // x ends up pointing to newly allocated bignums, so we need to
-  // register it with the GC.
+  // x and y end up pointing to newly allocated bignums, so we need
+  // to register them with the GC.
   bignum_tmp4 = x;
-
+  bignum_tmp5 = y;
+  
   bignum_tmp3 = ZERO;
   uint16 lx = integer_length (bignum_tmp4);
-  uint16 ly = integer_length (y);
+  uint16 ly = integer_length (bignum_tmp5);
 
   if (lx >= ly) {
     lx = lx - ly;
     
-    y = shift_left (y, lx);
+    bignum_tmp5 = shift_left (bignum_tmp5, lx);
     
     do {
       bignum_tmp3 = shl (bignum_tmp3);
-      if (cmp (bignum_tmp4, y) >= 1) {
-	bignum_tmp4 = sub (bignum_tmp4, y);
+      if (cmp (bignum_tmp4, bignum_tmp5) >= 1) {
+	bignum_tmp4 = sub (bignum_tmp4, bignum_tmp5);
 	bignum_tmp3 = add (POS1, bignum_tmp3);
       }
-      y = shr (y);
+      bignum_tmp5 = shr (bignum_tmp5);
     } while (lx-- != 0);
   }
 

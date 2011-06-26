@@ -587,6 +587,7 @@ obj bignum_tmp1; // ior xor add sub scale shr shl
 obj bignum_tmp2; // shift_left mul
 obj bignum_tmp3; // div mul
 obj bignum_tmp4; // div mul
+obj bignum_tmp5; // div
 #endif
 
 

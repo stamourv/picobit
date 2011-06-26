@@ -39,6 +39,7 @@ void init_ram_heap () {
   bignum_tmp2 = OBJ_FALSE;
   bignum_tmp3 = OBJ_FALSE;
   bignum_tmp4 = OBJ_FALSE;
+  bignum_tmp5 = OBJ_FALSE;
 #endif
 }
 
@@ -216,6 +217,8 @@ void gc () {
   mark (bignum_tmp3);
   IF_GC_TRACE(printf("bignum_tmp4\n"));
   mark (bignum_tmp4);
+  IF_GC_TRACE(printf("bignum_tmp5\n"));
+  mark (bignum_tmp5);
 #endif
 
   IF_GC_TRACE(printf("globals\n"));

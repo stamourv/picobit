@@ -149,8 +149,6 @@ void prim_rem () {
     ERROR("remainder", "divide by 0");
   if (negp(arg1) || negp(arg2))
     ERROR("remainder", "only positive numbers are supported");
-  // TODO fix this to handle negatives
-  // TODO logic quite similar to mul and div (likely, once we fix), abstract ?
   arg3 = divnonneg (arg1, arg2);
   arg4 = mulnonneg (arg2, arg3);
   arg1 = sub(arg1, arg4);
