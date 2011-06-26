@@ -1,7 +1,14 @@
 all: picobit-vm
 
-picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
+picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o picobit-vm.h
 	cc $(CFLAGS) -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
+
+picobit-vm.o: picobit-vm.h
+gc.o:         picobit-vm.h
+bignums.o:    picobit-vm.h
+debug.o:      picobit-vm.h
+primitives.o: picobit-vm.h
+dispatch.o:   picobit-vm.h
 
 .c.o:
 	$(CC) $(CFLAGS) -O -c $*.c
