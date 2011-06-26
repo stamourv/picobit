@@ -26,10 +26,8 @@
                 #f))
 
 (define (context-make-label ctx)
-  (context-change-code ctx (code-make-label (context-code ctx))))
-
-(define (context-last-label ctx)
-  (code-last-label (context-code ctx)))
+  (let ([r (context-change-code ctx (code-make-label (context-code ctx)))])
+    (values r (code-last-label (context-code r)))))
 
 (define (context-add-bb ctx label)
   (context-change-code ctx (code-add-bb (context-code ctx) label)))

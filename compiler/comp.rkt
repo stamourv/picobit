@@ -22,36 +22,32 @@
            (gen-set-global (var-id var) ctx2))
          (comp-none rhs ctx))]
     [(if* _ `(,tst ,thn ,els))
-     (let* ([ctx2            (context-make-label ctx)]
-            [label-then      (context-last-label ctx2)]
-            [ctx3            (context-make-label ctx2)]
-            [label-else      (context-last-label ctx3)]
-            [ctx4            (context-make-label ctx3)]
-            [label-then-join (context-last-label ctx4)]
-            [ctx5            (context-make-label ctx4)]
-            [label-else-join (context-last-label ctx5)]
-            [ctx6            (context-make-label ctx5)]
-            [label-join      (context-last-label ctx6)]
-            [ctx7            (comp-test tst label-then label-else ctx6)]
-            [ctx8            (gen-goto
-                              label-else-join
-                              (comp-none els
-                                         (context-change-env2
-                                          (context-add-bb ctx7 label-else)
-                                          #f)))]
-            [ctx9            (gen-goto
-                              label-then-join
-                              (comp-none thn
-                                         (context-change-env
-                                          (context-add-bb ctx8 label-then)
-                                          (context-env2 ctx7))))]
-            [ctx10           (gen-goto
-                              label-join
-                              (context-add-bb ctx9 label-else-join))]
-            [ctx11           (gen-goto
-                              label-join
-                              (context-add-bb ctx10 label-then-join))]
-            [ctx12           (context-add-bb ctx11 label-join)])
+     (let*-values
+         ([(ctx2 label-then)      (context-make-label ctx)]
+          [(ctx3 label-else)      (context-make-label ctx2)]
+          [(ctx4 label-then-join) (context-make-label ctx3)]
+          [(ctx5 label-else-join) (context-make-label ctx4)]
+          [(ctx6 label-join)      (context-make-label ctx5)]
+          [(ctx7)  (comp-test tst label-then label-else ctx6)]
+          [(ctx8)  (gen-goto
+                    label-else-join
+                    (comp-none els
+                               (context-change-env2
+                                (context-add-bb ctx7 label-else)
+                                #f)))]
+          [(ctx9)  (gen-goto
+                    label-then-join
+                    (comp-none thn
+                               (context-change-env
+                                (context-add-bb ctx8 label-then)
+                                (context-env2 ctx7))))]
+          [(ctx10) (gen-goto
+                    label-join
+                    (context-add-bb ctx9 label-else-join))]
+          [(ctx11) (gen-goto
+                    label-join
+                    (context-add-bb ctx10 label-then-join))]
+          [(ctx12) (context-add-bb ctx11 label-join)])
        ctx12)]
     
     [(? call? node)
@@ -73,19 +69,18 @@
     [(or (? cst? node) (? ref? node) (? def? node) (? set? node) (? prc? node))
      (gen-return (comp-push node ctx))]
     [(if* _ `(,tst ,thn ,els))
-     (let* ([ctx2       (context-make-label ctx)]
-            [label-then (context-last-label ctx2)]
-            [ctx3       (context-make-label ctx2)]
-            [label-else (context-last-label ctx3)]
-            [ctx4       (comp-test tst label-then label-else ctx3)]
-            [ctx5       (comp-tail els
-                                   (context-change-env2
-                                    (context-add-bb ctx4 label-else)
-                                    #f))]
-            [ctx6       (comp-tail thn
-                                   (context-change-env
-                                    (context-add-bb ctx5 label-then)
-                                    (context-env2 ctx4)))])
+     (let*-values
+         ([(ctx2 label-then) (context-make-label ctx)]
+          [(ctx3 label-else) (context-make-label ctx2)]
+          [(ctx4) (comp-test tst label-then label-else ctx3)]
+          [(ctx5) (comp-tail els
+                             (context-change-env2
+                              (context-add-bb ctx4 label-else)
+                              #f))]
+          [(ctx6) (comp-tail thn
+                             (context-change-env
+                              (context-add-bb ctx5 label-then)
+                              (context-env2 ctx4)))])
        ctx6)]
     [(? call? node)
      (comp-call node 'tail ctx)]
@@ -120,36 +115,32 @@
     [(or (? def? node) (? set? node))
      (gen-push-unspecified (comp-none node ctx))]
     [(if* _ `(,tst ,thn ,els))
-     (let* ([ctx2            (context-make-label ctx)]
-            [label-then      (context-last-label ctx2)]
-            [ctx3            (context-make-label ctx2)]
-            [label-else      (context-last-label ctx3)]
-            [ctx4            (context-make-label ctx3)]
-            [label-then-join (context-last-label ctx4)]
-            [ctx5            (context-make-label ctx4)]
-            [label-else-join (context-last-label ctx5)]
-            [ctx6            (context-make-label ctx5)]
-            [label-join      (context-last-label ctx6)]
-            [ctx7            (comp-test tst label-then label-else ctx6)]
-            [ctx8            (gen-goto
-                              label-else-join
-                              (comp-push els
-                                         (context-change-env2
-                                          (context-add-bb ctx7 label-else)
-                                          #f)))]
-            [ctx9            (gen-goto
-                              label-then-join
-                              (comp-push thn
-                                         (context-change-env
-                                          (context-add-bb ctx8 label-then)
-                                          (context-env2 ctx7))))]
-            [ctx10           (gen-goto
-                              label-join
-                              (context-add-bb ctx9 label-else-join))]
-            [ctx11           (gen-goto
-                              label-join
-                              (context-add-bb ctx10 label-then-join))]
-            [ctx12           (context-add-bb ctx11 label-join)])
+     (let*-values
+         ([(ctx2 label-then)      (context-make-label ctx)]
+          [(ctx3 label-else)      (context-make-label ctx2)]
+          [(ctx4 label-then-join) (context-make-label ctx3)]
+          [(ctx5 label-else-join) (context-make-label ctx4)]
+          [(ctx6 label-join)      (context-make-label ctx5)]
+          [(ctx7)  (comp-test tst label-then label-else ctx6)]
+          [(ctx8)  (gen-goto
+                    label-else-join
+                    (comp-push els
+                               (context-change-env2
+                                (context-add-bb ctx7 label-else)
+                                #f)))]
+          [(ctx9)  (gen-goto
+                    label-then-join
+                    (comp-push thn
+                               (context-change-env
+                                (context-add-bb ctx8 label-then)
+                                (context-env2 ctx7))))]
+          [(ctx10) (gen-goto
+                    label-join
+                    (context-add-bb ctx9 label-else-join))]
+          [(ctx11) (gen-goto
+                    label-join
+                    (context-add-bb ctx10 label-then-join))]
+          [(ctx12) (context-add-bb ctx11 label-join)])
        ctx12)]
     [(? prc? node)
      (comp-prc node #t ctx)]
@@ -184,23 +175,22 @@
                    (build vars ctx))))
 
 (define (comp-prc node closure? ctx)
-  (let* ([ctx2           (context-make-label ctx)]
-         [label-entry    (context-last-label ctx2)]
-         [ctx3           (context-make-label ctx2)]
-         [label-continue (context-last-label ctx3)]
-         [body-env       (prc->env node)]
-         [ctx4
-          (if closure?
-              (build-closure label-entry (env-closed body-env) ctx3)
-              ctx3)]
-         [ctx5           (gen-goto label-continue ctx4)]
-         [ctx6           (gen-entry (length (prc-params node))
-                                    (prc-rest? node)
-                                    (context-add-bb
-                                     (context-change-env ctx5
-                                                         body-env)
-                                     label-entry))]
-         [ctx7           (comp-tail (child1 node) ctx6)])
+  (let*-values
+      ([(ctx2 label-entry)    (context-make-label ctx)]
+       [(ctx3 label-continue) (context-make-label ctx2)]
+       [(body-env) (prc->env node)]
+       [(ctx4)
+        (if closure?
+            (build-closure label-entry (env-closed body-env) ctx3)
+            ctx3)]
+       [(ctx5) (gen-goto label-continue ctx4)]
+       [(ctx6) (gen-entry (length (prc-params node))
+                          (prc-rest? node)
+                          (context-add-bb
+                           (context-change-env ctx5
+                                               body-env)
+                           label-entry))]
+       [(ctx7) (comp-tail (child1 node) ctx6)])
     (set-prc-entry-label! node label-entry)
     (context-add-bb (context-change-env ctx7 (context-env ctx5))
                     label-continue)))
