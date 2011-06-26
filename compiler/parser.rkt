@@ -1,7 +1,7 @@
 #lang racket
 
 (provide parse-top-list parse)
-(require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt")
+(require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt" "primitives.rkt")
 
 (define (parse-top-list lst env)
   (if (pair? lst)

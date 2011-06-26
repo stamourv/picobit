@@ -2,7 +2,7 @@
 
 (require "utilities.rkt"
          "ast.rkt"
-         "env.rkt"
+         "primitives.rkt"
          "reader.rkt"
          "parser.rkt"
          "front-end.rkt"
