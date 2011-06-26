@@ -103,17 +103,17 @@
       (let ([new-constants (add-constant (car objs) constants #f)])
         (add-constants (cdr objs) new-constants))))
 
-(define (add-global var globals cont)
+(define (add-global var globals)
   (let ((x (assq var globals)))
     (if x
         (begin
 	  ;; increment reference counter
 	  (vector-set! (cdr x) 1 (+ (vector-ref (cdr x) 1) 1))
-	  (cont globals))
+	  globals)
         (let ((new-globals
                (cons (cons var (vector (length globals) 1))
                      globals)))
-	  (cont new-globals)))))
+	  new-globals))))
 
 (define (sort-constants constants)
   (let ((csts
@@ -170,13 +170,8 @@
                         (add-constant (cadr instr) constants #t)])
                    (loop1 (cdr lst) new-constants globals labels)))
                 ((memq (car instr) '(push-global set-global))
-                 (add-global (cadr instr)
-                             globals
-                             (lambda (new-globals)
-                               (loop1 (cdr lst)
-                                      constants
-                                      new-globals
-                                      labels))))
+                 (let ([new-globals (add-global (cadr instr) globals)])
+                   (loop1 (cdr lst) constants new-globals labels)))
                 (else
                  (loop1 (cdr lst)
                         constants
