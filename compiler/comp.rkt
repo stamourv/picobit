@@ -21,35 +21,8 @@
          (let ((ctx2 (comp-push rhs ctx)))
            (gen-set-global (var-id var) ctx2))
          (comp-none rhs ctx))]
-    [(if* _ `(,tst ,thn ,els))
-     (let*-values
-         ([(ctx2 label-then)      (context-make-label ctx)]
-          [(ctx3 label-else)      (context-make-label ctx2)]
-          [(ctx4 label-then-join) (context-make-label ctx3)]
-          [(ctx5 label-else-join) (context-make-label ctx4)]
-          [(ctx6 label-join)      (context-make-label ctx5)]
-          [(ctx7)  (comp-test tst label-then label-else ctx6)]
-          [(ctx8)  (gen-goto
-                    label-else-join
-                    (comp-none els
-                               (context-change-env2
-                                (context-add-bb ctx7 label-else)
-                                #f)))]
-          [(ctx9)  (gen-goto
-                    label-then-join
-                    (comp-none thn
-                               (context-change-env
-                                (context-add-bb ctx8 label-then)
-                                (context-env2 ctx7))))]
-          [(ctx10) (gen-goto
-                    label-join
-                    (context-add-bb ctx9 label-else-join))]
-          [(ctx11) (gen-goto
-                    label-join
-                    (context-add-bb ctx10 label-then-join))]
-          [(ctx12) (context-add-bb ctx11 label-join)])
-       ctx12)]
-    
+    [(? if*? node)
+     (comp-if node 'none ctx)]
     [(? call? node)
      (comp-call node 'none ctx)]
     [(seq _ '())
@@ -68,20 +41,8 @@
   (match node
     [(or (? cst? node) (? ref? node) (? def? node) (? set? node) (? prc? node))
      (gen-return (comp-push node ctx))]
-    [(if* _ `(,tst ,thn ,els))
-     (let*-values
-         ([(ctx2 label-then) (context-make-label ctx)]
-          [(ctx3 label-else) (context-make-label ctx2)]
-          [(ctx4) (comp-test tst label-then label-else ctx3)]
-          [(ctx5) (comp-tail els
-                             (context-change-env2
-                              (context-add-bb ctx4 label-else)
-                              #f))]
-          [(ctx6) (comp-tail thn
-                             (context-change-env
-                              (context-add-bb ctx5 label-then)
-                              (context-env2 ctx4)))])
-       ctx6)]
+    [(? if*? node)
+     (comp-if node 'tail ctx)]
     [(? call? node)
      (comp-call node 'tail ctx)]
     [(seq _ '())
@@ -114,34 +75,8 @@
          (gen-push-local-var (var-id var) ctx))]
     [(or (? def? node) (? set? node))
      (gen-push-unspecified (comp-none node ctx))]
-    [(if* _ `(,tst ,thn ,els))
-     (let*-values
-         ([(ctx2 label-then)      (context-make-label ctx)]
-          [(ctx3 label-else)      (context-make-label ctx2)]
-          [(ctx4 label-then-join) (context-make-label ctx3)]
-          [(ctx5 label-else-join) (context-make-label ctx4)]
-          [(ctx6 label-join)      (context-make-label ctx5)]
-          [(ctx7)  (comp-test tst label-then label-else ctx6)]
-          [(ctx8)  (gen-goto
-                    label-else-join
-                    (comp-push els
-                               (context-change-env2
-                                (context-add-bb ctx7 label-else)
-                                #f)))]
-          [(ctx9)  (gen-goto
-                    label-then-join
-                    (comp-push thn
-                               (context-change-env
-                                (context-add-bb ctx8 label-then)
-                                (context-env2 ctx7))))]
-          [(ctx10) (gen-goto
-                    label-join
-                    (context-add-bb ctx9 label-else-join))]
-          [(ctx11) (gen-goto
-                    label-join
-                    (context-add-bb ctx10 label-then-join))]
-          [(ctx12) (context-add-bb ctx11 label-join)])
-       ctx12)]
+    [(? if*? node)
+     (comp-if node 'push ctx)]
     [(? prc? node)
      (comp-prc node #t ctx)]
     [(? call? node)
@@ -157,6 +92,52 @@
                  (comp-none (car lst) ctx))))]
     [_
      (compiler-error "unknown expression type" node)]))
+
+(define (comp-if node reason ctx)
+  (match node
+    [(if* _ `(,tst ,thn ,els))
+     (case reason
+       [(none push)
+        (let*-values
+            ([(rec-comp) (if (eq? reason 'none) comp-none comp-push)]
+             [(ctx2 label-then)      (context-make-label ctx)]
+             [(ctx3 label-else)      (context-make-label ctx2)]
+             [(ctx4 label-then-join) (context-make-label ctx3)]
+             [(ctx5 label-else-join) (context-make-label ctx4)]
+             [(ctx6 label-join)      (context-make-label ctx5)]
+             [(ctx7)  (comp-test tst label-then label-else ctx6)]
+             [(ctx8)  (gen-goto
+                       label-else-join
+                       (rec-comp els (context-change-env2
+                                      (context-add-bb ctx7 label-else)
+                                      #f)))]
+             [(ctx9)  (gen-goto
+                       label-then-join
+                       (rec-comp thn (context-change-env
+                                      (context-add-bb ctx8 label-then)
+                                      (context-env2 ctx7))))]
+             [(ctx10) (gen-goto
+                       label-join
+                       (context-add-bb ctx9 label-else-join))]
+             [(ctx11) (gen-goto
+                       label-join
+                       (context-add-bb ctx10 label-then-join))]
+             [(ctx12) (context-add-bb ctx11 label-join)])
+          ctx12)]
+       [(tail)
+        (let*-values
+         ([(ctx2 label-then) (context-make-label ctx)]
+          [(ctx3 label-else) (context-make-label ctx2)]
+          [(ctx4) (comp-test tst label-then label-else ctx3)]
+          [(ctx5) (comp-tail els
+                             (context-change-env2
+                              (context-add-bb ctx4 label-else)
+                              #f))]
+          [(ctx6) (comp-tail thn
+                             (context-change-env
+                              (context-add-bb ctx5 label-then)
+                              (context-env2 ctx4)))])
+       ctx6)])]))
 
 (define (build-closure label-entry vars ctx)
   
