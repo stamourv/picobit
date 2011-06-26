@@ -25,15 +25,8 @@
      (comp-if node 'none ctx)]
     [(? call? node)
      (comp-call node 'none ctx)]
-    [(seq _ '())
-     ctx]
-    [(seq _ (? list? children))
-     (let loop ([lst children]
-                [ctx ctx])
-       (if (null? (cdr lst))
-           (comp-none (car lst) ctx)
-           (loop (cdr lst)
-                 (comp-none (car lst) ctx))))]
+    [(? seq? node)
+     (comp-seq node 'none ctx)]
     [_
      (compiler-error "unknown expression type" node)]))
 
@@ -45,17 +38,8 @@
      (comp-if node 'tail ctx)]
     [(? call? node)
      (comp-call node 'tail ctx)]
-    [(seq _ '())
-     (gen-return (gen-push-unspecified ctx))]
-    [(seq _ (? list? children))
-     (if (null? children)
-         (gen-return (gen-push-unspecified ctx))
-         (let loop ([lst children]
-                    [ctx ctx])
-           (if (null? (cdr lst))
-               (comp-tail (car lst) ctx)
-               (loop (cdr lst)
-                     (comp-none (car lst) ctx)))))]
+    [(? seq? node)
+     (comp-seq node 'tail ctx)]
     [_
      (compiler-error "unknown expression type" node)]))
 
@@ -81,15 +65,8 @@
      (comp-prc node #t ctx)]
     [(? call? node)
      (comp-call node 'push ctx)]
-    [(seq _ '())
-     (gen-push-unspecified ctx)]
-    [(seq _ (? list? children))
-     (let loop ([lst children]
-                [ctx ctx])
-       (if (null? (cdr lst))
-           (comp-push (car lst) ctx)
-           (loop (cdr lst)
-                 (comp-none (car lst) ctx))))]
+    [(? seq? node)
+     (comp-seq node 'push ctx)]
     [_
      (compiler-error "unknown expression type" node)]))
 
@@ -138,6 +115,25 @@
                               (context-add-bb ctx5 label-then)
                               (context-env2 ctx4)))])
        ctx6)])]))
+
+(define (comp-seq node reason ctx)
+  (match node
+    [(seq _ '())
+     (case reason
+       [(none) ctx]
+       [(tail) (gen-return (gen-push-unspecified ctx))]
+       [(push) (gen-push-unspecified ctx)])]
+    [(seq _ (? list? children))
+     (let ([rec-comp (case reason
+                       [(none) comp-none]
+                       [(tail) comp-tail]
+                       [(push) comp-push])])
+       (let loop ([lst children]
+                  [ctx ctx])
+         (if (null? (cdr lst))
+             (rec-comp (car lst) ctx)
+             (loop (cdr lst)
+                   (comp-none (car lst) ctx)))))]))
 
 (define (build-closure label-entry vars ctx)
   
