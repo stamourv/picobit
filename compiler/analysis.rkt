@@ -12,19 +12,19 @@
 
 (define (toplevel-prc? var)
   (and (not (mutable-var? var))
-       (let ((d (var-defs var)))
+       (let ([d (var-defs var)])
          (and (pair? d)
               (null? (cdr d))
-              (let ((val (child1 (car d))))
+              (let ([val (child1 (car d))])
                 (and (prc? val)
                      val))))))
 
 (define (toplevel-prc-with-non-rest-correct-calls? var)
-  (let ((prc (toplevel-prc? var)))
+  (let ([prc (toplevel-prc? var)])
     (and prc
          (not (prc-rest? prc))
          (andmap (lambda (r)
-                   (let ((parent (node-parent r)))
+                   (let ([parent (node-parent r)])
                      (and (call? parent)
                           (eq? (child1 parent) r)
                           (= (length (prc-params prc))
@@ -57,32 +57,20 @@
           (set->list (fv node))))
 
 (define (fv node)
-  (cond ((cst? node)
-         (seteq)) ; empty varset
-        ((ref? node)
-         (let ((var (ref-var node)))
-           (seteq var))) ; singleton varset
-        ((def? node)
-         (let ((var (def-var node))
-               (val (child1 node)))
-           (set-add (fv val) var)))
-        ((set? node)
-         (let ((var (set-var node))
-               (val (child1 node)))
-           (set-add (fv val) var)))
-        ((if*? node)
-         (let ((a (list-ref (node-children node) 0))
-               (b (list-ref (node-children node) 1))
-               (c (list-ref (node-children node) 2)))
-           (set-union (fv a) (fv b) (fv c))))
-        ((prc? node)
-         (let ((body (list-ref (node-children node) 0)))
-           (set-subtract
-            (fv body)
-            (build-params-varset (prc-params node)))))
-        ((call? node)
-         (apply set-union (map fv (node-children node))))
-        ((seq? node)
-         (apply set-union (map fv (node-children node))))
-        (else
-         (compiler-error "unknown expression type" node))))
+  (match node
+    [(? cst? node)
+     (seteq)] ; empty varset
+    [(ref _ '() var)
+     (seteq var)] ; singleton varset
+    [(def _ `(,val) var)
+     (set-add (fv val) var)]
+    [(set _ `(,val) var)
+     (set-add (fv val) var)]
+    [(prc _ `(,body) params rest? entry-label)
+     (set-subtract
+      (fv body)
+      (build-params-varset params))]
+    [(or (? if*? node) (? call? node) (? seq? node))
+     (apply set-union (map fv (node-children node)))]
+    [_
+     (compiler-error "unknown expression type" node)]))
