@@ -45,16 +45,16 @@
 ;; 1 : TODO asm label constant ?
 ;; 2 : number of occurences of this constant in the code
 ;; 3 : pointer to content, used at encoding time
-(define (add-constant obj constants from-code? [cont values])
+(define (add-constant obj constants from-code?)
   (define o (translate-constant obj))
   (define e (encode-direct o))
-  (cond [e (cont constants)] ; can be encoded directly
+  (cond [e constants] ; can be encoded directly
         [(dict-ref constants o #f)
          =>
          (lambda (x)
            (when from-code?
              (vector-set! x 2 (+ (vector-ref x 2) 1)))
-           (cont constants))]
+           constants)]
         [else
          (define descr
            (vector #f
@@ -64,31 +64,27 @@
          (define new-constants (dict-set constants o descr))
          (cond ((pair? o)
                 (add-constants (list (car o) (cdr o))
-                               new-constants
-                               cont))
+                               new-constants))
                ((symbol? o)
-                (cont new-constants))
+                new-constants)
                ((string? o)
                 (let ((chars (map char->integer (string->list o))))
                   (vector-set! descr 3 chars)
                   (add-constant chars
                                 new-constants
-                                #f
-                                cont)))
+                                #f)))
                ((vector? o) ; ordinary vectors are stored as lists
                 (let ((elems (vector->list o)))
                   (vector-set! descr 3 elems)
                   (add-constant elems
                                 new-constants
-                                #f
-                                cont)))
+                                #f)))
                ((u8vector? o)
                 (let ((elems (u8vector->list o)))
                   (vector-set! descr 3 elems)
                   (add-constant elems
                                 new-constants
-                                #f
-                                cont)))
+                                #f)))
                ((and (number? o) (exact? o))
                                         ; (pp (list START-ENCODING: o))
                 (let ((hi (arithmetic-shift o -16)))
@@ -97,21 +93,15 @@
                   ;; high part, which will be matched by encode-direct
                   (add-constant hi
                                 new-constants
-                                #f
-                                cont)))
+                                #f)))
                (else
-                (cont new-constants)))]))
+                new-constants))]))
 
-(define (add-constants objs constants [cont values])
+(define (add-constants objs constants)
   (if (null? objs)
-      (cont constants)
-      (add-constant (car objs)
-                    constants
-                    #f
-                    (lambda (new-constants)
-                      (add-constants (cdr objs)
-                                     new-constants
-                                     cont)))))
+      constants
+      (let ([new-constants (add-constant (car objs) constants #f)])
+        (add-constants (cdr objs) new-constants))))
 
 (define (add-global var globals cont)
   (let ((x (assq var globals)))
