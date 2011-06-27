@@ -31,8 +31,7 @@
              [code (context-code ctx)]
              [bbs  (code->vector code)])
         (resolve-toplevel-labels! bbs)
-        (let* ([bbs  (reorder! (tree-shake! bbs))]
-               [prog (linearize bbs)])
+        (let ([prog (schedule (tree-shake! bbs))])
           (when (show-asm?)
             (pretty-print prog))
           ;; output port is in a thunk to avoid creating result
