@@ -5,6 +5,11 @@
  */
 
 #include "picobit-vm.h"
+#include "heap-layout.h"
+#include "object-layout.h"
+#include "gc.h"
+#include "dispatch.h"
+
 
 void push_arg1 () {
   env = cons (arg1, env);

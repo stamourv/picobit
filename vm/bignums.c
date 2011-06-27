@@ -5,8 +5,13 @@
  */
 
 #include "picobit-vm.h"
+#include "heap-layout.h"
+#include "object-layout.h"
+#include "gc.h"
 
 #ifdef INFINITE_PRECISION_BIGNUMS
+
+#include "bignums.h"
 
 integer make_integer (digit lo, integer hi) {
   return alloc_ram_cell_init (BIGNUM_FIELD0 | (hi >> 8), hi, lo >> 8, lo);

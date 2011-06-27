@@ -5,6 +5,13 @@
  */
 
 #include "picobit-vm.h"
+#include "heap-layout.h"
+#include "object-layout.h"
+#include "gc.h"
+
+#ifdef INFINITE_PRECISION_BIGNUMS
+#include "bignums.h"
+#endif
 
 // debugging functions
 

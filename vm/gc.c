@@ -5,6 +5,9 @@
  */
 
 #include "picobit-vm.h"
+#include "heap-layout.h"
+#include "object-layout.h"
+#include "gc.h"
 
 void init_ram_heap () {
   uint8 i;

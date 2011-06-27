@@ -147,19 +147,6 @@ void type_error (char *prim, char *type);
 
 /*---------------------------------------------------------------------------*/
 
-#include "heap-layout.h"
-#include "object-layout.h"
-
-#ifdef INFINITE_PRECISION_BIGNUMS
-#include "bignums.h"
-#endif
-
-#include "gc.h"
-#include "primitives.h"
-#include "dispatch.h"
-
-/*---------------------------------------------------------------------------*/
-
 // debugging functions
 
 #ifdef WORKSTATION

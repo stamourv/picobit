@@ -3,12 +3,12 @@ all: picobit-vm
 picobit-vm: picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o picobit-vm.h
 	cc $(CFLAGS) -o picobit-vm picobit-vm.o gc.o bignums.o debug.o primitives.o dispatch.o
 
-picobit-vm.o: picobit-vm.h
-gc.o:         picobit-vm.h
-bignums.o:    picobit-vm.h
-debug.o:      picobit-vm.h
-primitives.o: picobit-vm.h
-dispatch.o:   picobit-vm.h
+picobit-vm.o: picobit-vm.h heap-layout.h
+gc.o:         picobit-vm.h heap-layout.h object-layout.h gc.h
+bignums.o:    picobit-vm.h heap-layout.h object-layout.h gc.h bignums.h
+debug.o:      picobit-vm.h heap-layout.h object-layout.h gc.h bignums.h
+primitives.o: picobit-vm.h heap-layout.h object-layout.h gc.h bignums.h
+dispatch.o:   picobit-vm.h heap-layout.h object-layout.h gc.h dispatch.h
 
 .c.o:
 	$(CC) $(CFLAGS) -O -c $*.c
