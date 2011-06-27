@@ -5,74 +5,91 @@
 
 ;-----------------------------------------------------------------------------
 
+(provide global-env)
+(define global-env
+  (mlist
+   (make-var '#%readyq #t '() '() '() #f #f))) ; thread queue
+
+(provide primitive-encodings)
+(define primitive-encodings '())
+
+
 (define-syntax define-primitive
   (syntax-rules ()
-    [(define-primitive name nargs)
-     (define-primitive name nargs #:uns-res? #f)]
-    [(define-primitive name nargs #:unspecified-result)
-     (define-primitive name nargs #:uns-res? #t)]
-    [(define-primitive name nargs #:uns-res? uns?)
-     (make-var 'name #t '() '() '() #f (make-primitive nargs #f uns?))]))
+    [(define-primitive name nargs encoding)
+     (define-primitive name nargs encoding #:uns-res? #f)]
+    [(define-primitive name nargs encoding #:unspecified-result)
+     (define-primitive name nargs encoding #:uns-res? #t)]
+    [(define-primitive name nargs encoding #:uns-res? uns?)
+     (let ([prim (make-var 'name #t '() '() '() #f
+                           (make-primitive nargs #f uns?))])
+       (set! global-env (mcons prim global-env))
+       (set! primitive-encodings
+             (dict-set primitive-encodings 'name encoding)))]))
 
 
 ;-----------------------------------------------------------------------------
 
-(provide make-global-env)
 
-(define/contract (make-global-env) (-> mlist?)
-  (mlist
-   (define-primitive #%number? 1)
-   (define-primitive #%+ 2)
-   (define-primitive #%- 2)
-   (define-primitive #%mul-non-neg 2)
-   (define-primitive #%div-non-neg 2)
-   (define-primitive #%rem-non-neg 2)
-   (define-primitive #%= 2)
-   (define-primitive #%< 2)
-   (define-primitive #%> 2)
-   (define-primitive #%pair? 1)
-   (define-primitive #%cons 2)
-   (define-primitive #%car 1)
-   (define-primitive #%cdr 1)
-   (define-primitive #%set-car! 2 #:unspecified-result)
-   (define-primitive #%set-cdr! 2 #:unspecified-result)
-   (define-primitive #%null? 1)
-   (define-primitive #%eq? 2)
-   (define-primitive #%not 1)
-   (define-primitive #%get-cont 0)
-   (define-primitive #%graft-to-cont 2)
-   (define-primitive #%return-to-cont 2)
-   (define-primitive #%halt 0 #:unspecified-result)
-   (define-primitive #%symbol? 1)
-   (define-primitive #%string? 1)
-   (define-primitive #%string->list 1)
-   (define-primitive #%list->string 1)
-   (define-primitive #%make-u8vector 1)
-   (define-primitive #%u8vector-ref 2)
-   (define-primitive #%u8vector-set! 3 #:unspecified-result)
-   (define-primitive #%print 1 #:unspecified-result)
-   (define-primitive #%clock 0)
-   (define-primitive #%motor 2 #:unspecified-result)
-   (define-primitive #%led 3 #:unspecified-result)
-   (define-primitive #%led2-color 1 #:unspecified-result)
-   (define-primitive #%getchar-wait 2)
-   (define-primitive #%putchar 2 #:unspecified-result)
-   (define-primitive #%beep 2 #:unspecified-result)
-   (define-primitive #%adc 1)
-   (define-primitive #%u8vector? 1)
-   (define-primitive #%sernum 0)
-   (define-primitive #%u8vector-length 1)
-   (define-primitive #%boolean? 1)
-   (define-primitive #%network-init 0 #:unspecified-result)
-   (define-primitive #%network-cleanup 0 #:unspecified-result)
-   (define-primitive #%receive-packet-to-u8vector 1)
-   (define-primitive #%send-packet-from-u8vector 2)
-   (define-primitive #%ior 2)
-   (define-primitive #%xor 2)
+;; name, n-args, encoding (opcode, prim no), maybe #:unspecified-result
+;; Encodings must be kept in sync with the VM. It needs to agree with
+;; the compiler on the instruction set.
 
-   (make-var '#%readyq #t '() '() '() #f #f)
-   ;; TODO put in a meaningful order
-   ))
+(define-primitive #%number? 1 0)
+(define-primitive #%+ 2 1)
+(define-primitive #%- 2 2)
+(define-primitive #%mul-non-neg 2 3)
+(define-primitive #%div-non-neg 2 4)
+(define-primitive #%rem-non-neg 2 5)
+(define-primitive #%= 2 7)
+(define-primitive #%< 2 8)
+(define-primitive #%> 2 10)
+
+(define-primitive #%pair? 1 12)
+(define-primitive #%cons 2 13)
+(define-primitive #%car 1 14)
+(define-primitive #%cdr 1 15)
+(define-primitive #%set-car! 2 16 #:unspecified-result)
+(define-primitive #%set-cdr! 2 17 #:unspecified-result)
+(define-primitive #%null? 1 18)
+
+(define-primitive #%eq? 2 19)
+(define-primitive #%not 1 20)
+
+(define-primitive #%get-cont 0 21)
+(define-primitive #%graft-to-cont 2 22)
+(define-primitive #%return-to-cont 2 23)
+(define-primitive #%halt 0 24 #:unspecified-result)
+
+(define-primitive #%symbol? 1 25)
+(define-primitive #%string? 1 26)
+(define-primitive #%string->list 1 27)
+(define-primitive #%list->string 1 28)
+
+(define-primitive #%make-u8vector 1 29)
+(define-primitive #%u8vector-ref 2 30)
+(define-primitive #%u8vector-set! 3 31 #:unspecified-result)
+
+(define-primitive #%print 1 32 #:unspecified-result)
+(define-primitive #%clock 0 33)
+(define-primitive #%motor 2 34 #:unspecified-result)
+(define-primitive #%led 3 35 #:unspecified-result)
+(define-primitive #%led2-color 1 36 #:unspecified-result)
+(define-primitive #%getchar-wait 2 37)
+(define-primitive #%putchar 2 38 #:unspecified-result)
+(define-primitive #%beep 2 39 #:unspecified-result)
+(define-primitive #%adc 1 40)
+
+(define-primitive #%u8vector? 1 41)
+(define-primitive #%sernum 0 42)
+(define-primitive #%u8vector-length 1 43)
+(define-primitive #%boolean? 1 48)
+(define-primitive #%network-init 0 49 #:unspecified-result)
+(define-primitive #%network-cleanup 0 50 #:unspecified-result)
+(define-primitive #%receive-packet-to-u8vector 1 51)
+(define-primitive #%send-packet-from-u8vector 2 52)
+(define-primitive #%ior 2 53)
+(define-primitive #%xor 2 54)
 
 
 ;-----------------------------------------------------------------------------
@@ -123,58 +140,3 @@
     (receive-packet-to-u8vector . #%receive-packet-to-u8vector)
     (send-packet-from-u8vector . #%send-packet-from-u8vector)
     ))
-
-
-;-----------------------------------------------------------------------------
-
-(provide primitive-encodings)
-
-(define primitive-encodings
-  '((#%number?                    . 0)
-    (#%+                          . 1)
-    (#%-                          . 2)
-    (#%mul-non-neg                . 3)
-    (#%div-non-neg                . 4)
-    (#%rem-non-neg                . 5)
-    (#%=                          . 7)
-    (#%<                          . 8)
-    (#%>                          . 10)
-    (#%pair?                      . 12)
-    (#%cons                       . 13)
-    (#%car                        . 14)
-    (#%cdr                        . 15)
-    (#%set-car!                   . 16)
-    (#%set-cdr!                   . 17)
-    (#%null?                      . 18)
-    (#%eq?                        . 19)
-    (#%not                        . 20)
-    (#%get-cont                   . 21)
-    (#%graft-to-cont              . 22)
-    (#%return-to-cont             . 23)
-    (#%halt                       . 24)
-    (#%symbol?                    . 25)
-    (#%string?                    . 26)
-    (#%string->list               . 27)
-    (#%list->string               . 28)
-    (#%make-u8vector              . 29)
-    (#%u8vector-ref               . 30)
-    (#%u8vector-set!              . 31)
-    (#%print                      . 32)
-    (#%clock                      . 33)
-    (#%motor                      . 34)
-    (#%led                        . 35)
-    (#%led2-color                 . 36)
-    (#%getchar-wait               . 37)
-    (#%putchar                    . 38)
-    (#%beep                       . 39)
-    (#%adc                        . 40)
-    (#%u8vector?                  . 41)
-    (#%sernum                     . 42)
-    (#%u8vector-length            . 43)
-    (#%boolean?                   . 48)
-    (#%network-init               . 49)
-    (#%network-cleanup            . 50)
-    (#%receive-packet-to-u8vector . 51)
-    (#%send-packet-from-u8vector  . 52)
-    (#%ior                        . 53)
-    (#%xor                        . 54)))

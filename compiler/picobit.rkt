@@ -20,7 +20,6 @@
 (define (compile filename)
   (let* ([hex-filename (path-replace-suffix filename ".hex")]
          [forms        (read-file  filename)]
-         [global-env   (make-global-env)]
          [node         (parse-top-list forms global-env)])
 
     (mark-needed-global-vars! global-env node)
