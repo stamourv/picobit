@@ -356,60 +356,55 @@
               (loop1 (cdr lst) (+ pos 1) (+ col byte-width)))))))))
 
 ;; (asm-write-code filename) outputs the code stream (i.e. the sequence
-;; of bytes produced) on the named file.
+;; of bytes produced) to the given port.
 
-(define (asm-write-code filename)
-  (with-output-to-file filename
-    (lambda ()
-      (let loop ((lst (cdr asm-code-stream)))
-        (if (not (null? lst))
-          (let ((x (car lst)))
-            (if (vector? x)
+(define (asm-write-code port)
+  (let loop ((lst (cdr asm-code-stream)))
+    (if (not (null? lst))
+        (let ((x (car lst)))
+          (if (vector? x)
               (let ((kind (vector-ref x 0)))
                 (if (not (eq? kind 'LISTING))
-                  (compiler-internal-error
-                    "asm-write-code, code stream not assembled"))
+                    (compiler-internal-error
+                     "asm-write-code, code stream not assembled"))
                 (loop (cdr lst)))
               (begin
-                (write-char (integer->char x))
-                (loop (cdr lst))))))))))
+                (write-char (integer->char x) port)
+                (loop (cdr lst))))))))
 
-(define (asm-write-hex-file filename)
-  (with-output-to-file filename
-    (lambda ()
+(define (asm-write-hex port)
+  (define (print-hex n)
+    (display (string-ref "0123456789ABCDEF" n) port))
 
-      (define (print-hex n)
-        (display (string-ref "0123456789ABCDEF" n)))
+  (define (print-byte n)
+    (print-hex (quotient n 16))
+    (print-hex (modulo n 16)))
 
-      (define (print-byte n)
-        (print-hex (quotient n 16))
-        (print-hex (modulo n 16)))
+  (define (print-line type addr bytes)
+    (let ((n (length bytes))
+          (addr-hi (quotient addr 256))
+          (addr-lo (modulo addr 256)))
+      (display ":" port)
+      (print-byte n)
+      (print-byte addr-hi)
+      (print-byte addr-lo)
+      (print-byte type)
+      (for-each print-byte bytes)
+      (let ((sum
+             (modulo (- (apply + n addr-hi addr-lo type bytes)) 256)))
+        (print-byte sum)
+        (newline port))))
 
-      (define (print-line type addr bytes)
-        (let ((n (length bytes))
-              (addr-hi (quotient addr 256))
-              (addr-lo (modulo addr 256)))
-          (display ":")
-          (print-byte n)
-          (print-byte addr-hi)
-          (print-byte addr-lo)
-          (print-byte type)
-          (for-each print-byte bytes)
-          (let ((sum
-                 (modulo (- (apply + n addr-hi addr-lo type bytes)) 256)))
-            (print-byte sum)
-            (newline))))
-
-      (let loop ((lst (cdr asm-code-stream))
-                 (pos asm-start-pos)
-                 (rev-bytes '()))
-        (if (not (null? lst))
-          (let ((x (car lst)))
-            (if (vector? x)
+  (let loop ((lst (cdr asm-code-stream))
+             (pos asm-start-pos)
+             (rev-bytes '()))
+    (if (not (null? lst))
+        (let ((x (car lst)))
+          (if (vector? x)
               (let ((kind (vector-ref x 0)))
                 (if (not (eq? kind 'LISTING))
-                  (compiler-internal-error
-                    "asm-write-hex-file, code stream not assembled"))
+                    (compiler-internal-error
+                     "asm-write-hex-file, code stream not assembled"))
                 (loop (cdr lst)
                       pos
                       rev-bytes))
@@ -427,13 +422,13 @@
                 (loop (cdr lst)
                       new-pos
                       new-rev-bytes))))
-          (begin
-            (if (not (null? rev-bytes))
-                (print-line 0
-                            (- pos (length rev-bytes))
-                            (reverse rev-bytes)))
-            (print-line 1 0 '())
-            (- pos asm-start-pos)))))))
+        (begin
+          (if (not (null? rev-bytes))
+              (print-line 0
+                          (- pos (length rev-bytes))
+                          (reverse rev-bytes)))
+          (print-line 1 0 '())
+          (- pos asm-start-pos)))))
 
 ;; Utilities.
 

@@ -17,9 +17,8 @@
 
 ;-----------------------------------------------------------------------------
 
-(define (compile filename)
-  (let* ([hex-filename (path-replace-suffix filename ".hex")]
-         [forms        (read-file  filename)]
+(define (compile in-port out-port-thunk)
+  (let* ([forms        (read-program in-port)]
          [node         (parse-top-list forms global-env)])
 
     (mark-needed-global-vars! global-env node)
@@ -36,12 +35,20 @@
                [prog (linearize bbs)])
           (when (show-asm?)
             (pretty-print prog))
-          ;; r5rs's with-output-to-file (in asm.rkt) can't overwrite. bleh
-          (when (file-exists? hex-filename)
-            (delete-file hex-filename))
-          (let ([size (assemble prog hex-filename)])
+          ;; output port is in a thunk to avoid creating result
+          ;; files if compilation fails
+          (let ([size (assemble prog (out-port-thunk))])
             (when (show-size?)
               (printf "~a bytes\n" size))))))))
+
+(define output-file-gen
+  (make-parameter
+   (lambda (in)
+     (let ([hex-filename (path-replace-suffix in ".hex")])
+       ;; r5rs's with-output-to-file (in asm.rkt) can't overwrite. bleh
+       (when (file-exists? hex-filename)
+         (delete-file hex-filename))
+       hex-filename))))
 
 (command-line
  #:once-each
@@ -57,5 +64,11 @@
  [("--stats")
   "Display statistics about generated instructions."
   (stats? #t)]
+ [("-o") out
+  "Place the output into the given file."
+  (output-file-gen (lambda (in) out))]
  #:args (filename)
- (void (compile filename)))
+ (void
+  (compile
+   (open-input-file filename)
+   (lambda () (open-output-file ((output-file-gen) filename))))))

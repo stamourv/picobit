@@ -4,7 +4,7 @@
          racket/runtime-path
          srfi/4)
 
-(provide read-file)
+(provide read-program)
 
 ;; at this point, the #u or #u8(...) has already been seen
 (define (read-u8vector port)
@@ -49,11 +49,10 @@
 
 (define-runtime-path compiler-dir ".")
 
-(define (read-file filename)
+(define (read-program port)
   (parameterize ([current-readtable u8vector-readtable])
     (let ([library
            (with-input-from-file (build-path compiler-dir "library.scm")
              read-all)])
       (expand-includes
-       (append library
-               (with-input-from-file filename read-all))))))
+       (append library (read-all read port))))))

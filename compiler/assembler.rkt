@@ -279,7 +279,7 @@
             (compiler-error "unknown object type" obj)])]))
 
 
-(define (assemble code hex-filename)
+(define (assemble code port)
 
   ;; Collect constants and globals
   (define-values
@@ -370,5 +370,5 @@
       (pretty-print
        (sort (hash->list instr-table) > #:key cdr)))
 
-    (begin0 (asm-write-hex-file hex-filename)
+    (begin0 (asm-write-hex port)
       (asm-end!))))
