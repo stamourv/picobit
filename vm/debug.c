@@ -1,9 +1,3 @@
-/* file: "debug.c" */
-
-/*
- * Copyright 2004-2009 by Marc Feeley and Vincent St-Amour, All Rights Reserved.
- */
-
 #include "picobit-vm.h"
 #include "heap-layout.h"
 #include "object-layout.h"

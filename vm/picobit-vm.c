@@ -1,16 +1,3 @@
-/* file: "picobit-vm.c" */
-
-/*
- * Copyright 2004-2009 by Marc Feeley and Vincent St-Amour, All Rights Reserved.
- *
- * History:
- *
- *   15/08/2004  Release of version 1
- *   06/07/2008  Modified for PICOBOARD2_R3
- *   18/07/2008  Modified to use new object representation
- *   17/12/2008  Release of version 2
- */
-
 #include "picobit-vm.h"
 #include "heap-layout.h"
 
