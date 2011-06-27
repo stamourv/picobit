@@ -187,14 +187,6 @@
                   `(let ([,v ,tst])
                      (if ,v ,v (or ,@rest))))
                 env))]
-    ;; primitive substitution here
-    ;; TODO do this optimization in the following pass instead of at parse time ?
-    [`(,op . ,args) (=> fail!)
-     (cond [(assoc op substitute-primitives)
-            =>
-            (lambda (prim)
-              (parse use `(,(cdr prim) ,@args) env))]
-           [else (fail!)])]
     ;; binary arithmetic operations can use primitives directly
     [`(,op . ,args) (=> fail!)
      (cond [(and (= (length args) 2)
