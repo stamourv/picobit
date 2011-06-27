@@ -26,11 +26,12 @@
 
 
 (define (extract-ids pattern)
-  (if (pair? pattern)
-      (cons (car pattern) (extract-ids (cdr pattern)))
-      (if (symbol? pattern)
-          (cons pattern '())
-          '())))
+  (cond [(pair? pattern)
+         (cons (car pattern) (extract-ids (cdr pattern)))]
+        [(symbol? pattern)
+         (cons pattern '())]
+        [else
+         '()]))
 
 (define (has-rest-param? pattern)
   (if (pair? pattern)
