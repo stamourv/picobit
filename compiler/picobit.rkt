@@ -1,7 +1,7 @@
 #lang racket
 
 (require "utilities.rkt"
-         "ast.rkt"
+         "pretty-printer.rkt"
          "primitives.rkt"
          "reader.rkt"
          "parser.rkt"
