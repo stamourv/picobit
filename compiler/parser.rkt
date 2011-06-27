@@ -187,14 +187,6 @@
                   `(let ([,v ,tst])
                      (if ,v ,v (or ,@rest))))
                 env))]
-    ;; binary arithmetic operations can use primitives directly
-    [`(,op . ,args) (=> fail!)
-     (cond [(and (= (length args) 2)
-                 (assoc op '((+ . #%+) (- . #%-))))
-            =>
-            (lambda (prim)
-              (parse use `(,(cdr prim) ,@args) env))]
-           [else (fail!)])]
     [`(,op . ,args) (=> fail!)
      (if (memq (car expr)
                '(quote quasiquote unquote unquote-splicing lambda if set! cond
