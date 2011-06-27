@@ -9,121 +9,95 @@
   (remove-useless-bbs! bbs))
 
 (define (bbs->ref-counts bbs)
-  (let ((ref-counts (make-vector (vector-length bbs) 0)))
+  (let ([ref-counts (make-vector (vector-length bbs) 0)])
 
-    (define visit
-      (lambda (label)
-        (let ((ref-count (vector-ref ref-counts label)))
-          (vector-set! ref-counts label (+ ref-count 1))
-          (when (= ref-count 0)
-            (let* ((bb (vector-ref bbs label))
-                   (rev-instrs (bb-rev-instrs bb)))
-              (for-each
-               (lambda (instr)
-                 (let ((opcode (car instr)))
-                   (cond ((eq? opcode 'goto)
-                          (visit (cadr instr)))
-                         ((eq? opcode 'goto-if-false)
-                          (visit (cadr instr))
-                          (visit (caddr instr)))
-                         ((or (eq? opcode 'closure)
-                              (eq? opcode 'call-toplevel)
-                              (eq? opcode 'jump-toplevel))
-                          (visit (cadr instr))))))
-               rev-instrs))))))
+    (define (visit label)
+      (let ([ref-count (vector-ref ref-counts label)])
+        (vector-set! ref-counts label (+ ref-count 1))
+        (when (= ref-count 0)
+          (for ([instr (in-list (bb-rev-instrs (vector-ref bbs label)))])
+            (match instr
+              [`(goto ,arg)
+               (visit arg)]
+              [`(goto-if-false ,a1 ,a2)
+               (visit a1)
+               (visit a2)]
+              [`(,(or 'closure 'call-toplevel 'jump-toplevel) ,arg)
+               (visit arg)]
+              [_ (void)])))))
 
     (visit 0)
 
     ref-counts))
 
 (define (tighten-jump-cascades! bbs)
-  (let ((ref-counts (bbs->ref-counts bbs)))
+  (let ([ref-counts (bbs->ref-counts bbs)])
 
-    (define resolve
-      (lambda (label)
-        (let* ((bb (vector-ref bbs label))
-               (rev-instrs (bb-rev-instrs bb)))
-          (and (or (null? (cdr rev-instrs))
-                   (= (vector-ref ref-counts label) 1))
-               rev-instrs))))
+    (define (resolve label)
+      (let ([rev-instrs (bb-rev-instrs (vector-ref bbs label))])
+        (and (or (null? (cdr rev-instrs))
+                 (= (vector-ref ref-counts label) 1))
+             rev-instrs)))
 
-    (let loop1 ()
-      (let loop2 ((i 0)
-                  (changed? #f))
-        (if (< i (vector-length bbs))
-            (if (> (vector-ref ref-counts i) 0)
-                (let* ((bb (vector-ref bbs i))
-                       (rev-instrs (bb-rev-instrs bb))
-                       (jump (car rev-instrs))
-                       (opcode (car jump)))
-                  (cond ((eq? opcode 'goto)
-                         (let* ((label (cadr jump))
-                                (jump-replacement (resolve label)))
-                           (if jump-replacement
-                               (begin
-                                 (vector-set!
-                                  bbs
-                                  i
-                                  (make-bb (bb-label bb)
-                                           (append jump-replacement
-                                                   (cdr rev-instrs))))
-                                 (loop2 (+ i 1)
-                                        #t))
-                               (loop2 (+ i 1)
-                                      changed?))))
-                        ((eq? opcode 'goto-if-false)
-                         (let* ((label-then (cadr jump))
-                                (label-else (caddr jump))
-                                (jump-then-replacement (resolve label-then))
-                                (jump-else-replacement (resolve label-else)))
-                           (if (and jump-then-replacement
-                                    (null? (cdr jump-then-replacement))
-                                    jump-else-replacement
-                                    (null? (cdr jump-else-replacement))
-                                    (or (eq? (caar jump-then-replacement)
-                                             'goto)
-                                        (eq? (caar jump-else-replacement)
-                                             'goto)))
-                               (begin
-                                 (vector-set!
-                                  bbs
-                                  i
-                                  (make-bb
-                                   (bb-label bb)
-                                   (cons
-                                    (list
-                                     'goto-if-false
-                                     (if (eq? (caar jump-then-replacement)
-                                              'goto)
-                                         (cadar jump-then-replacement)
-                                         label-then)
-                                     (if (eq? (caar jump-else-replacement)
-                                              'goto)
-                                         (cadar jump-else-replacement)
-                                         label-else))
-                                    (cdr rev-instrs))))
-                                 (loop2 (+ i 1)
-                                        #t))
-                               (loop2 (+ i 1)
-                                      changed?))))
-                        (else
-                         (loop2 (+ i 1)
-                                changed?))))
-                (loop2 (+ i 1)
-                       changed?))
-            (when changed?
-              (loop1)))))))
+    (define (iterate)
+
+      (define changed?
+        (for/fold ([changed? #f])
+            ([(cur-bb i) (in-indexed (vector-length bbs))]
+             #:when (> (vector-ref ref-counts i) 0))
+          (match cur-bb
+
+            [(bb label `(,jump . ,rest))
+             (match jump
+               [`(goto ,label)
+                (let ([jump-replacement (resolve label)])
+                  (if jump-replacement
+                      ;; void is non-false, counts as a change
+                      (vector-set! bbs i
+                                   (make-bb label
+                                            (append jump-replacement rest)))
+                      changed?))]
+
+               [`(goto-if-false ,label-then ,label-else)
+                (let* ([jump-then-replacement (resolve label-then)]
+                       [jump-else-replacement (resolve label-else)]
+                       [just-jump-then
+                        (and jump-then-replacement
+                             (null? (cdr jump-then-replacement)))]
+                       [just-jump-else
+                        (and jump-else-replacement
+                             (null? (cdr jump-else-replacement)))]
+                       [then-goto (eq? (caar jump-then-replacement) 'goto)]
+                       [else-goto (eq? (caar jump-else-replacement) 'goto)])
+                  (if (and just-jump-then just-jump-else
+                           (or then-goto else-goto))
+                      ;; void is non-false, counts as a change
+                      (vector-set! bbs i
+                                   (make-bb
+                                    label
+                                    `((goto-if-false
+                                       ,(if then-goto
+                                            (cadar jump-then-replacement)
+                                            label-then)
+                                       ,(if else-goto
+                                            (cadar jump-else-replacement)
+                                            label-else))
+                                      . rest)))
+                      changed?))])]
+            [_ changed?])))
+
+      (when changed?
+        (iterate)))
+
+    (iterate)))
 
 (define (remove-useless-bbs! bbs)
-  (let ((ref-counts (bbs->ref-counts bbs)))
-    (let loop1 ((label 0) (new-label 0))
-      (if (< label (vector-length bbs))
-          (if (> (vector-ref ref-counts label) 0)
-              (let ((bb (vector-ref bbs label)))
-                (vector-set!
-                 bbs
-                 label
-                 (make-bb new-label (bb-rev-instrs bb)))
-                (loop1 (+ label 1) (+ new-label 1)))
-              (loop1 (+ label 1) new-label))
-          (renumber-labels bbs ref-counts new-label)))))
+  (define ref-counts (bbs->ref-counts bbs))
+  (define new-label
+    (for/fold ([new-label 0])
+        ([(bb label) (in-indexed bbs)]
+         [ref-count  (in-vector  ref-counts)]
+         #:when (> ref-count 0))
+      (vector-set! bbs label (make-bb new-label (bb-rev-instrs bb)))
+      (+ new-label 1)))
+  (renumber-labels bbs ref-counts new-label))
