@@ -242,175 +242,133 @@
 
 ;-----------------------------------------------------------------------------
 
+(define (assemble-constant x constants)
+  (match x
+    [`(,obj . ,(and descr `#(,d0 ,label ,d2 ,d3)))
+     (asm-label label)
+     ;; see the vm source for a description of encodings
+     (cond [(exact-integer? obj)
+            (let ([hi (encode-constant d3 constants)])
+              (asm-16 hi)    ; pointer to hi
+              (asm-16 obj))] ; bits 0-15
+           [(pair? obj)
+            (let ([obj-car (encode-constant (car obj) constants)]
+                  [obj-cdr (encode-constant (cdr obj) constants)])
+              (asm-16 (+ #x8000 obj-car))
+              (asm-16 (+ #x0000 obj-cdr)))]
+           [(symbol? obj)
+            (asm-32 #x80002000)]
+           [(string? obj)
+            (let ([obj-enc (encode-constant d3 constants)])
+              (asm-16 (+ #x8000 obj-enc))
+              (asm-16 #x4000))]
+           [(vector? obj) ; ordinary vectors are stored as lists
+            (let ([obj-car (encode-constant (car d3) constants)]
+                  [obj-cdr (encode-constant (cdr d3) constants)])
+              (asm-16 (+ #x8000 obj-car))
+              (asm-16 (+ #x0000 obj-cdr)))]
+           [(u8vector? obj)
+            (let ([obj-enc (encode-constant d3 constants)]
+                  [l       (length d3)])
+              ;; length is stored raw, not encoded as an object
+              ;; however, the bytes of content are encoded as
+              ;; fixnums
+              (asm-16 (+ #x8000 l))
+              (asm-16 (+ #x6000 obj-enc)))]
+           [else
+            (compiler-error "unknown object type" obj)])]))
+
+
 (define (assemble code hex-filename)
-  (let loop1 ((lst code)
-              (constants (predef-constants))
-              (globals (predef-globals))
-              (labels (list)))
-    (if (pair? lst)
 
-        (let ((instr (car lst)))
-          (cond ((number? instr)
-                 (loop1 (cdr lst)
-                        constants
-                        globals
-                        (cons (cons instr (asm-make-label 'label))
-                              labels)))
-                ((eq? (car instr) 'push-constant)
-                 (let ([new-constants
-                        (add-constant (cadr instr) constants #t)])
-                   (loop1 (cdr lst) new-constants globals labels)))
-                ((memq (car instr) '(push-global set-global))
-                 (let ([new-globals (add-global (cadr instr) globals)])
-                   (loop1 (cdr lst) constants new-globals labels)))
-                (else
-                 (loop1 (cdr lst)
-                        constants
-                        globals
-                        labels))))
+  ;; Collect constants and globals
+  (define-values
+    (constants globals labels)
+    (for/fold ([constants (predef-constants)]
+               [globals   (predef-globals)]
+               [labels    '()])
+        ([instr code])
+      (match instr
+        [(? number? instr)
+         (values constants
+                 globals
+                 (dict-set labels instr (asm-make-label 'label)))]
+        [`(push-constant ,arg)
+         (values (add-constant arg constants #t)
+                 globals
+                 labels)]
+        [`(,(or 'push-global 'set-global) ,arg)
+         (values constants
+                 (add-global arg globals)
+                 labels)]
+        [_
+         (values constants globals labels)])))
 
-        ;; Constants and globals are sorted by frequency of reference.
-        ;; That way, the most often referred to constants and globals get
-        ;; the lowest encodings. Low encodings mean that they can be
-        ;; pushed/set with short instructions, reducing overall code size.
-        (let ((constants (sort-constants constants))
-              (globals   (sort-globals   globals)))
+  ;; Constants and globals are sorted by frequency of reference.
+  ;; That way, the most often referred to constants and globals get
+  ;; the lowest encodings. Low encodings mean that they can be
+  ;; pushed/set with short instructions, reducing overall code size.
+  (let ((constants (sort-constants constants))
+        (globals   (sort-globals   globals)))
 
-          (asm-begin! code-start #t)
+    (asm-begin! code-start #t)
 
-          (asm-16 #xfbd7)
-          (asm-8 (length constants))
-          (asm-8 (length globals))
+    ;; Header.
+    (asm-16 #xfbd7)
+    (asm-8 (length constants))
+    (asm-8 (length globals))
 
-          (for-each
-           (lambda (x)
-             (let* ((descr (cdr x))
-                    (label (vector-ref descr 1))
-                    (obj (car x)))
-               (asm-label label)
-               ;; see the vm source for a description of encodings
-               ;; TODO have comments here to explain encoding, at least magic number that give the type
-               (cond ((and (integer? obj) (exact? obj))
-                      (let ((hi (encode-constant (vector-ref descr 3)
-                                                 constants)))
-                        (asm-16 hi)    ; pointer to hi
-                        (asm-16 obj))) ; bits 0-15
-                     ((pair? obj)
-                      (let ((obj-car (encode-constant (car obj) constants))
-                            (obj-cdr (encode-constant (cdr obj) constants)))
-                        (asm-16 (+ #x8000 obj-car))
-                        (asm-16 (+ #x0000 obj-cdr))))
-                     ((symbol? obj)
-                      (asm-32 #x80002000))
-                     ((string? obj)
-                      (let ((obj-enc (encode-constant (vector-ref descr 3)
-                                                      constants)))
-                        (asm-16 (+ #x8000 obj-enc))
-                        (asm-16 #x4000)))
-                     ((vector? obj) ; ordinary vectors are stored as lists
-                      (let* ((elems (vector-ref descr 3))
-                             (obj-car (encode-constant (car elems)
-                                                       constants))
-                             (obj-cdr (encode-constant (cdr elems)
-                                                       constants)))
-                        (asm-16 (+ #x8000 obj-car))
-                        (asm-16 (+ #x0000 obj-cdr))))
-                     ((u8vector? obj)
-                      (let ((obj-enc (encode-constant (vector-ref descr 3)
-                                                      constants))
-                            (l (length (vector-ref descr 3))))
-                        ;; length is stored raw, not encoded as an object
-                        ;; however, the bytes of content are encoded as
-                        ;; fixnums
-                        (asm-16 (+ #x8000 l))
-                        (asm-16 (+ #x6000 obj-enc))))
-                     (else
-                      (compiler-error "unknown object type" obj)))))
-           constants)
+    ;; Constants.
+    (for ([c (in-list constants)])
+      (assemble-constant c constants))
 
-          (let loop2 ((lst code))
-            (when (pair? lst)
-              (let ((instr (car lst)))
+    ;; Program.
+    (for ([instr (in-list code)])
+      (when (not (number? instr))
+        (inc-instr-count! (car instr)))
+      (match instr
+        [(? number? instr)
+         (asm-label (dict-ref labels instr))]
+        [`(entry ,np ,rest?)
+         (asm-8 (if rest? (- np) np))]
+        [`(push-constant ,n)
+         (push-constant (encode-constant n constants))]
+        [`(push-stack ,arg)
+         (push-stack arg)]
+        [`(push-global ,arg)
+         (push-global (vector-ref (dict-ref globals arg) 0))]
+        [`(set-global ,arg)
+         (set-global  (vector-ref (dict-ref globals arg) 0))]
+        [`(call ,arg)
+         (call arg)]
+        [`(jump ,arg)
+         (jump arg)]
+        [`(call-toplevel ,arg)
+         (call-toplevel (dict-ref labels arg))]
+        [`(jump-toplevel ,arg)
+         (jump-toplevel (dict-ref labels arg))]
+        [`(goto          ,arg)
+         (goto          (dict-ref labels arg))]
+        [`(goto-if-false ,arg)
+         (goto-if-false (dict-ref labels arg))]
+        [`(closure       ,arg)
+         (closure       (dict-ref labels arg))]
+        [`(prim ,p)
+         (prim (dict-ref primitive-encodings p
+                         (lambda ()
+                           (compiler-error "unknown primitive" p))))]
+        ['(return)
+         (prim 47)]
+        ['(pop)
+         (prim 46)]
+        [_
+         (compiler-error "unknown instruction" instr)]))
 
-                (when (and (stats?) (not (number? instr)))
-                  (inc-instr-count! (car instr)))
+    (asm-assemble)
 
-                (cond ((number? instr)
-                       (let ((label (cdr (assq instr labels))))
-                         (asm-label label)))
+    (when (stats?)
+      (pretty-print
+       (sort (hash->list instr-table) > #:key cdr)))
 
-                      ((eq? (car instr) 'entry)
-                       (let ((np (cadr instr))
-                             (rest? (caddr instr)))
-                         (asm-8 (if rest? (- np) np))))
-
-                      ((eq? (car instr) 'push-constant)
-                       (let ((n (encode-constant (cadr instr) constants)))
-                         (push-constant n)))
-
-                      ((eq? (car instr) 'push-stack)
-                       (push-stack (cadr instr)))
-
-                      ((eq? (car instr) 'push-global)
-                       (push-global (vector-ref
-                                     (cdr (assq (cadr instr) globals))
-                                     0)))
-
-                      ((eq? (car instr) 'set-global)
-                       (set-global (vector-ref
-                                    (cdr (assq (cadr instr) globals))
-                                    0)))
-
-                      ((eq? (car instr) 'call)
-                       (call (cadr instr)))
-
-                      ((eq? (car instr) 'jump)
-                       (jump (cadr instr)))
-
-                      ((eq? (car instr) 'call-toplevel)
-                       (let ((label (cdr (assq (cadr instr) labels))))
-                         (call-toplevel label)))
-
-                      ((eq? (car instr) 'jump-toplevel)
-                       (let ((label (cdr (assq (cadr instr) labels))))
-                         (jump-toplevel label)))
-
-                      ((eq? (car instr) 'goto)
-                       (let ((label (cdr (assq (cadr instr) labels))))
-                         (goto label)))
-
-                      ((eq? (car instr) 'goto-if-false)
-                       (let ((label (cdr (assq (cadr instr) labels))))
-                         (goto-if-false label)))
-
-                      ((eq? (car instr) 'closure)
-                       (let ((label (cdr (assq (cadr instr) labels))))
-                         (closure label)))
-
-                      ((eq? (car instr) 'prim)
-                       (let ([p (cadr instr)])
-                         (prim (dict-ref
-                                primitive-encodings p
-                                (lambda ()
-                                  (compiler-error "unknown primitive" p))))))
-
-                      ((eq? (car instr) 'return)
-                       (prim 47))
-
-                      ((eq? (car instr) 'pop)
-                       (prim 46))
-
-                      (else
-                       (compiler-error "unknown instruction" instr)))
-
-                (loop2 (cdr lst)))))
-
-          (asm-assemble)
-
-          (when (stats?)
-            (pretty-print
-             (sort (hash->list instr-table)
-                   (lambda (x y) (> (cdr x) (cdr y))))))
-
-          (begin0 (asm-write-hex-file hex-filename)
-            (asm-end!))))))
+    (begin0 (asm-write-hex-file hex-filename)
+      (asm-end!))))
