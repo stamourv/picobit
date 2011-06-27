@@ -69,6 +69,11 @@
   (output-file-gen (lambda (in) out))]
  #:args (filename)
  (void
-  (compile
-   (open-input-file filename)
-   (lambda () (open-output-file ((output-file-gen) filename))))))
+  (if (equal? filename "-")
+      ;; read input from stdin, produce code on stdout
+      (compile
+       (current-input-port)
+       (lambda () (current-output-port)))
+      (compile
+       (open-input-file filename)
+       (lambda () (open-output-file ((output-file-gen) filename)))))))
