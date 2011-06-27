@@ -1,6 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
+(require srfi/1)
 (require "ast.rkt" "env.rkt")
 
 (define-struct context (code env env2) #:transparent)
@@ -46,25 +47,22 @@
              (list (make-bb 0 (list)))))
 
 (define (code-make-label code)
-  (let ((label (+ (code-last-label code) 1)))
-    (make-code label
-               (code-rev-bbs code))))
+  (make-code (+ (code-last-label code) 1)
+             (code-rev-bbs code)))
 
 (define (code-add-bb code label)
-  (make-code
-   (code-last-label code)
-   (cons (make-bb label '())
-         (code-rev-bbs code))))
+  (make-code (code-last-label code)
+             (cons (make-bb label '())
+                   (code-rev-bbs code))))
 
-(define (code-add-instr code instr)
-  (let* ((rev-bbs (code-rev-bbs code))
-         (bb (car rev-bbs))
-         (rev-instrs (bb-rev-instrs bb)))
-    (make-code
-     (code-last-label code)
-     (cons (make-bb (bb-label bb)
-                    (cons instr rev-instrs))
-           (cdr rev-bbs)))))
+(define (code-add-instr cur-code instr)
+  (match cur-code
+    [(code last-label `(,(bb label rev-instrs) . ,rest))
+     (make-code last-label
+                (cons (make-bb label
+                               (cons instr rev-instrs))
+                      rest))]))
+
 
 ;; Representation of compile-time stack.
 
@@ -77,16 +75,17 @@
   (make-stack 0 '()))
 
 (define (stack-extend x nb-slots stk)
-  (let ((size (stack-size stk)))
-    (make-stack
-     (+ size nb-slots)
-     (append (make-list nb-slots x) (stack-slots stk)))))
+  (match stk
+    [(stack size slots)
+     (make-stack (+ size nb-slots)
+                 (append (make-list nb-slots x) slots))]))
 
 (define (stack-discard nb-slots stk)
-  (let ((size (stack-size stk)))
-    (make-stack
-     (- size nb-slots)
-     (list-tail (stack-slots stk) nb-slots))))
+  (match stk
+    [(stack size slots)
+     (make-stack
+      (- size nb-slots)
+      (list-tail slots nb-slots))]))
 
 
 
@@ -106,13 +105,7 @@
   (make-env (env-local env)
             closed))
 
-(define (pos-in-list x lst)
-  (let loop ((lst lst) (i 0))
-    (cond ((not (pair? lst)) #f)
-          ((eq? (car lst) x) i)
-          (else (loop (cdr lst) (+ i 1))))))
-
 (define (find-local-var var env)
-  (let ((i (pos-in-list var (stack-slots (env-local env)))))
-    (or i
-        (- (+ (pos-in-list var (env-closed env)) 1)))))
+  (define target? (lambda (x) (eq? x var)))
+  (or (list-index target? (stack-slots (env-local env)))
+      (- (+ (list-index target? (env-closed env)) 1))))
