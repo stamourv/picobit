@@ -1,5 +1,5 @@
-; File: "library.scm"
-
+;; Eta-expansions like this are necessary.
+;; Raw primitives (like #%number?) are not first-class values.
 (define number?
   (lambda (x)
     (#%number? x)))
