@@ -97,65 +97,41 @@
 
 (provide extract-parts-top)
 
-;; Last argument is always the parse function from parse.rkt, taken as argument
-;; to avoid circular dependencies.
+(define (make-seq-preparsed exprs)
+  (let ([r (make-seq #f exprs)])
+    (for ([x (in-list exprs)]) (set-node-parent! x r))
+    r))
+(define (make-call-preparsed exprs)
+  (let ([r (make-call #f exprs)])
+    (for ([x (in-list exprs)]) (set-node-parent! x r))
+    r))
+
+;; Last argument is always the parse function from parse.rkt, taken as
+;; argument to avoid circular dependencies.
 (define (extract-parts-top parsed-prog global-env parse)
-  (extract-parts
-   parsed-prog
-   (lambda (defs after-defs)
-
-     (define (make-seq-preparsed exprs)
-       (let ((r (make-seq #f exprs)))
-         (for-each (lambda (x) (set-node-parent! x r)) exprs)
-         r))
-
-     (define (make-call-preparsed exprs)
-       (let ((r (make-call #f exprs)))
-         (for-each (lambda (x) (set-node-parent! x r)) exprs)
-         r))
-
-     (if (var-needed?
-          (env-lookup global-env '#%readyq))
-         (make-seq-preparsed
-          (list (make-seq-preparsed defs)
-                (make-call-preparsed
-                 (list (parse 'value '#%start-first-process global-env)
-                       (let* ((pattern
-                               '())
-                              (ids
-                               (extract-ids pattern))
-                              (r
-                               (make-prc #f
-                                         '()
-                                         #f
-                                         (has-rest-param? pattern)
-                                         #f))
-                              (new-env
-                               (env-extend global-env ids r))
-                              (body
-                               (make-seq-preparsed after-defs)))
-                         (set-prc-params!
-                          r
-                          (map (lambda (id) (env-lookup new-env id))
-                               ids))
-                         (set-node-children! r (list body))
-                         (set-node-parent! body r)
-                         r)))
-                (parse 'value
-                       '(#%exit)
-                       global-env)))
-         (make-seq-preparsed
-          (append defs
-                  after-defs
-                  (list (parse 'value
-                               '(#%halt)
-                               global-env))))))))
-
-(define (extract-parts lst cont)
-  (if (or (null? lst)
-          (not (def? (car lst))))
-      (cont '() lst)
-      (extract-parts
-       (cdr lst)
-       (lambda (d ad)
-         (cont (cons (car lst) d) ad)))))
+  (define-values (defs after-defs)
+    (partition def? parsed-prog))
+  (if (var-needed? (env-lookup global-env '#%readyq))
+      (make-seq-preparsed
+       (list (make-seq-preparsed defs)
+             (make-call-preparsed
+              (list (parse 'value '#%start-first-process global-env)
+                    (let* ([pattern '()]
+                           [ids     (extract-ids pattern)]
+                           [r       (make-prc #f '() #f
+                                              (has-rest-param? pattern)
+                                              #f)]
+                           [new-env (env-extend global-env ids r)]
+                           [body    (make-seq-preparsed after-defs)])
+                      (set-prc-params!
+                       r
+                       (map (lambda (id) (env-lookup new-env id))
+                            ids))
+                      (set-node-children! r (list body))
+                      (set-node-parent! body r)
+                      r)))
+             (parse 'value '(#%exit) global-env)))
+      (make-seq-preparsed
+       (append defs
+               after-defs
+               (list (parse 'value '(#%halt) global-env))))))
