@@ -19,26 +19,23 @@
 
 (define (compile in-port out-port-thunk)
   (let* ([forms        (read-program in-port)]
-         [node         (parse-top-list forms global-env)])
-
-    (mark-needed-global-vars! node)
-
-    (let ([node (extract-parts-top node global-env parse)])
-      (adjust-unmutable-references! node)
-      (when (show-parsed?)
-        (pretty-print (node->expr node)))
-      (let* ([ctx  (comp-none node (make-init-context))]
-             [code (context-code ctx)]
-             [bbs  (code->vector code)])
-        (resolve-toplevel-labels! bbs)
-        (let ([prog (schedule (tree-shake! bbs))])
-          (when (show-asm?)
-            (pretty-print prog))
-          ;; output port is in a thunk to avoid creating result
-          ;; files if compilation fails
-          (let ([size (assemble prog (out-port-thunk))])
-            (when (show-size?)
-              (printf "~a bytes\n" size))))))))
+         [node         (parse-program forms global-env)])
+    (mark-needed-global-vars!     node)
+    (adjust-unmutable-references! node)
+    (when (show-parsed?)
+      (pretty-print (node->expr node)))
+    (let* ([ctx  (comp-none node (make-init-context))]
+           [code (context-code ctx)]
+           [bbs  (code->vector code)])
+      (resolve-toplevel-labels! bbs)
+      (let ([prog (schedule (tree-shake! bbs))])
+        (when (show-asm?)
+          (pretty-print prog))
+        ;; output port is in a thunk to avoid creating result
+        ;; files if compilation fails
+        (let ([size (assemble prog (out-port-thunk))])
+          (when (show-size?)
+            (printf "~a bytes\n" size)))))))
 
 (define output-file-gen
   (make-parameter

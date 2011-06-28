@@ -1,7 +1,13 @@
 #lang racket
 
-(provide parse-top-list parse)
+(provide parse-program)
 (require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt" "primitives.rkt")
+
+(define (parse-program lst env)
+  (define exprs (parse-top-list (append lst '((#%halt))) env))
+  (let ([r (make-seq #f exprs)])
+    (for ([x (in-list exprs)]) (set-node-parent! x r))
+    r))
 
 (define (parse-top-list lst env)
   (if (pair? lst)
