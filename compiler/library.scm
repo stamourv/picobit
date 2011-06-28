@@ -276,32 +276,46 @@
 
 (define start-first-process
   (lambda (thunk)
+    ;; rest of the program, after call to start-first-process
     (set! root-k (#%get-cont))
     (set! readyq (#%cons #f #f))
-    (#%set-cdr! readyq readyq) ; initialize thread queue
+    ;; initialize thread queue, which is a circular list of continuations
+    (#%set-cdr! readyq readyq)
     (thunk)))
 
 (define spawn
   (lambda (thunk)
     (let* ((k (#%get-cont))
            (next (#%cons k (#%cdr readyq))))
+      ;; add a new link to the circular list
       (#%set-cdr! readyq next)
-      (#%graft-to-cont root-k thunk)))) ; run thunk with root-k as cont
+      ;; Run thunk with root-k as cont.
+      ;; If thunk calls exit (which it should), control won't return
+      ;; to root-k,
+      ;; If thunk runs to completion without calling exit, control
+      ;; will transfer to root-k, dropping all other threads in the
+      ;; process.
+      (#%graft-to-cont root-k thunk))))
 
 (define exit
   (lambda ()
     (let ((next (#%cdr readyq)))
-      (if (#%eq? next readyq)
+      (if (#%eq? next readyq) ; queue is empty
           #f
           (begin
+            ;; step once on the circular list
             (#%set-cdr! readyq (#%cdr next))
+            ;; invoke next thread
             (#%return-to-cont (#%car next) #f))))))
 
 (define yield
   (lambda ()
     (let ((k (#%get-cont)))
+      ;; save the current continuation
       (#%set-car! readyq k)
+      ;; step once on the circular list
       (set! readyq (#%cdr readyq))
+      ;; run the next thread
       (let ((next-k (#%car readyq)))
         (#%set-car! readyq #f)
         (#%return-to-cont next-k #f)))))
