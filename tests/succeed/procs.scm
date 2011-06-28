@@ -11,6 +11,6 @@
             (if (= a a2) (exit)
                 (loop2 (+ a2 1))))))
        (if (= a 10) 
-           '()
+           (exit)
            (loop (+ a 1)))))))
- 
+(displayln "DONE")

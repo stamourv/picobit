@@ -278,7 +278,7 @@
   (lambda (thunk)
     (set! root-k (#%get-cont))
     (set! readyq (#%cons #f #f))
-    (#%set-cdr! readyq readyq)
+    (#%set-cdr! readyq readyq) ; initialize thread queue
     (thunk)))
 
 (define spawn
@@ -286,13 +286,13 @@
     (let* ((k (#%get-cont))
            (next (#%cons k (#%cdr readyq))))
       (#%set-cdr! readyq next)
-      (#%graft-to-cont root-k thunk))))
+      (#%graft-to-cont root-k thunk)))) ; run thunk with root-k as cont
 
 (define exit
   (lambda ()
     (let ((next (#%cdr readyq)))
       (if (#%eq? next readyq)
-          (#%halt)
+          #f
           (begin
             (#%set-cdr! readyq (#%cdr next))
             (#%return-to-cont (#%car next) #f))))))
