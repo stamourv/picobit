@@ -73,18 +73,15 @@
 
 (provide extract-parts-top)
 
-(define (make-preparsed maker exprs)
-  (let ([r (maker #f exprs)])
-    (for ([x (in-list exprs)]) (set-node-parent! x r))
-    r))
-
 ;; Last argument is always the parse function from parse.rkt, taken as
 ;; argument to avoid circular dependencies.
 (define (extract-parts-top parsed-prog global-env parse)
   (define-values (defs after-defs)
     (partition def? parsed-prog))
-  (make-preparsed
-   make-seq
-   (append defs
-           after-defs
-           (list (parse 'value '(#%halt) global-env)))))
+  (define exprs
+    (append defs
+            after-defs
+            (list (parse 'value '(#%halt) global-env))))
+  (let ([r (make-seq #f exprs)])
+    (for ([x (in-list exprs)]) (set-node-parent! x r))
+    r))
