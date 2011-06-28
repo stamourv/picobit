@@ -21,7 +21,7 @@
   (let* ([forms        (read-program in-port)]
          [node         (parse-top-list forms global-env)])
 
-    (mark-needed-global-vars! global-env node)
+    (mark-needed-global-vars! node)
 
     (let ([node (extract-parts-top node global-env parse)])
       (adjust-unmutable-references! node)
