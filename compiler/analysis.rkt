@@ -4,11 +4,13 @@
 
 ;-----------------------------------------------------------------------------
 
-(provide mutable-var?
+(provide immutable-var? mutable-var?
          toplevel-prc?
-         toplevel-prc-with-non-rest-correct-calls?)
+         toplevel-prc-with-non-rest-correct-calls?
+         side-effect-less?)
 
-(define (mutable-var? var) (not (null? (var-sets var))))
+(define (immutable-var? var) (null? (var-sets var)))
+(define (mutable-var?   var) (not (immutable-var? var)))
 
 (define (toplevel-prc? var)
   (and (not (mutable-var? var))
@@ -31,6 +33,8 @@
                              (- (length (node-children parent)) 1)))))
                  (var-refs var))
          prc)))
+
+(define (side-effect-less? node) (or (cst? node) (ref? node) (prc? node)))
 
 ;-----------------------------------------------------------------------------
 
