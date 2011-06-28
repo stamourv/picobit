@@ -6,9 +6,7 @@
 ;-----------------------------------------------------------------------------
 
 (provide global-env)
-(define global-env
-  (mlist
-   (make-var '#%readyq #t '() '() '() #f #f))) ; thread queue
+(define global-env (mlist))
 
 (provide primitive-encodings)
 (define primitive-encodings '())

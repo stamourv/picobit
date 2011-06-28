@@ -29,8 +29,6 @@
 
 (provide mark-needed-global-vars!)
 
-(define readyq (env-lookup global-env '#%readyq))
-
 (define (mark-var! var)
   (when (and (var-global? var)
              (not (var-needed? var))
@@ -44,10 +42,7 @@
     (for ([def (in-list (var-defs var))])
       (let ([val (child1 def)])
         (when (side-effect-less? val)
-          (mark! val))))
-    (when (eq? var readyq)
-      (mark-var! (env-lookup global-env '#%start-first-process))
-      (mark-var! (env-lookup global-env '#%exit)))))
+          (mark! val))))))
 
 (define (mark! node)
   (match node
@@ -88,30 +83,8 @@
 (define (extract-parts-top parsed-prog global-env parse)
   (define-values (defs after-defs)
     (partition def? parsed-prog))
-  (if (var-needed? (env-lookup global-env '#%readyq))
-      (make-preparsed
-       make-seq
-       (list (make-preparsed make-seq defs)
-             (make-preparsed
-              make-call
-              (list (parse 'value '#%start-first-process global-env)
-                    (let* ([pattern '()]
-                           [ids     (extract-ids pattern)]
-                           [r       (make-prc #f '() #f
-                                              (has-rest-param? pattern)
-                                              #f)]
-                           [new-env (env-extend global-env ids r)]
-                           [body    (make-preparsed make-seq after-defs)])
-                      (set-prc-params!
-                       r
-                       (map (lambda (id) (env-lookup new-env id))
-                            ids))
-                      (set-node-children! r (list body))
-                      (set-node-parent! body r)
-                      r)))
-             (parse 'value '(#%exit) global-env)))
-      (make-preparsed
-       make-seq
-       (append defs
-               after-defs
-               (list (parse 'value '(#%halt) global-env))))))
+  (make-preparsed
+   make-seq
+   (append defs
+           after-defs
+           (list (parse 'value '(#%halt) global-env)))))
