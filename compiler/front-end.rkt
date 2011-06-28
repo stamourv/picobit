@@ -11,16 +11,12 @@
 (define (adjust-unmutable-references! node)
   (match node
     [(call parent `(,(ref _ '() (app var-id '#%unbox))
-                    ,(and child (ref _ '() vv))))
-     (=> unmatch)
-     (cond [(immutable-var? vv)
-            (set-node-parent! child parent)
-            (when parent
-              (set-node-children! parent
-                                  (map (lambda (c) (if (eq? c node) child c))
-                                       (node-children parent))))
-            child]
-           [else (unmatch)])]
+                    ,(and child (ref _ '() (? immutable-var? v)))))
+     (set-node-parent! child parent)
+     (when parent
+       (set-node-children! parent (for/list ([c (node-children parent)])
+                                    (if (eq? c node) child c))))
+     child]
     [_
      (for-each adjust-unmutable-references! (node-children node))
      node]))
