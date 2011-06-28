@@ -9,29 +9,28 @@
 (provide adjust-unmutable-references!)
 
 (define (adjust-unmutable-references! node)
-  (if (and (call? node)
-           (ref? (car (node-children node)))
-           (eq? '#%unbox (var-id (ref-var (car (node-children node)))))
-           (ref? (cadr (node-children node)))
-           (not (mutable-var? (ref-var (cadr (node-children node))))))
-      (let* ((parent (node-parent node)) (child (cadr (node-children node))))
-        (set-node-parent! child parent)
-        (when parent
-          (set-node-children! parent
-                              (map (lambda (c) (if (eq? c node) child c))
-                                   (node-children parent))))
-        child)
-      (begin (for-each (lambda (n) (adjust-unmutable-references! n))
-		       (node-children node))
-             node)))
+  (match node
+    [(call parent `(,(ref _ '() (app var-id '#%unbox))
+                    ,(and child (ref _ '() vv))))
+     (=> unmatch)
+     (cond [(immutable-var? vv)
+            (set-node-parent! child parent)
+            (when parent
+              (set-node-children! parent
+                                  (map (lambda (c) (if (eq? c node) child c))
+                                       (node-children parent))))
+            child]
+           [else (unmatch)])]
+    [_
+     (for-each adjust-unmutable-references! (node-children node))
+     node]))
 
 ;-----------------------------------------------------------------------------
 
 (provide mark-needed-global-vars!)
 
 (define (mark-needed-global-vars! global-env prog)
-  (define readyq
-    (env-lookup global-env '#%readyq))
+  (define readyq (env-lookup global-env '#%readyq))
 
   (define (mark-var! var)
     (when (and (var-global? var)
