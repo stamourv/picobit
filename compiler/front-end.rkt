@@ -42,22 +42,13 @@
 
 (define (mark-needed-global-vars! node)
   (match node
-    [(? cst? node)
-     (void)]
     [(ref _ '() var)
      (mark-var! var)]
     [(def _ `(,val) var)
      (when (not (side-effect-less? val))
        (mark-needed-global-vars! val))]
-    [(set _ `(,val) var)
-     (mark-needed-global-vars! val)]
-    [(if* _ `(,a ,b ,c))
-     (mark-needed-global-vars! a)
-     (mark-needed-global-vars! b)
-     (mark-needed-global-vars! c)]
-    [(prc _ `(,body) params rest? entry-label)
-     (mark-needed-global-vars! body)]
-    [(or (call _ children) (seq _ children))
+    [(or (? cst? node) (? set? node) (? if*? node) (? prc? node)
+         (? call? node) (? seq? node))
      (for-each mark-needed-global-vars! (node-children node))]
     [_
      (compiler-error "unknown expression type" node)]))
