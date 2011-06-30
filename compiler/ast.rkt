@@ -13,7 +13,7 @@
 (define (child3 node) (caddr (node-children node)))
 
 (define-struct (cst node) (val))
-(define-struct (ref node) (var))
+(define-struct (ref node) (var) #:mutable)
 (define-struct (def node) (var)) ; children: (rhs)
 (define-struct (set node) (var)) ; children: (rhs)
 (define-struct (if* node) ())    ; children: (test then else)

@@ -52,3 +52,40 @@
      (for-each mark-needed-global-vars! (node-children node))]
     [_
      (compiler-error "unknown expression type" node)]))
+
+;-----------------------------------------------------------------------------
+
+(provide inline-primitives!)
+
+;; Some library functions are just the eta-expansion of primitives.
+;; They are necessary because primitives are not first-class.
+;; But, when used in operator position, these eta-expansions can be
+;; replaced by the primitive they are wrapping.
+(define (inline-primitives! node)
+  (match node
+    [(call p `(,(and orig-op (ref _ '() (app var-defs `(,d . ,rest))))
+               . ,args))
+     (=> unmatch)
+     (match d
+       [(def p `(,(prc _ `(,body) params #f entry)) v)
+        (match body
+          [(seq _ `(,(call p `(,(ref _ '() (and prim-var
+                                                (app var-primitive
+                                                     prim)))
+                               . ,prim-args))))
+           (if (andmap ref? prim-args)
+               ;; since the call is directly inside the lambda (no
+               ;; intermediate scopes), we can compare ids directly
+               (let ([prim-args (map (lambda (x) (var-id (ref-var x)))
+                                     prim-args)]
+                     [params    (map var-id params)])
+                 (cond [(equal? prim-args params)
+                        ;; we can replace op with the primitive
+                        (set-ref-var! orig-op prim-var)]
+                       [else (unmatch)]))
+               (unmatch))]
+          [_ (unmatch)])]
+       [_ (unmatch)])]
+    [(or (? cst? node) (? ref? node) (? def? node) (? set? node) (? if*? node)
+         (? prc? node) (? call? node) (? seq? node))
+     (for-each inline-primitives! (node-children node))]))

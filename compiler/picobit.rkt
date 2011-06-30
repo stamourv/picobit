@@ -22,6 +22,7 @@
          [node         (parse-program forms global-env)])
     (mark-needed-global-vars!     node)
     (adjust-unmutable-references! node)
+    (inline-primitives!           node)
     (when (show-parsed?)
       (pretty-print (node->expr node)))
     (let* ([ctx  (comp-none node (make-init-context))]
