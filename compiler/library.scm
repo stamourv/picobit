@@ -290,12 +290,7 @@
       ;; add a new link to the circular list
       (#%set-cdr! readyq next)
       ;; Run thunk with root-k as cont.
-      ;; If thunk calls exit (which it should), control won't return
-      ;; to root-k,
-      ;; If thunk runs to completion without calling exit, control
-      ;; will transfer to root-k, dropping all other threads in the
-      ;; process.
-      (#%graft-to-cont root-k thunk))))
+      (#%graft-to-cont root-k (lambda () (thunk) (exit))))))
 
 (define exit
   (lambda ()
