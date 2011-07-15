@@ -195,17 +195,12 @@
         (define primitive  (var-primitive var))
         (define prim-nargs (primitive-nargs primitive))
         (define result-ctx
-          (cond [(primitive-inliner primitive)
-                 ((primitive-inliner primitive) ctx)]
-                [(not (= nargs prim-nargs))
-                 (compiler-error
-                  "primitive called with wrong number of arguments"
-                  id)]
-                [else
-                 (gen-prim id
-                           prim-nargs
-                           (primitive-unspecified-result? primitive)
-                           ctx)]))
+          (if (not (= nargs prim-nargs))
+              (compiler-error
+               "primitive called with wrong number of arguments" id)
+              (gen-prim id prim-nargs
+                        (primitive-unspecified-result? primitive)
+                        ctx)))
         (define unspecified? (primitive-unspecified-result? primitive))
         (define result
           (if unspecified?
