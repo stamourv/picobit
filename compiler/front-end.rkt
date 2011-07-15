@@ -86,6 +86,5 @@
                (unmatch))]
           [_ (unmatch)])]
        [_ (unmatch)])]
-    [(or (? cst? node) (? ref? node) (? def? node) (? set? node) (? if*? node)
-         (? prc? node) (? call? node) (? seq? node))
+    [_
      (for-each inline-primitives! (node-children node))]))
