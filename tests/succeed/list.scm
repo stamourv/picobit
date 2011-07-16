@@ -13,7 +13,8 @@
 (displayln (reverse lst4))
 
 (displayln (list->string lst4))
-(displayln (string->list "abcd"))
+(define s "abcd") ; to defeat constant folding
+(displayln (string->list s))
 
 (define lst5 (list 1 2 3 4))
 (list-set! lst5 2 5)

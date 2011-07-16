@@ -25,6 +25,7 @@
     (mark-needed-global-vars!     node)
     (adjust-unmutable-references! node)
     (inline-primitives!           node)
+    (constant-fold!               node)
     (when (show-post-front-end?)
       (pretty-print (node->expr node)))
     (let* ([ctx  (comp-none node (make-init-context))]

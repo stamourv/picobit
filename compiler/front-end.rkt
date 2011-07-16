@@ -88,3 +88,37 @@
        [_ (unmatch)])]
     [_
      (for-each inline-primitives! (node-children node))]))
+
+;-----------------------------------------------------------------------------
+
+(provide constant-fold!)
+
+(define (constant-fold! node)
+  (match node
+    ;; if we're calling a primitive
+    [(call p `(,(ref _ '() (? var-primitive op))
+               . ,args))
+     (=> unmatch)
+     (for-each constant-fold! args) ; fold args before the whole call
+     (let ([folder (primitive-constant-folder (var-primitive op))]
+           ;; (we need to access the children again (can't just use `args',
+           ;; since constant folding may have mutated them)
+           [args   (cdr (node-children node))])
+       ;; the primitive can do constant-folding, and the args are constant
+       ;; folder takes the values of the args, and returns the value of the res
+       (cond [(and folder (andmap cst? args))
+              ;; if the folding would raise an error, just don't do it, and
+              ;; error at runtime
+              (call-with-exception-handler
+               (lambda (e) (unmatch))
+               (lambda ()
+                 (define res-val (apply folder (map cst-val args)))
+                 (define res     (make-cst p '() res-val))
+                 ;; replace the call with the constant
+                 (set-node-children! p (map (lambda (x)
+                                              (if (eq? x node) res x))
+                                            (node-children p)))))]
+             [else
+              (unmatch)]))]
+    [_
+     (for-each constant-fold! (node-children node))]))

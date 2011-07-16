@@ -16,7 +16,8 @@
    primitive)
   #:transparent)
 
-(define-struct primitive (nargs inliner unspecified-result?) #:transparent)
+(define-struct primitive (nargs constant-folder unspecified-result?)
+  #:transparent)
 
 (define allow-forward-references? (make-parameter #t))
 
