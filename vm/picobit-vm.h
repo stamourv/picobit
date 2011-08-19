@@ -132,7 +132,12 @@ int max_live;
 // error handling
 
 #ifdef HI_TECH_C
-void halt_with_error () {while(1);}
+void halt_with_error ()
+{
+        while(1) {
+                ;
+        }
+}
 #endif
 
 #ifdef WORKSTATION

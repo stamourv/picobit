@@ -35,7 +35,7 @@ integer neg (integer x);
 integer scale (digit n, integer x);
 integer mulnonneg (integer x, integer y);
 integer divnonneg (integer x, integer y);
-  
+
 uint16 decode_int (obj o);
 obj encode_int (uint16 n);
 

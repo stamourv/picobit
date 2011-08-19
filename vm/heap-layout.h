@@ -37,10 +37,22 @@
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING + MAX_FIXNUM - MIN_FIXNUM + 1)
 
 #ifdef LESS_MACROS
-uint16 OBJ_TO_RAM_ADDR(uint16 o, uint8 f) {return ((((o) - MIN_RAM_ENCODING) << 2) + (f));}
-uint16 OBJ_TO_ROM_ADDR(uint16 o, uint8 f) {return ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)));}
-uint16 VEC_TO_RAM_OBJ(uint16 o) {return o + MAX_RAM_ENCODING;}
-uint16 RAM_TO_VEC_OBJ(uint16 o) {return o - MAX_RAM_ENCODING;}
+uint16 OBJ_TO_RAM_ADDR(uint16 o, uint8 f)
+{
+        return ((((o) - MIN_RAM_ENCODING) << 2) + (f));
+}
+uint16 OBJ_TO_ROM_ADDR(uint16 o, uint8 f)
+{
+        return ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)));
+}
+uint16 VEC_TO_RAM_OBJ(uint16 o)
+{
+        return o + MAX_RAM_ENCODING;
+}
+uint16 RAM_TO_VEC_OBJ(uint16 o)
+{
+        return o - MAX_RAM_ENCODING;
+}
 #else
 #define OBJ_TO_RAM_ADDR(o,f) ((((o) - MIN_RAM_ENCODING) << 2) + (f))
 #define OBJ_TO_ROM_ADDR(o,f) ((((o) - MIN_ROM_ENCODING) << 2) + (CODE_START + 4 + (f)))
@@ -52,8 +64,14 @@ uint16 RAM_TO_VEC_OBJ(uint16 o) {return o - MAX_RAM_ENCODING;}
 // Limits above should be modified according to application needs.
 #ifdef SIXPIC
 #ifdef LESS_MACROS
-uint8 ram_get(uint16 a) { return *(a+0x200); }
-void  ram_set(uint16 a, uint8 x) { *(a+0x200) = (x); }
+uint8 ram_get(uint16 a)
+{
+        return *(a+0x200);
+}
+void  ram_set(uint16 a, uint8 x)
+{
+        *(a+0x200) = (x);
+}
 #else
 #define ram_get(a) *(a+0x200)
 #define ram_set(a,x) *(a+0x200) = (x)
@@ -62,8 +80,14 @@ void  ram_set(uint16 a, uint8 x) { *(a+0x200) = (x); }
 
 #ifdef MCC18
 #ifdef LESS_MACROS
-uint8 ram_get(uint16 a) {return *(uint8*)(a+0x200);}
-void  ram_set(uint16 a, uint8 x) {*(uint8*)(a+0x200) = (x);}
+uint8 ram_get(uint16 a)
+{
+        return *(uint8*)(a+0x200);
+}
+void  ram_set(uint16 a, uint8 x)
+{
+        *(uint8*)(a+0x200) = (x);
+}
 #else
 #define ram_get(a) *(uint8*)(a+0x200)
 #define ram_set(a,x) *(uint8*)(a+0x200) = (x)
@@ -72,13 +96,15 @@ void  ram_set(uint16 a, uint8 x) {*(uint8*)(a+0x200) = (x);}
 
 #ifdef HI_TECH_C
 // cannot be a macro
-uint8 ram_get(uint16 a) {
-  uint8 *p = a+0x200;
-  return *p;
+uint8 ram_get(uint16 a)
+{
+        uint8 *p = a+0x200;
+        return *p;
 }
-void ram_set(uint16 a, uint8 x) {
-  uint8 *p = a+0x200;
-  *p = x;
+void ram_set(uint16 a, uint8 x)
+{
+        uint8 *p = a+0x200;
+        *p = x;
 }
 #endif
 
@@ -89,13 +115,15 @@ uint8 ram_mem[RAM_BYTES + VEC_BYTES];
 #endif
 
 #ifdef MCC18
-uint8 rom_get (rom_addr a){
-  return *(rom uint8*)a;
+uint8 rom_get (rom_addr a)
+{
+        return *(rom uint8*)a;
 }
 #endif
 #ifdef HI_TECH_C
-uint8 rom_get (rom_addr a){
-  return flash_read(a);
+uint8 rom_get (rom_addr a)
+{
+        return flash_read(a);
 }
 #endif
 
@@ -103,7 +131,10 @@ uint8 rom_get (rom_addr a){
 #define ROM_BYTES 8192
 uint8 rom_mem[ROM_BYTES];
 # ifdef LESS_MACROS
-uint8 rom_get (rom_addr a) { return rom_mem[a-CODE_START]; }
+uint8 rom_get (rom_addr a)
+{
+        return rom_mem[a-CODE_START];
+}
 # else
 #  define rom_get(a) (rom_mem[a-CODE_START])
 # endif
@@ -111,9 +142,18 @@ uint8 rom_get (rom_addr a) { return rom_mem[a-CODE_START]; }
 
 
 #ifdef LESS_MACROS
-uint8 ram_get_field0(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,0));}
-void  ram_set_field0(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,0), val);}
-uint8 rom_get_field0(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,0));}
+uint8 ram_get_field0(uint16 o)
+{
+        return ram_get (OBJ_TO_RAM_ADDR(o,0));
+}
+void  ram_set_field0(uint16 o, uint8 val)
+{
+        ram_set (OBJ_TO_RAM_ADDR(o,0), val);
+}
+uint8 rom_get_field0(uint16 o)
+{
+        return rom_get (OBJ_TO_ROM_ADDR(o,0));
+}
 #else
 #define ram_get_field0(o) ram_get (OBJ_TO_RAM_ADDR(o,0))
 #define ram_set_field0(o,val) ram_set (OBJ_TO_RAM_ADDR(o,0), val)
@@ -121,12 +161,30 @@ uint8 rom_get_field0(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,0));}
 #endif
 
 #ifdef LESS_MACROS
-uint8 ram_get_gc_tags(uint16 o) {return (ram_get_field0(o) & 0x60);}
-uint8 ram_get_gc_tag0(uint16 o) {return (ram_get_field0(o) & 0x20);}
-uint8 ram_get_gc_tag1(uint16 o) {return (ram_get_field0(o) & 0x40);}
-void  ram_set_gc_tags(uint16 o, uint8 tags) {(ram_set_field0(o,(ram_get_field0(o) & 0x9f) | (tags)));}
-void  ram_set_gc_tag0(uint16 o, uint8 tag)  {ram_set_field0(o,(ram_get_field0(o) & 0xdf) | (tag));}
-void  ram_set_gc_tag1(uint16 o, uint8 tag)  {ram_set_field0(o,(ram_get_field0(o) & 0xbf) | (tag));}
+uint8 ram_get_gc_tags(uint16 o)
+{
+        return (ram_get_field0(o) & 0x60);
+}
+uint8 ram_get_gc_tag0(uint16 o)
+{
+        return (ram_get_field0(o) & 0x20);
+}
+uint8 ram_get_gc_tag1(uint16 o)
+{
+        return (ram_get_field0(o) & 0x40);
+}
+void  ram_set_gc_tags(uint16 o, uint8 tags)
+{
+        (ram_set_field0(o,(ram_get_field0(o) & 0x9f) | (tags)));
+}
+void  ram_set_gc_tag0(uint16 o, uint8 tag)
+{
+        ram_set_field0(o,(ram_get_field0(o) & 0xdf) | (tag));
+}
+void  ram_set_gc_tag1(uint16 o, uint8 tag)
+{
+        ram_set_field0(o,(ram_get_field0(o) & 0xbf) | (tag));
+}
 #else
 #define ram_get_gc_tags(o) (ram_get_field0(o) & 0x60)
 #define ram_get_gc_tag0(o) (ram_get_field0(o) & 0x20)
@@ -140,15 +198,42 @@ void  ram_set_gc_tag1(uint16 o, uint8 tag)  {ram_set_field0(o,(ram_get_field0(o)
 #endif
 
 #ifdef LESS_MACROS
-uint8 ram_get_field1(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,1));}
-uint8 ram_get_field2(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,2));}
-uint8 ram_get_field3(uint16 o) {return ram_get (OBJ_TO_RAM_ADDR(o,3));}
-void  ram_set_field1(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,1), val);}
-void  ram_set_field2(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,2), val);}
-void  ram_set_field3(uint16 o, uint8 val) {ram_set (OBJ_TO_RAM_ADDR(o,3), val);}
-uint8 rom_get_field1(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,1));}
-uint8 rom_get_field2(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,2));}
-uint8 rom_get_field3(uint16 o) {return rom_get (OBJ_TO_ROM_ADDR(o,3));}
+uint8 ram_get_field1(uint16 o)
+{
+        return ram_get (OBJ_TO_RAM_ADDR(o,1));
+}
+uint8 ram_get_field2(uint16 o)
+{
+        return ram_get (OBJ_TO_RAM_ADDR(o,2));
+}
+uint8 ram_get_field3(uint16 o)
+{
+        return ram_get (OBJ_TO_RAM_ADDR(o,3));
+}
+void  ram_set_field1(uint16 o, uint8 val)
+{
+        ram_set (OBJ_TO_RAM_ADDR(o,1), val);
+}
+void  ram_set_field2(uint16 o, uint8 val)
+{
+        ram_set (OBJ_TO_RAM_ADDR(o,2), val);
+}
+void  ram_set_field3(uint16 o, uint8 val)
+{
+        ram_set (OBJ_TO_RAM_ADDR(o,3), val);
+}
+uint8 rom_get_field1(uint16 o)
+{
+        return rom_get (OBJ_TO_ROM_ADDR(o,1));
+}
+uint8 rom_get_field2(uint16 o)
+{
+        return rom_get (OBJ_TO_ROM_ADDR(o,2));
+}
+uint8 rom_get_field3(uint16 o)
+{
+        return rom_get (OBJ_TO_ROM_ADDR(o,3));
+}
 #else
 #define ram_get_field1(o) ram_get (OBJ_TO_RAM_ADDR(o,1))
 #define ram_get_field2(o) ram_get (OBJ_TO_RAM_ADDR(o,2))
