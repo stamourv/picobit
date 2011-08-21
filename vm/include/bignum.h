@@ -1,7 +1,12 @@
 #ifndef PICOBIT_BIGNUMS_H
 #define PICOBIT_BIGNUMS_H
 
-#ifdef INFINITE_PRECISION_BIGNUMS
+#include <vm.h>
+
+uint16 decode_int (obj o);
+obj encode_int (uint16 n);
+
+#ifdef CONFIG_BIGNUM_LONG
 
 #define digit_width 16
 
@@ -35,9 +40,6 @@ integer neg (integer x);
 integer scale (digit n, integer x);
 integer mulnonneg (integer x, integer y);
 integer divnonneg (integer x, integer y);
-
-uint16 decode_int (obj o);
-obj encode_int (uint16 n);
 
 #endif
 

@@ -1,0 +1,39 @@
+mainmenu "Picobit Virtual Machine Configuration"
+
+config VERBOSE
+	bool
+
+config ARCH_8BIT
+	bool
+
+config ARCH_32BIT
+	bool
+
+choice
+	prompt "Target architecture"
+	help
+	  Select a platform to run Picobit VM on.
+	  
+
+	config	ARCH_HOST
+		bool "Host executable"
+		select ARCH_32BIT
+		select VERBOSE
+		help
+		  Build Picobit as a host (Linux) executable for easy
+		  debugging.
+		  
+
+	config	ARCH_ARM
+		bool "ARM microcontrollers"
+		select ARCH_32BIT
+
+	config	ARCH_PIC18
+		bool "PIC18 microcontrollers"
+		select ARCH_8BIT
+endchoice
+
+source "arch/host/Kconfig"
+source "arch/arm/Kconfig"
+
+source "core/Kconfig"

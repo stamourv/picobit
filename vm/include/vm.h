@@ -1,12 +1,6 @@
 #ifndef PICOBIT_VM_H
 #define PICOBIT_VM_H
 
-#define DEBUG_not
-#define DEBUG_GC_not
-#define INFINITE_PRECISION_BIGNUMS
-
-/*---------------------------------------------------------------------------*/
-
 // types
 
 #ifndef SIXPIC
@@ -134,9 +128,9 @@ int max_live;
 #ifdef HI_TECH_C
 void halt_with_error ()
 {
-        while(1) {
-                ;
-        }
+	while(1) {
+		;
+	}
 }
 #endif
 

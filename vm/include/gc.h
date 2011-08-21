@@ -10,17 +10,17 @@
 #ifdef LESS_MACROS
 uint8 HAS_2_OBJECT_FIELDS(uint16 visit)
 {
-        return (RAM_PAIR(visit) || RAM_CONTINUATION(visit));
+	return (RAM_PAIR(visit) || RAM_CONTINUATION(visit));
 }
 #ifdef INFINITE_PRECISION_BIGNUMS
 uint8 HAS_1_OBJECT_FIELD(uint16 visit)
 {
-        return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit) || RAM_BIGNUM(visit));
+	return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit) || RAM_BIGNUM(visit));
 }
 #else
 uint8 HAS_1_OBJECT_FIELD(uint16 visit)
 {
-        return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit));
+	return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit));
 }
 #endif
 
