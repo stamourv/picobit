@@ -1,0 +1,7 @@
+menu "ARM-specific options"
+
+config CROSS_COMPILER
+	string "Cross compiler prefix"
+	default "arm-none-eabi-"
+
+endmenu

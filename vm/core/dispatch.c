@@ -1,8 +1,7 @@
-#include "picobit-vm.h"
-#include "heap-layout.h"
-#include "object-layout.h"
-#include "gc.h"
-#include "dispatch.h"
+#include <picobit.h>
+#include <dispatch.h>
+#include <debug.h>
+#include <gc.h>
 
 void push_arg1 ()
 {
@@ -485,7 +484,11 @@ dispatch:
 		/*************************************************************************/
 	case PRIM1 :
 
+#ifdef CONFIG_DEBUG_STRINGS
 		IF_TRACE(printf("  (%s)\n", prim_name[bytecode_lo4]));
+#else
+		IF_TRACE(printf("  (<primitive>)\n"));
+#endif
 
 		switch (bytecode_lo4) {
 		case 0:

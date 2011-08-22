@@ -1,16 +1,8 @@
-#include "picobit-vm.h"
-#include "heap-layout.h"
-#include "object-layout.h"
-#include "gc.h"
+#include <picobit.h>
+#include <bignum.h>
+#include <gc.h>
 
-#ifdef INFINITE_PRECISION_BIGNUMS
-#include "bignums.h"
-#endif
-
-
-/*---------------------------------------------------------------------------*/
-
-#ifdef WORKSTATION
+#ifdef CONFIG_DEBUG_STRINGS
 char *prim_name[64] = {
 	"prim #%number?",
 	"prim #%+",
@@ -84,8 +76,13 @@ char *prim_name[64] = {
 
 /*---------------------------------------------------------------------------*/
 
-// numerical primitives
+// useful for some primitives
+void decode_2_int_args () {
+  a1 = decode_int (arg1);
+  a2 = decode_int (arg2);
+}
 
+// numerical primitives
 void prim_numberp ()
 {
 	if (arg1 >= MIN_FIXNUM_ENCODING
@@ -104,7 +101,7 @@ void prim_numberp ()
 
 void prim_add ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = add (arg1, arg2);
 #else
 	decode_2_int_args ();
@@ -115,7 +112,7 @@ void prim_add ()
 
 void prim_sub ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = sub (arg1, arg2);
 #else
 	decode_2_int_args ();
@@ -126,7 +123,7 @@ void prim_sub ()
 
 void prim_mul_non_neg ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = mulnonneg (arg1, arg2);
 #else
 	decode_2_int_args ();
@@ -137,7 +134,7 @@ void prim_mul_non_neg ()
 
 void prim_div_non_neg ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 
 	if (obj_eq(arg2, ZERO)) {
 		ERROR("quotient", "divide by 0");
@@ -158,7 +155,7 @@ void prim_div_non_neg ()
 
 void prim_rem_non_neg ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 
 	if (obj_eq(arg2, ZERO)) {
 		ERROR("remainder", "divide by 0");
@@ -183,7 +180,7 @@ void prim_rem_non_neg ()
 
 void prim_eq ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = encode_bool(cmp (arg1, arg2) == 1);
 #else
 	decode_2_int_args ();
@@ -194,7 +191,7 @@ void prim_eq ()
 
 void prim_lt ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = encode_bool(cmp (arg1, arg2) < 1);
 #else
 	decode_2_int_args ();
@@ -205,7 +202,7 @@ void prim_lt ()
 
 void prim_gt ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = encode_bool(cmp (arg1, arg2) > 1);
 #else
 	decode_2_int_args ();
@@ -216,7 +213,7 @@ void prim_gt ()
 
 void prim_ior ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = bitwise_ior(arg1, arg2);
 #else
 	decode_2_int_args ();
@@ -227,7 +224,7 @@ void prim_ior ()
 
 void prim_xor ()
 {
-#ifdef INFINITE_PRECISION_BIGNUMS
+#ifdef CONFIG_BIGNUM_LONG
 	arg1 = bitwise_xor(arg1, arg2);
 #else
 	decode_2_int_args ();

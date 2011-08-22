@@ -1,8 +1,5 @@
-#include "picobit-vm.h"
-#include <heap-layout.h>
-#include <object-layout.h>
-#include <gc.h>
-#include <bignums.h>
+#include <picobit.h>
+#include <bignum.h>
 
 /*
  * Implementation of bignums as fixed-precision,

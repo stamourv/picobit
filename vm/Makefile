@@ -1,5 +1,5 @@
-.PHONY: _all
-_all:
+.PHONY: all
+all:
 
 Makefile: ;
 
@@ -55,11 +55,14 @@ else
 
 ifneq ($(dot-config),0)
 # Read in config
--include include/config/auto.conf
+include include/config/auto.conf
+
+ARCH   := $(shell echo $(CONFIG_ARCH))
+CFLAGS := -Iinclude/ -DPICOBIT
 
 # Read in dependencies to all Kconfig* files, make sure to run
 # oldconfig if changes are detected.
--include include/config/auto.conf.cmd
+include include/config/auto.conf.cmd
 
 # To avoid any implicit rule to kick in, define an empty command
 .config include/config/auto.conf.cmd: ;
@@ -71,10 +74,19 @@ ifneq ($(dot-config),0)
 include/config/%.conf: .config include/config/auto.conf.cmd
 	make silentoldconfig
 
--include core/Makefile
--include arch/$(CONFIG_ARCH)/Makefile
+include/arch: include/config/auto.conf
+	@rm -f include/arch
+	@ln -sf ../arch/$(ARCH)/include/ include/arch
 
-_all: all
+obj-y = $(addprefix core/,$(core-y)) \
+	 $(addprefix arch/$(ARCH)/,$(arch-y))
+
+arch-all:
+
+include core/Makefile
+include arch/Makefile
+
+all: include/arch arch-all
 
 endif # $(dot-config)
 
@@ -83,6 +95,7 @@ endif # $(mixed-targets)
 
 clean: FORCE
 	make -C kconfig clean
+	rm -f picobit-vm picobit.elf picobit.o picobit.hex
 
 mrproper: clean FORCE
 	rm -f .config .config.old

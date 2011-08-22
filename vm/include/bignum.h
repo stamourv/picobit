@@ -1,7 +1,7 @@
 #ifndef PICOBIT_BIGNUMS_H
 #define PICOBIT_BIGNUMS_H
 
-#include <vm.h>
+#include <picobit.h>
 
 uint16 decode_int (obj o);
 obj encode_int (uint16 n);
@@ -16,10 +16,6 @@ typedef uint32 two_digit;
 
 #define obj_eq(x,y) ((x) == (y))
 #define integer_hi_set(x,y) ram_set_car (x, y)
-
-#define ZERO ENCODE_FIXNUM(0)
-#define NEG1 (ZERO-1)
-#define POS1 (ZERO+1)
 
 integer make_integer (digit lo, integer hi);
 integer integer_hi (integer x);
@@ -40,6 +36,9 @@ integer neg (integer x);
 integer scale (digit n, integer x);
 integer mulnonneg (integer x, integer y);
 integer divnonneg (integer x, integer y);
+
+void bignum_gc_init();
+void bignum_gc_mark();
 
 #endif
 

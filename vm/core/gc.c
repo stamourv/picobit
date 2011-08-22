@@ -1,7 +1,7 @@
-#include "picobit-vm.h"
-#include "heap-layout.h"
-#include "object-layout.h"
-#include "gc.h"
+#include <picobit.h>
+#include <bignum.h>
+#include <debug.h>
+#include <gc.h>
 
 void init_ram_heap ()
 {
@@ -34,11 +34,7 @@ void init_ram_heap ()
 	env  = OBJ_NULL;
 
 #ifdef CONFIG_BIGNUM_LONG
-	bignum_tmp1 = OBJ_FALSE;
-	bignum_tmp2 = OBJ_FALSE;
-	bignum_tmp3 = OBJ_FALSE;
-	bignum_tmp4 = OBJ_FALSE;
-	bignum_tmp5 = OBJ_FALSE;
+	bignum_gc_init();
 #endif
 }
 
@@ -209,16 +205,7 @@ void gc ()
 	mark (env);
 
 #ifdef CONFIG_BIGNUM_LONG
-	IF_GC_TRACE(printf("bignum_tmp1\n"));
-	mark (bignum_tmp1);
-	IF_GC_TRACE(printf("bignum_tmp2\n"));
-	mark (bignum_tmp2);
-	IF_GC_TRACE(printf("bignum_tmp3\n"));
-	mark (bignum_tmp3);
-	IF_GC_TRACE(printf("bignum_tmp4\n"));
-	mark (bignum_tmp4);
-	IF_GC_TRACE(printf("bignum_tmp5\n"));
-	mark (bignum_tmp5);
+	bignum_gc_mark();
 #endif
 
 	IF_GC_TRACE(printf("globals\n"));
@@ -380,5 +367,5 @@ obj alloc_vec_cell (uint16 n, obj from)
 	ram_set_gc_tag0 (o, GC_TAG_0_LEFT); // mark block as used
 
 	// return pointer to start of data, skipping the header
-	return RAM_TO_VEC_OBJ(o+1);
+	return RAM_TO_VEC_OBJ(o + 1);
 }

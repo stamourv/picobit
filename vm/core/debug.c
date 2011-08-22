@@ -1,18 +1,9 @@
-#include "picobit-vm.h"
-#include "heap-layout.h"
-#include "object-layout.h"
-#include "gc.h"
+#include <picobit.h>
+#include <debug.h>
 
-#ifdef INFINITE_PRECISION_BIGNUMS
-#include "bignums.h"
-#endif
-
-// debugging functions
-
-#ifdef WORKSTATION
 void show_type (obj o)
 {
-	printf("%d : ", o);
+	printf("%04x : ", o);
 
 	if (o == OBJ_FALSE) {
 		printf("#f");
@@ -59,9 +50,101 @@ void show_type (obj o)
 	printf("\n");
 }
 
-void show_state (rom_addr pc)
+void show (obj o)
 {
-	printf("\n");
+#if 0
+	printf ("[%d]", o);
+#endif
+
+	if (o == OBJ_FALSE) {
+		printf ("#f");
+	} else if (o == OBJ_TRUE) {
+		printf ("#t");
+	} else if (o == OBJ_NULL) {
+		printf ("()");
+	} else if (o <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM))) {
+		printf ("%d", DECODE_FIXNUM(o));
+	} else {
+		uint8 in_ram;
+
+		if (IN_RAM(o)) {
+			in_ram = 1;
+		} else {
+			in_ram = 0;
+		}
+
+		if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o))) { // TODO fix for new bignums, especially for the sign, a -5 is displayed as 251
+			printf ("%d", decode_int (o));
+		} else if ((in_ram && RAM_COMPOSITE(o)) || (!in_ram && ROM_COMPOSITE(o))) {
+			obj car;
+			obj cdr;
+
+			if ((in_ram && RAM_PAIR(o)) || (!in_ram && ROM_PAIR(o))) {
+				if (in_ram) {
+					car = ram_get_car (o);
+					cdr = ram_get_cdr (o);
+				} else {
+					car = rom_get_car (o);
+					cdr = rom_get_cdr (o);
+				}
+
+				printf ("(");
+
+loop:
+
+				show (car);
+
+				if (cdr == OBJ_NULL) {
+					printf (")");
+				} else if ((IN_RAM(cdr) && RAM_PAIR(cdr))
+					   || (IN_ROM(cdr) && ROM_PAIR(cdr))) {
+					if (IN_RAM(cdr)) {
+						car = ram_get_car (cdr);
+						cdr = ram_get_cdr (cdr);
+					} else {
+						car = rom_get_car (cdr);
+						cdr = rom_get_cdr (cdr);
+					}
+
+					printf (" ");
+					goto loop;
+				} else {
+					printf (" . ");
+					show (cdr);
+					printf (")");
+				}
+			} else if ((in_ram && RAM_SYMBOL(o)) || (!in_ram && ROM_SYMBOL(o))) {
+				printf ("#<symbol>");
+			} else if ((in_ram && RAM_STRING(o)) || (!in_ram && ROM_STRING(o))) {
+				printf ("#<string>");
+			} else if ((in_ram && RAM_VECTOR(o)) || (!in_ram && ROM_VECTOR(o))) {
+				printf ("#<vector %d>", o);
+			} else {
+				printf ("(");
+				cdr = ram_get_car (o);
+				car = ram_get_cdr (o);
+				// ugly hack, takes advantage of the fact that pairs and
+				// continuations have the same layout
+				goto loop;
+			}
+		} else { // closure
+			obj env;
+			rom_addr pc;
+
+			env = ram_get_car (o);
+			pc = ram_get_entry (o);
+
+			printf ("{0x%04x ", pc);
+			show (env);
+			printf ("}");
+		}
+	}
+
+	fflush (stdout);
+}
+
+void show_state (rom_addr pc) {
+	printf ("\n");
 	printf ("pc=0x%04x bytecode=0x%02x env=", pc, rom_get (pc));
 	show (env);
 	printf (" cont=");
@@ -70,150 +153,10 @@ void show_state (rom_addr pc)
 	fflush (stdout);
 }
 
-void p (integer n)
+/*void print (obj o)
 {
-	long long x; // TODO long long is 32 bits here, what about on a 64 bit machine ?
-	x = ((long long)integer_lo (integer_hi (integer_hi (integer_hi (n))))<<48)+
-	    ((long long)integer_lo (integer_hi (integer_hi (n)))<<32)+
-	    ((long long)integer_lo (integer_hi (n))<<16)+
-	    (long long)integer_lo (n);
-	printf ("%lld ", x);
-	// TODO test for hex output, to avoid signedness problems
-	/*   printf("%x %x %x %x\n", // TODO prob, if a lower part is 0, will show 0, not 0000 */
-	/* 	 integer_lo (integer_hi (integer_hi (integer_hi (n)))), */
-	/* 	 integer_lo (integer_hi (integer_hi (n))), */
-	/* 	 integer_lo (integer_hi (n)), */
-	/* 	 integer_lo (n)); */
+	show (o);
+	printf ("\n");
+	fflush (stdout);
 }
-
-integer enc (long long n)
-{
-	integer result = NIL;
-
-	while (n != 0 && n != -1) {
-		result = make_integer ((digit)n, result);
-		n >>= digit_width;
-	}
-
-	if (n < 0) {
-		return norm (result, NEG1);
-	} else {
-		return norm (result, ZERO);
-	}
-}
-
-void test ()
-{
-	integer min2;
-	integer min1;
-	integer zero;
-	integer one;
-	integer two;
-	integer three;
-	integer four;
-
-	zero = make_integer (0x0000, 0);
-	min1 = make_integer (0xffff, 0);
-	integer_hi_set (zero, ZERO);
-	integer_hi_set (min1, NEG1);
-
-	min2 = make_integer (0xfffe, NEG1);
-	one  = make_integer (0x0001, ZERO);
-	two  = make_integer (0x0002, ZERO);
-	three= make_integer (0x0003, ZERO);
-	four = make_integer (0x0004, ZERO);
-
-	if (negp (ZERO)) {
-		printf ("zero is negp\n");        // should not show
-	}
-
-	if (negp (NEG1)) {
-		printf ("min1 is negp\n");
-	}
-
-	printf ("cmp(5,5) = %d\n",cmp (make_integer (5, ZERO), make_integer (5, ZERO)));
-	printf ("cmp(2,5) = %d\n",cmp (make_integer (2, ZERO), make_integer (5, ZERO)));
-	printf ("cmp(5,2) = %d\n",cmp (make_integer (5, ZERO), make_integer (2, ZERO)));
-
-	printf ("cmp(-5,-5) = %d\n",cmp (make_integer (-5, NEG1), make_integer (-5, NEG1)));
-	printf ("cmp(-2,-5) = %d\n",cmp (make_integer (-2, NEG1), make_integer (-5, NEG1)));
-	printf ("cmp(-5,-2) = %d\n",cmp (make_integer (-5, NEG1), make_integer (-2, NEG1)));
-
-	printf ("cmp(-5,65533) = %d\n",cmp (make_integer (-5, NEG1), make_integer (65533, ZERO)));
-	printf ("cmp(-5,2)     = %d\n",cmp (make_integer (-5, NEG1), make_integer (2, ZERO)));
-	printf ("cmp(5,-65533) = %d\n",cmp (make_integer (5, ZERO), make_integer (-65533, NEG1)));
-	printf ("cmp(5,-2)     = %d\n",cmp (make_integer (5, ZERO), make_integer (-2, NEG1)));
-
-	printf ("integer_length(0) = %d\n", integer_length (ZERO)); // these return the number of bits necessary to encode
-	printf ("integer_length(1) = %d\n", integer_length (make_integer (1, ZERO)));
-	printf ("integer_length(2) = %d\n", integer_length (make_integer (2, ZERO)));
-	printf ("integer_length(3) = %d\n", integer_length (make_integer (3, ZERO)));
-	printf ("integer_length(4) = %d\n", integer_length (make_integer (4, ZERO)));
-	printf ("integer_length(65536 + 4) = %d\n", integer_length (make_integer (4, make_integer (1, ZERO))));
-
-
-	printf ("1 = %d\n", one);
-	printf ("2 = %d\n", two);
-	printf ("4 = %d\n", four);
-	printf ("norm(2) = %d\n", norm (make_integer (0, make_integer (2, NIL)), ZERO));
-	printf ("norm(2) = %d\n", norm (make_integer (0, make_integer (2, NIL)), ZERO));
-	printf ("norm(3) = %d\n", norm (make_integer (0, make_integer (3, NIL)), ZERO));
-	printf ("norm(3) = %d\n", norm (make_integer (0, make_integer (3, NIL)), ZERO));
-
-	printf ("shl(1) = %d\n", shl (one));
-	printf ("shl(2) = %d\n", shl (two));
-
-	integer n = one;
-	int i;
-
-	// should show powers of 2 incerasing, then decreasing
-	for (i=1; i<=34; i++) {
-		printf("\nloop-1 : i=%d len=%d ", i, integer_length(n));
-		p (n);
-		n = shl(n);
-	}
-
-	for (i=1; i<=35; i++) {
-		printf("\nloop-2 : i=%d len=%d ", i, integer_length(n));
-		p (n);
-		n = shr(n);
-	}
-
-	n = shift_left (four, 5);
-
-	for (i=0; i<=14; i++) {
-		printf("\nloop-3 : i=%d len=%d ", i, integer_length(n));
-		p (shift_left (n, i*4));
-	}
-
-	printf("\n");
-	p (add (enc (32768), enc (32768)));
-	printf("\n"); // 65536
-	p (add (enc (32768+(65536*65535LL)), enc (32768)));
-	printf("\n"); // 4294967296
-
-	p (sub (enc (32768), enc (-32768)));
-	printf("\n"); // 65536
-	p (sub (enc (32768+(65536*65535LL)), enc (-32768)));
-	printf("\n"); // 4294967296
-
-	p (sub (enc (32768), enc (32769)));
-	printf("\n"); // -1
-	p (sub (enc (32768), enc (132768)));
-	printf("\n"); // -100000
-	p (add(sub (enc (32768), enc (32769)), enc(1000)));
-	printf("\n"); // 999
-
-	// Handling of sign is done at the Scheme level.
-	p (mulnonneg (enc (123456789), enc (1000000000)));
-	printf("\n"); // 123456789000000000
-
-	p (divnonneg (enc (10000000-1), enc (500000)));
-	printf("\n"); // 19
-
-	printf ("done\n");
-
-	exit (0);
-}
-
-#endif
+*/

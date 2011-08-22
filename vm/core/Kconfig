@@ -6,7 +6,7 @@ choice
 
 	config BIGNUM_FIXED
 		bool "Fixed 24-bit"
-		depends on ARCH_8BIT
+		depends on ARCH_8BIT || ARCH_HOST
 		help
 		  A very small bignum implementation which has a fixed
 		  precision. Currently it is only useful on 8-bit targets,
@@ -24,6 +24,7 @@ endchoice
 
 config GC_DEBUG
 	bool "Debug garbage collector"
+	depends on DEBUG
 	help
 	  Enable garbage collector trace messages.
 	  

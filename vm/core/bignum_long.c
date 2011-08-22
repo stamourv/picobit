@@ -1,8 +1,44 @@
-#include <picobit-vm.h>
-#include <heap-layout.h>
-#include <object-layout.h>
-#include <gc.h>
-#include <bignums.h>
+#include <picobit.h>
+#include <bignum.h>
+#include <debug.h>
+
+/* Temps in bignum algorithms must be registered as roots too, since
+ * GC can occur during bignum operations (they allocate).
+ * Bignum ops can share variables as long as they don't interfere.
+ *
+ * Usage map:
+ * bignum_tmp1 => ior xor add sub scale shr shl
+ * bignum_tmp2 => shift_left mul
+ * bignum_tmp3 => div mul
+ * bignum_tmp4 => div mul
+ * bignum_tmp5 => div
+ */
+
+static obj bignum_tmp1, bignum_tmp2, bignum_tmp3,
+	bignum_tmp4, bignum_tmp5;
+
+void bignum_gc_init()
+{
+	bignum_tmp1 = OBJ_FALSE;
+	bignum_tmp2 = OBJ_FALSE;
+	bignum_tmp3 = OBJ_FALSE;
+	bignum_tmp4 = OBJ_FALSE;
+	bignum_tmp5 = OBJ_FALSE;
+}
+
+void bignum_gc_mark()
+{
+	IF_GC_TRACE(printf("bignum_tmp1\n"));
+	mark (bignum_tmp1);
+	IF_GC_TRACE(printf("bignum_tmp2\n"));
+	mark (bignum_tmp2);
+	IF_GC_TRACE(printf("bignum_tmp3\n"));
+	mark (bignum_tmp3);
+	IF_GC_TRACE(printf("bignum_tmp4\n"));
+	mark (bignum_tmp4);
+	IF_GC_TRACE(printf("bignum_tmp5\n"));
+	mark (bignum_tmp5);
+}
 
 integer make_integer (digit lo, integer hi)
 {
@@ -76,11 +112,11 @@ uint8 negp (integer x)
 		x = integer_hi (x);
 
 		if (obj_eq (x, ZERO)) {
-			return false;
+			return 0;
 		}
 	} while (!obj_eq (x, NEG1));
 
-	return true;
+	return 1;
 }
 
 uint8 cmp (integer x, integer y)

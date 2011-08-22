@@ -1,14 +1,5 @@
 mainmenu "Picobit Virtual Machine Configuration"
 
-config VERBOSE
-	bool
-
-config ARCH_8BIT
-	bool
-
-config ARCH_32BIT
-	bool
-
 choice
 	prompt "Target architecture"
 	help
@@ -18,7 +9,8 @@ choice
 	config	ARCH_HOST
 		bool "Host executable"
 		select ARCH_32BIT
-		select VERBOSE
+		select ERROR_HANDLING
+		select DEBUG_STRINGS
 		help
 		  Build Picobit as a host (Linux) executable for easy
 		  debugging.
@@ -27,13 +19,38 @@ choice
 	config	ARCH_ARM
 		bool "ARM microcontrollers"
 		select ARCH_32BIT
-
-	config	ARCH_PIC18
-		bool "PIC18 microcontrollers"
-		select ARCH_8BIT
 endchoice
 
+config DEBUG
+	bool "Enable debugging"
+	help
+	  This config option enables debugging hooks in the code and
+	  also enables several other options.
+	  
+
+config ERROR_HANDLING
+	bool
+
+config DEBUG_STRINGS
+	bool
+
+config ARCH_8BIT
+	bool
+
+config ARCH_32BIT
+	bool
+
+config ARCH
+	string
+	default "host" if ARCH_HOST
+	default "arm" if ARCH_ARM
+
+if ARCH_HOST
 source "arch/host/Kconfig"
+endif
+
+if ARCH_ARM
 source "arch/arm/Kconfig"
+endif
 
 source "core/Kconfig"

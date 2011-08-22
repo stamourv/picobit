@@ -38,6 +38,12 @@
 #define MAX_FIXNUM 256
 #define MIN_ROM_ENCODING (MIN_FIXNUM_ENCODING + MAX_FIXNUM - MIN_FIXNUM + 1)
 
+#define ZERO ENCODE_FIXNUM(0)
+#define NEG1 (ZERO-1)
+#define POS1 (ZERO+1)
+
+#define CODE_START 0x8000
+
 #ifdef LESS_MACROS
 uint16 OBJ_TO_RAM_ADDR(uint16 o, uint8 f)
 {
@@ -110,7 +116,7 @@ void ram_set(uint16 a, uint8 x)
 }
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 uint8 ram_mem[RAM_BYTES + VEC_BYTES];
 #define ram_get(a) ram_mem[a]
 #define ram_set(a,x) ram_mem[a] = (x)
@@ -129,7 +135,7 @@ uint8 rom_get (rom_addr a)
 }
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 #define ROM_BYTES 8192
 uint8 rom_mem[ROM_BYTES];
 # ifdef LESS_MACROS
