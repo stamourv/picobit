@@ -8,11 +8,19 @@ obj encode_int (uint16 n);
 
 #ifdef CONFIG_BIGNUM_LONG
 
-#define digit_width 16
 
 typedef obj integer;
-typedef uint16 digit; // TODO why these ? adds to the confusion
+
+/*
+ * A `digit' is a numeric representation of one entry
+ * of a bignum linked list. A `two_digit` is a numeric
+ * representation for the cases where a result of
+ * an operation is wider than a `digit'.
+ */
+typedef uint16 digit;
 typedef uint32 two_digit;
+
+#define digit_width (sizeof(digit) * 8)
 
 #define obj_eq(x,y) ((x) == (y))
 #define integer_hi_set(x,y) ram_set_car (x, y)

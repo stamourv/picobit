@@ -1,5 +1,5 @@
-#ifndef PICOBIT_HEAP_LAYOUT_H
-#define PICOBIT_HEAP_LAYOUT_H
+#ifndef PICOBIT_HEAP_H
+#define PICOBIT_HEAP_H
 
 /*
  * Address space layout.
@@ -24,6 +24,8 @@
  *  - the largest encoding is bounded by the pointer size in the
  *    object layout
  */
+
+#include <arch/memory.h>
 
 #define MAX_VEC_ENCODING 8191
 #define MIN_VEC_ENCODING 0
@@ -67,87 +69,6 @@ uint16 RAM_TO_VEC_OBJ(uint16 o)
 #define VEC_TO_RAM_OBJ(o) ((o) + MAX_RAM_ENCODING + 1)
 #define RAM_TO_VEC_OBJ(o) ((o) - MAX_RAM_ENCODING - 1)
 #endif
-
-// SIXPIC cannot deal with amounts of RAM as big as the PICOBIT defaults.
-// Limits above should be modified according to application needs.
-#ifdef SIXPIC
-#ifdef LESS_MACROS
-uint8 ram_get(uint16 a)
-{
-	return *(a+0x200);
-}
-void  ram_set(uint16 a, uint8 x)
-{
-	*(a+0x200) = (x);
-}
-#else
-#define ram_get(a) *(a+0x200)
-#define ram_set(a,x) *(a+0x200) = (x)
-#endif
-#endif
-
-#ifdef MCC18
-#ifdef LESS_MACROS
-uint8 ram_get(uint16 a)
-{
-	return *(uint8*)(a+0x200);
-}
-void  ram_set(uint16 a, uint8 x)
-{
-	*(uint8*)(a+0x200) = (x);
-}
-#else
-#define ram_get(a) *(uint8*)(a+0x200)
-#define ram_set(a,x) *(uint8*)(a+0x200) = (x)
-#endif
-#endif
-
-#ifdef HI_TECH_C
-// cannot be a macro
-uint8 ram_get(uint16 a)
-{
-	uint8 *p = a+0x200;
-	return *p;
-}
-void ram_set(uint16 a, uint8 x)
-{
-	uint8 *p = a+0x200;
-	*p = x;
-}
-#endif
-
-#ifdef CONFIG_ARCH_HOST
-uint8 ram_mem[RAM_BYTES + VEC_BYTES];
-#define ram_get(a) ram_mem[a]
-#define ram_set(a,x) ram_mem[a] = (x)
-#endif
-
-#ifdef MCC18
-uint8 rom_get (rom_addr a)
-{
-	return *(rom uint8*)a;
-}
-#endif
-#ifdef HI_TECH_C
-uint8 rom_get (rom_addr a)
-{
-	return flash_read(a);
-}
-#endif
-
-#ifdef CONFIG_ARCH_HOST
-#define ROM_BYTES 8192
-uint8 rom_mem[ROM_BYTES];
-# ifdef LESS_MACROS
-uint8 rom_get (rom_addr a)
-{
-	return rom_mem[a-CODE_START];
-}
-# else
-#  define rom_get(a) (rom_mem[a-CODE_START])
-# endif
-#endif
-
 
 #ifdef LESS_MACROS
 uint8 ram_get_field0(uint16 o)
@@ -262,7 +183,6 @@ void ram_set_car (obj o, obj val);
 void ram_set_cdr (obj o, obj val);
 
 obj ram_get_entry (obj o);
-obj rom_get_entry (obj o);
 
 obj get_global (uint8 i);
 void set_global (uint8 i, obj o);

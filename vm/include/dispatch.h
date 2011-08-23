@@ -2,6 +2,7 @@
 #define PICOBIT_DISPATCH_H
 
 #include <arch/types.h>
+#include <memory.h>
 
 #define FETCH_NEXT_BYTECODE() bytecode = rom_get (pc++)
 

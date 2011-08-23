@@ -5,8 +5,8 @@
 
 #include <arch/types.h>
 
-#include <heap-layout.h>
-#include <object-layout.h>
+#include <heap.h>
+#include <object.h>
 
 /* root set */
 obj arg1;

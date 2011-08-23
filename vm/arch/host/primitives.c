@@ -409,7 +409,7 @@ void prim_u8vector_ref ()
 	arg1 += (a2 >> 2);
 	a2 %= 4;
 
-	arg1 = encode_int (ram_get_fieldn (arg1, a2));
+	arg1 = encode_int (ram_get (OBJ_TO_RAM_ADDR(arg1, a2)));
 
 	arg2 = OBJ_FALSE;
 	arg3 = OBJ_FALSE;
@@ -442,7 +442,7 @@ void prim_u8vector_set ()   // TODO a lot in common with ref, abstract that
 	arg1 += (a2 >> 2);
 	a2 %= 4;
 
-	ram_set_fieldn (arg1, a2, a3);
+	ram_set (OBJ_TO_RAM_ADDR(arg1, a2), a3);
 
 	arg1 = OBJ_FALSE;
 	arg2 = OBJ_FALSE;

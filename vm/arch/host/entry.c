@@ -4,6 +4,8 @@
 #include <picobit.h>
 #include <gc.h>
 
+uint8 ram_mem[0x8000] = {0}, rom_mem[ROM_BYTES] = {0};
+
 void error (char *prim, char *msg)
 {
 	printf ("ERROR: %s: %s\n", prim, msg);
@@ -15,11 +17,6 @@ void type_error (char *prim, char *type)
 	printf ("ERROR: %s: An argument of type %s was expected\n", prim, type);
 	exit (1);
 }
-
-#define ROM_BYTES 8192
-uint8 rom_mem[ROM_BYTES] = {};
-
-#include "memory.c"
 
 void write_hex_nibble (int n)
 {

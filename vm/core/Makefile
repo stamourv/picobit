@@ -1,6 +1,4 @@
-# Linux kernel style makefile
-
-core-y += dispatch.c gc.c
+core-y += dispatch.c heap.c gc.c
 
 core-$(CONFIG_BIGNUM_LONG)   += bignum_long.c
 core-$(CONFIG_BIGNUM_FIXED)  += bignum_fixed.c

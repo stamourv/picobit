@@ -117,7 +117,7 @@ dispatch:
 		/*************************************************************************/
 	case PUSH_CONSTANT1 :
 
-		IF_TRACE(printf("  (push-constant "); show (bytecode_lo4); printf (")\n"));
+		IF_TRACE(printf("  (push-constant "); show_obj (bytecode_lo4); printf (")\n"));
 
 		arg1 = bytecode_lo4;
 
@@ -128,7 +128,7 @@ dispatch:
 		/*************************************************************************/
 	case PUSH_CONSTANT2 :
 
-		IF_TRACE(printf("  (push-constant "); show (bytecode_lo4+16); printf (")\n"));
+		IF_TRACE(printf("  (push-constant "); show_obj (bytecode_lo4+16); printf (")\n"));
 		arg1 = bytecode_lo4+16;
 
 		push_arg1();

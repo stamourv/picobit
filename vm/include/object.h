@@ -66,8 +66,6 @@
 
 #define OBJ_NULL  2
 
-#define NIL OBJ_FALSE
-
 // fixnum definitions in picobit-vm.h , address space layout section
 
 #ifdef LESS_MACROS

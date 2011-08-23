@@ -1,7 +1,8 @@
 #ifndef PICOBIT_GC_H
 #define PICOBIT_GC_H
 
-// TODO explain what each tag means, with 1-2 mark bits
+/* TODO explain what each tag means, with 1-2 mark bits.
+   Currently, they're described in IFL paper. */
 #define GC_TAG_0_LEFT   (1<<5)
 #define GC_TAG_1_LEFT   (2<<5)
 #define GC_TAG_UNMARKED (0<<5)
@@ -36,10 +37,14 @@ uint8 HAS_1_OBJECT_FIELD(uint16 visit)
 #endif
 // all composites except pairs and continuations have 1 object field
 
-obj free_list; /* list of unused cells */
-/* first unused cell in vector space. */
-/* points into vector space using whole-RAM addressing  */
-/* its value should be over MAX_RAM_ENCODING */
+/* List of unused cells. */
+obj free_list;
+
+/*
+ * First unused cell in vector space.
+ * It points into vector space using whole-RAM addressing;
+ * its value should be over MAX_RAM_ENCODING.
+ */
 obj free_vec_pointer;
 
 #ifdef CONFIG_GC_DEBUG

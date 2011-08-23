@@ -78,7 +78,7 @@ integer norm (obj prefix, integer n)
 	/* norm(prefix,n) returns a normalized integer whose value is the
 	   integer n prefixed with the digits in prefix (a list of digits) */
 
-	while (prefix != NIL) {
+	while (prefix != OBJ_FALSE) {
 		digit d = integer_lo (prefix);
 		obj temp = prefix;
 
@@ -91,8 +91,8 @@ integer norm (obj prefix, integer n)
 			}
 		} else if (obj_eq (n, NEG1)) {
 			// -1 is an illegal literal in SIXPIC, thus the double negative
-			if (d >= (1<<digit_width) - (- MIN_FIXNUM)) {
-				n = ENCODE_FIXNUM (d - (1<<digit_width));
+			if (d >= (1 << digit_width) - (- MIN_FIXNUM)) {
+				n = ENCODE_FIXNUM (d - (1 << digit_width));
 				continue;
 			}
 		}
@@ -201,7 +201,7 @@ integer shr (integer x)   // TODO have shift_right
 	//  by the original x, so we're good. Same situation in most other
 	//  bignum operations.
 
-	bignum_tmp1 = NIL;
+	bignum_tmp1 = OBJ_FALSE;
 	digit d;
 
 	for (;;) {
@@ -214,7 +214,7 @@ integer shr (integer x)   // TODO have shift_right
 		x = integer_hi (x);
 		bignum_tmp1 =
 		        make_integer ((d >> 1) |
-		                      ((integer_lo (x) & 1) ? (1 << (digit_width-1)) : 0),
+		                      ((integer_lo (x) & 1) ? (1 << (digit_width - 1)) : 0),
 		                      bignum_tmp1);
 	}
 
@@ -243,7 +243,7 @@ integer shl (integer x)
 	integer negc = ZERO; /* negative carry */
 	integer temp;
 
-	bignum_tmp1 = NIL;
+	bignum_tmp1 = OBJ_FALSE;
 	digit d;
 
 	for (;;) {
@@ -255,7 +255,7 @@ integer shl (integer x)
 		d = integer_lo (x);
 		x = integer_hi (x);
 		temp = negc;
-		negc = negative_carry (d & (1 << (digit_width-1)));
+		negc = negative_carry (d & (1 << (digit_width - 1)));
 		bignum_tmp1 =
 		        make_integer ((d << 1) | obj_eq (temp, NEG1), bignum_tmp1);
 	}
@@ -297,7 +297,7 @@ integer add (integer x, integer y)
 	/* add(x,y) returns the sum of the integers x and y */
 
 	integer negc = ZERO; /* negative carry */
-	bignum_tmp1 = NIL; /* nil terminated for the norm function */
+	bignum_tmp1 = OBJ_FALSE; /* nil terminated for the norm function */
 	digit dx;
 	digit dy;
 
@@ -346,10 +346,9 @@ integer invert (integer x)
 
 integer sub (integer x, integer y)
 {
-
 	/* sub(x,y) returns the difference of the integers x and y */
 	integer negc = NEG1; /* negative carry */
-	bignum_tmp1 = NIL;
+	bignum_tmp1 = OBJ_FALSE;
 	digit dx;
 	digit dy;
 
@@ -402,7 +401,7 @@ integer scale (digit n, integer x)
 		return x;
 	}
 
-	bignum_tmp1 = NIL;
+	bignum_tmp1 = OBJ_FALSE;
 	carry = 0;
 
 	for (;;) {
@@ -448,7 +447,7 @@ integer mulnonneg (integer x, integer y)
 	/* mulnonneg(x,y) returns the product of the integers x and y
 	   where x is nonnegative */
 
-	bignum_tmp3 = NIL;
+	bignum_tmp3 = OBJ_FALSE;
 	bignum_tmp4 = scale (integer_lo (x), y);
 
 	for (;;) {
@@ -514,7 +513,7 @@ integer bitwise_ior (integer x, integer y)
 {
 	/* returns the bitwise inclusive or of x and y */
 
-	bignum_tmp1 = NIL;
+	bignum_tmp1 = OBJ_FALSE;
 
 	for (;;) {
 		if (obj_eq(x, ZERO)) {
@@ -540,7 +539,7 @@ integer bitwise_xor (integer x, integer y)   // TODO similar to ior (only diff i
 {
 	/* returns the bitwise inclusive or of x and y */
 
-	bignum_tmp1 = NIL;
+	bignum_tmp1 = OBJ_FALSE;
 
 	for (;;) {
 		if (obj_eq(x, ZERO)) {

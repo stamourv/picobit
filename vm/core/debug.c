@@ -1,61 +1,8 @@
 #include <picobit.h>
 #include <debug.h>
 
-void show_type (obj o)
+void show_obj (obj o)
 {
-	printf("%04x : ", o);
-
-	if (o == OBJ_FALSE) {
-		printf("#f");
-	} else if (o == OBJ_TRUE) {
-		printf("#t");
-	} else if (o == OBJ_NULL) {
-		printf("()");
-	} else if (o < MIN_ROM_ENCODING) {
-		printf("fixnum");
-	} else if (IN_RAM (o)) {
-		if (RAM_BIGNUM(o)) {
-			printf("ram bignum");
-		} else if (RAM_PAIR(o)) {
-			printf("ram pair");
-		} else if (RAM_SYMBOL(o)) {
-			printf("ram symbol");
-		} else if (RAM_STRING(o)) {
-			printf("ram string");
-		} else if (RAM_VECTOR(o)) {
-			printf("ram vector");
-		} else if (RAM_CONTINUATION(o)) {
-			printf("ram continuation");
-		} else if (RAM_CLOSURE(o)) {
-			printf("ram closure");
-		}
-	} else { // ROM
-		if (ROM_BIGNUM(o)) {
-			printf("rom bignum");
-		} else if (ROM_PAIR(o)) {
-			printf("rom pair");
-		} else if (ROM_SYMBOL(o)) {
-			printf("rom symbol");
-		} else if (ROM_STRING(o)) {
-			printf("rom string");
-		} else if (ROM_VECTOR(o)) {
-			printf("rom vector");
-		} else if (ROM_CONTINUATION(o)) {
-			printf("rom continuation");
-		}
-
-		// ROM closures don't exist
-	}
-
-	printf("\n");
-}
-
-void show (obj o)
-{
-#if 0
-	printf ("[%d]", o);
-#endif
-
 	if (o == OBJ_FALSE) {
 		printf ("#f");
 	} else if (o == OBJ_TRUE) {
@@ -91,8 +38,7 @@ void show (obj o)
 				printf ("(");
 
 loop:
-
-				show (car);
+				show_obj (car);
 
 				if (cdr == OBJ_NULL) {
 					printf (")");
@@ -110,7 +56,7 @@ loop:
 					goto loop;
 				} else {
 					printf (" . ");
-					show (cdr);
+					show_obj (cdr);
 					printf (")");
 				}
 			} else if ((in_ram && RAM_SYMBOL(o)) || (!in_ram && ROM_SYMBOL(o))) {
@@ -135,7 +81,7 @@ loop:
 			pc = ram_get_entry (o);
 
 			printf ("{0x%04x ", pc);
-			show (env);
+			show_obj (env);
 			printf ("}");
 		}
 	}
@@ -146,17 +92,9 @@ loop:
 void show_state (rom_addr pc) {
 	printf ("\n");
 	printf ("pc=0x%04x bytecode=0x%02x env=", pc, rom_get (pc));
-	show (env);
+	show_obj (env);
 	printf (" cont=");
-	show (cont);
+	show_obj (cont);
 	printf ("\n");
 	fflush (stdout);
 }
-
-/*void print (obj o)
-{
-	show (o);
-	printf ("\n");
-	fflush (stdout);
-}
-*/

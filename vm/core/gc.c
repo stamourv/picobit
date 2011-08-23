@@ -46,7 +46,7 @@ void mark (obj temp)
 	obj visit;
 
 	if (IN_RAM(temp)) {
-		visit = NIL;
+		visit = OBJ_FALSE;
 
 push:
 		stack = visit;
@@ -102,7 +102,7 @@ visit_field1:
 pop:
 		IF_GC_TRACE(printf ("pop    stack=%d  visit=%d (tag=%d)\n", stack, visit, ram_get_gc_tags (visit)>>6));
 
-		if (stack != NIL) {
+		if (stack != OBJ_FALSE) {
 			if (HAS_2_OBJECT_FIELDS(stack) && ram_get_gc_tag1 (stack)) {
 				IF_GC_TRACE(printf ("case 9\n"));
 
