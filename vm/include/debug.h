@@ -1,13 +1,19 @@
 #ifndef PICOBIT_DEBUG_H
 #define PICOBIT_DEBUG_H
 
-#ifdef CONFIG_DEBUG
+#if defined(CONFIG_VM_DEBUG) || defined(CONFIG_GC_DEBUG)
 #include <stdio.h>
+#endif
 
+#ifdef CONFIG_VM_DEBUG
 #define IF_TRACE(x) x
-#define IF_GC_TRACE(x) x
 #else
 #define IF_TRACE(x)
+#endif
+
+#ifdef CONFIG_GC_DEBUG
+#define IF_GC_TRACE(x) x
+#else
 #define IF_GC_TRACE(x)
 #endif
 

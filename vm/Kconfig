@@ -21,13 +21,6 @@ choice
 		select ARCH_32BIT
 endchoice
 
-config DEBUG
-	bool "Enable debugging"
-	help
-	  This config option enables debugging hooks in the code and
-	  also enables several other options.
-	  
-
 config ERROR_HANDLING
 	bool
 

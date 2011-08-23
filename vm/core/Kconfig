@@ -22,9 +22,15 @@ choice
 		  
 endchoice
 
+config VM_DEBUG
+	bool "Debug virtual machine"
+	help
+	  Enable virtual machine trace messages. Each instruction
+	  will be printed before executing.
+	  
+
 config GC_DEBUG
 	bool "Debug garbage collector"
-	depends on DEBUG
 	help
 	  Enable garbage collector trace messages.
 	  

@@ -94,10 +94,10 @@ endif # $(config-targets)
 endif # $(mixed-targets)
 
 clean: FORCE
-	make -C kconfig clean
 	rm -f picobit-vm picobit.elf picobit.o picobit.hex
 
 mrproper: clean FORCE
+	make -C kconfig clean
 	rm -f .config .config.old
 	rm -rf include/config include/generated
 
