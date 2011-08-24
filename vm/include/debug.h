@@ -18,9 +18,11 @@
 #endif
 
 #ifdef CONFIG_DEBUG_STRINGS
+void show_type (obj o);
 void show_obj (obj o);
 void show_state (rom_addr pc);
 #else
+#define show_type(o)
 #define show_obj(o)
 #define show_state(pc)
 #endif
