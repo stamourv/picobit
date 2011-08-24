@@ -8,7 +8,7 @@
 #include <heap.h>
 #include <object.h>
 
-/* root set */
+/* GC roots set. */
 obj arg1;
 obj arg2;
 obj arg3;
@@ -16,16 +16,9 @@ obj arg4;
 obj cont;
 obj env;
 
-/* interpreter variables */
-rom_addr pc;
+/* Interpreter variables. */
+rom_addr pc, entry;
 uint8 glovars;
-rom_addr entry;
-uint8 bytecode;
-uint8 bytecode_hi4;
-uint8 bytecode_lo4;
-uint16 a1;
-uint16 a2;
-uint16 a3;
 
 #ifdef CONFIG_ERROR_HANDLING
 #define ERROR(prim, msg) error (prim, msg)

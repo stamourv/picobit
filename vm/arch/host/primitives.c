@@ -2,6 +2,8 @@
 #include <bignum.h>
 #include <gc.h>
 
+static uint16 a1, a2, a3;
+
 #ifdef CONFIG_DEBUG_STRINGS
 char *prim_name[64] = {
 	"prim #%number?",
@@ -76,8 +78,7 @@ char *prim_name[64] = {
 
 /*---------------------------------------------------------------------------*/
 
-// useful for some primitives
-void decode_2_int_args () {
+static inline void decode_2_int_args () {
   a1 = decode_int (arg1);
   a2 = decode_int (arg2);
 }

@@ -97,6 +97,8 @@ void save_cont ()
 	arg3 = OBJ_FALSE;
 }
 
+static uint8 bytecode, bytecode_hi4, bytecode_lo4;
+
 void interpreter ()
 {
 	pc = rom_get (CODE_START+2);
