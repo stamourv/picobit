@@ -1,6 +1,7 @@
 #include <picobit.h>
 #include <bignum.h>
 #include <debug.h>
+#include <gc.h>
 
 /* Temps in bignum algorithms must be registered as roots too, since
  * GC can occur during bignum operations (they allocate).
@@ -566,8 +567,6 @@ integer bitwise_xor (integer x, integer y)   // TODO similar to ior (only diff i
 // for example, vector primitives
 uint16 decode_int (obj o)
 {
-	uint8 result;
-
 	if (o < MIN_FIXNUM_ENCODING) {
 		TYPE_ERROR("decode_int.0", "integer");
 	}

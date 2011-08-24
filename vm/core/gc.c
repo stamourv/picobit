@@ -62,7 +62,6 @@ push:
 			if (HAS_2_OBJECT_FIELDS(visit)) { // pairs and continuations
 				IF_GC_TRACE(printf ("case 2\n"));
 
-visit_field2:
 				temp = ram_get_cdr (visit);
 
 				if (IN_RAM(temp)) {

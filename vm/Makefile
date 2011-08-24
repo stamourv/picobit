@@ -54,11 +54,12 @@ else
 # Build targets only -- generally all targets except *config targets.
 
 ifneq ($(dot-config),0)
+
+# Used to fix quoted Kconfig variables
+unquote = $(patsubst "%,%,$(patsubst %",%,$(1)))
+
 # Read in config
 include include/config/auto.conf
-
-ARCH   := $(shell echo $(CONFIG_ARCH))
-CFLAGS := -Iinclude/ -DPICOBIT
 
 # Read in dependencies to all Kconfig* files, make sure to run
 # oldconfig if changes are detected.
@@ -76,10 +77,14 @@ include/config/%.conf: .config include/config/auto.conf.cmd
 
 include/arch: include/config/auto.conf
 	@rm -f include/arch
-	@ln -sf ../arch/$(ARCH)/include/ include/arch
+	@ln -sf ../$(arch)/include/ include/arch
 
-obj-y = $(addprefix core/,$(core-y)) \
-	 $(addprefix arch/$(ARCH)/,$(arch-y))
+CROSS  := $(call unquote,$(CONFIG_CROSS_COMPILER))
+CFLAGS := -Iinclude/ -DPICOBIT -Wall -Werror -Os
+
+arch  = arch/$(call unquote,$(CONFIG_ARCH))
+obj-y = $(addprefix $(arch)/,$(arch-y)) \
+	  $(addprefix core/,$(core-y))
 
 arch-all:
 
@@ -94,7 +99,7 @@ endif # $(config-targets)
 endif # $(mixed-targets)
 
 clean: FORCE
-	rm -f picobit-vm picobit.elf picobit.o picobit.hex
+	rm -f include/arch picobit-vm picobit.elf picobit.hex
 
 mrproper: clean FORCE
 	make -C kconfig clean

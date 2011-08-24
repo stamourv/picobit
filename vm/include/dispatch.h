@@ -2,7 +2,7 @@
 #define PICOBIT_DISPATCH_H
 
 #include <arch/types.h>
-#include <memory.h>
+#include <heap.h>
 
 #define FETCH_NEXT_BYTECODE() bytecode = rom_get (pc++)
 
@@ -28,7 +28,7 @@ void push_arg1 ();
 obj pop ();
 void pop_procedure ();
 uint8 handle_arity_and_rest_param (uint8 na);
-uint8 build_env (uint8 na);
+void build_env (uint8 na);
 void save_cont ();
 void interpreter ();
 

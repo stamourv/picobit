@@ -1,5 +1,5 @@
-#ifndef PICOBIT_BIGNUMS_H
-#define PICOBIT_BIGNUMS_H
+#ifndef PICOBIT_BIGNUM_H
+#define PICOBIT_BIGNUM_H
 
 #include <picobit.h>
 
@@ -44,6 +44,8 @@ integer neg (integer x);
 integer scale (digit n, integer x);
 integer mulnonneg (integer x, integer y);
 integer divnonneg (integer x, integer y);
+integer bitwise_xor (integer x, integer y);
+integer bitwise_ior (integer x, integer y);
 
 void bignum_gc_init();
 void bignum_gc_mark();

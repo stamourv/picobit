@@ -1,0 +1,6 @@
+choice
+	prompt "Processor model"
+
+	config ARM_CPU_STM32F100RB
+	bool "ST STM32F100RB"
+endchoice

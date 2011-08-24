@@ -1,7 +1,14 @@
-menu "ARM-specific options"
-
 config CROSS_COMPILER
 	string "Cross compiler prefix"
 	default "arm-none-eabi-"
 
-endmenu
+choice
+	prompt "Processor core type"
+
+	config ARM_CORTEX_M3
+	bool "Cortex-M3"
+endchoice
+
+if ARM_CORTEX_M3
+source "arch/arm/cortex-m3/Kconfig"
+endif

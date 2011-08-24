@@ -51,4 +51,14 @@ obj free_vec_pointer;
 extern int max_live;
 #endif
 
+void init_ram_heap ();
+
+void mark (obj temp);
+void sweep ();
+void gc ();
+
+obj alloc_ram_cell ();
+obj alloc_ram_cell_init (uint8 f0, uint8 f1, uint8 f2, uint8 f3);
+obj alloc_vec_cell (uint16 n, obj from);
+
 #endif

@@ -849,7 +849,7 @@ void prim_beep ()
 
 void prim_adc ()
 {
-	uint16 x;
+//	uint16 x;
 
 	a1 = decode_int (arg1);
 
@@ -871,7 +871,8 @@ void prim_adc ()
 	x += 200;
 #endif
 
-	arg1 = encode_int (x);
+//	arg1 = encode_int (x);
+	arg1 = encode_int (0);
 }
 
 void prim_sernum ()

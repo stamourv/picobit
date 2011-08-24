@@ -3,6 +3,8 @@
 #include <debug.h>
 #include <gc.h>
 
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+
 void push_arg1 ()
 {
 	env = cons (arg1, env);
@@ -70,7 +72,7 @@ uint8 handle_arity_and_rest_param (uint8 na)
 	return na;
 }
 
-uint8 build_env (uint8 na)
+void build_env (uint8 na)
 {
 	while (na != 0) {
 		arg3 = pop();

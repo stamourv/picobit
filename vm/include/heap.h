@@ -44,8 +44,6 @@
 #define NEG1 (ZERO-1)
 #define POS1 (ZERO+1)
 
-#define CODE_START 0x8000
-
 #ifdef LESS_MACROS
 uint16 OBJ_TO_RAM_ADDR(uint16 o, uint8 f)
 {
@@ -174,6 +172,8 @@ uint8 rom_get_field3(uint16 o)
 #define rom_get_field2(o) rom_get (OBJ_TO_ROM_ADDR(o,2))
 #define rom_get_field3(o) rom_get (OBJ_TO_ROM_ADDR(o,3))
 #endif
+
+obj cons (obj car, obj cdr);
 
 obj ram_get_car (obj o);
 obj rom_get_car (obj o);
