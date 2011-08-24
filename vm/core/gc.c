@@ -3,6 +3,12 @@
 #include <debug.h>
 #include <gc.h>
 
+static obj free_list, free_vec_pointer;
+
+#ifdef CONFIG_GC_DEBUG
+int max_live = 0;
+#endif
+
 void init_ram_heap ()
 {
 	uint8 i;
@@ -127,10 +133,6 @@ pop:
 		}
 	}
 }
-
-#ifdef CONFIG_GC_DEBUG
-int max_live = 0;
-#endif
 
 void sweep ()
 {

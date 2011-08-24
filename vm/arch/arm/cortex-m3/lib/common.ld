@@ -18,18 +18,29 @@ SECTIONS {
 		__text_end__ = .;
 	} > flash
 
+	.data : {
+		__data_begin__ = .;
+
+		*(.data)
+
+		. = ALIGN(4);
+
+		__data_end__ = .;
+	} > ram AT>flash
+
 	. = ALIGN(4);
 
 	.bss : {
 		__bss_begin__ = .;
 
 		*(.bss)
+		*(COMMON)
 
 		. = ALIGN(4);
 
 		__bss_end__ = .;
 
-		__picobit_ram = .;
+		__picobit_heap = .;
 	} > ram
 
 	/DISCARD/ : {

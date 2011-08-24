@@ -37,16 +37,6 @@ uint8 HAS_1_OBJECT_FIELD(uint16 visit)
 #endif
 // all composites except pairs and continuations have 1 object field
 
-/* List of unused cells. */
-obj free_list;
-
-/*
- * First unused cell in vector space.
- * It points into vector space using whole-RAM addressing;
- * its value should be over MAX_RAM_ENCODING.
- */
-obj free_vec_pointer;
-
 #ifdef CONFIG_GC_DEBUG
 extern int max_live;
 #endif

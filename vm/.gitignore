@@ -1,1 +1,4 @@
 .config*
+picobit-vm
+picobit.hex
+picobit.elf

@@ -3,7 +3,22 @@
 #include <debug.h>
 #include <gc.h>
 
+/*
+ * This pragma turns off GCC warning/error about implicit declaration
+ * of primitives.
+ */
 #pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+
+/*
+ * To avoid creating common symbols and linkage weirdness, interpreter
+ * variables are defined here and declared as extern in the header.
+ */
+
+obj cont, env;
+obj arg1, arg2, arg3, arg4;
+
+rom_addr pc, entry;
+uint8 glovars;
 
 void push_arg1 ()
 {

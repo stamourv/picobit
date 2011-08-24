@@ -25,17 +25,13 @@ typedef uint16 obj; /* Only 13 bits are used in pointers */
 
 /* GC roots set. */
 
-obj arg1;
-obj arg2;
-obj arg3;
-obj arg4;
-obj cont;
-obj env;
+extern obj cont, env;
+extern obj arg1, arg2, arg3, arg4;
 
 /* Interpreter variables. */
 
-rom_addr pc, entry;
-uint8 glovars;
+extern rom_addr pc, entry;
+extern uint8 glovars;
 
 #ifdef CONFIG_ERROR_HANDLING
 
