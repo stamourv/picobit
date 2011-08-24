@@ -4,3 +4,10 @@ choice
 	config ARM_CPU_STM32F100RB
 	bool "ST STM32F100RB"
 endchoice
+
+choice
+	prompt "Board name"
+
+	config ARM_BOARD_STM32_VLDISCOVERY
+	bool "STM32 VLDISCOVERY"
+endchoice

@@ -1,5 +1,6 @@
 #include <picobit.h>
 #include <bignum.h>
+#include <gc.h>
 
 /*
  * Implementation of bignums as fixed-precision,

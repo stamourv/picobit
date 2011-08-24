@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <picobit.h>
+#include <dispatch.h>
 #include <gc.h>
 
 uint8 ram_mem[0x8000] = {0}, rom_mem[ROM_BYTES] = {0};
@@ -177,31 +178,6 @@ void usage ()
 int main (int argc, char *argv[])
 {
 	int errcode = 0;
-	rom_addr rom_start_addr = 0;
-
-	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 's') {
-		int h1;
-		int h2;
-		int h3;
-		int h4;
-
-		if ((h1 = hex (argv[1][2])) < 0 ||
-		    (h2 = hex (argv[1][3])) < 0 ||
-		    (h3 = hex (argv[1][4])) != 0 ||
-		    (h4 = hex (argv[1][5])) != 0 ||
-		    argv[1][6] != '\0') {
-			usage ();
-		}
-
-		rom_start_addr = (h1 << 12) | (h2 << 8) | (h3 << 4) | h4;
-
-		argv++;
-		argc--;
-	}
-
-#ifdef CONFIG_DEBUG
-	printf ("Start address = 0x%04x\n", rom_start_addr + CODE_START);
-#endif
 
 	if (argc != 2) {
 		usage ();
@@ -210,8 +186,6 @@ int main (int argc, char *argv[])
 	if (!read_hex_file (argv[1])) {
 		printf ("*** Could not read hex file \"%s\"\n", argv[1]);
 	} else {
-		int i;
-
 		if (rom_get (CODE_START+0) != 0xfb ||
 		    rom_get (CODE_START+1) != 0xd7) {
 			printf ("*** The hex file was not compiled with PICOBIT\n");

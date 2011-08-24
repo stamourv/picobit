@@ -1,5 +1,7 @@
 #include <picobit.h>
+#include <bignum.h>
 #include <debug.h>
+#include <stdio.h>
 
 void show_obj (obj o)
 {

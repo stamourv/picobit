@@ -1,6 +1,7 @@
 #include <picobit.h>
 #include <bignum.h>
 #include <gc.h>
+#include <arch/stm32/gpio.h>
 
 static uint16 a1, a2, a3;
 
@@ -690,6 +691,10 @@ uint32 read_clock ()
 
 void prim_clock ()
 {
+	static uint32 wait;
+	wait = 1000000;
+	while(--wait) __asm__ __volatile__ ("nop");
+
 	arg1 = encode_int (read_clock ());
 }
 
@@ -717,21 +722,11 @@ void prim_motor ()
 
 void prim_led ()
 {
-	decode_2_int_args ();
-	a3 = decode_int (arg3);
-
-	if (a1 < 1 || a1 > 3) {
-		ERROR("led", "argument out of range");
+	if (arg1) {
+		GPIOC->ODR |= BIT(9);
+	} else {
+		GPIOC->ODR &= ~BIT(9);
 	}
-
-#ifdef  PICOBOARD2
-	LED_set( a1, a2, a3 );
-#endif
-
-#ifdef WORKSTATION
-	printf ("led %d -> duty=%d period=%d\n", a1, a2, a3 );
-	fflush (stdout);
-#endif
 
 	arg1 = OBJ_FALSE;
 	arg2 = OBJ_FALSE;

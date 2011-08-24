@@ -10,5 +10,4 @@ INCLUDE common.ld
 SECTIONS
 {
 	__stack_end__ = 0x20000000 + 0x2000;
-	__picobit_rom = 0x00008000;
 }

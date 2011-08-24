@@ -3,11 +3,11 @@
 
 #define CODE_START 0x8000
 
-extern uint8 *__picobit_ram, *__picobit_rom;
+extern uint8 __picobit_ram;
 
-#define ram_get(a) __picobit_ram[a]
-#define ram_set(a,x) __picobit_ram[a] = (x)
+#define ram_get(a) ((uint8*)&__picobit_ram)[a]
+#define ram_set(a,x) ((uint8*)&__picobit_ram)[a] = (x)
 
-#define rom_get(a) __picobit_rom[a]
+#define rom_get(a) (((uint8*) 0)[a])
 
 #endif
