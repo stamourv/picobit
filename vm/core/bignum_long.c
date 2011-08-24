@@ -577,13 +577,13 @@ uint16 decode_int (obj o)
 	}
 
 	if (IN_RAM(o)) {
-		if (!RAM_BIGNUM(o)) {
+		if (!RAM_BIGNUM_P(o)) {
 			TYPE_ERROR("decode_int.1", "integer");
 		}
 
 		return (ram_get_field2 (o) << 8) | ram_get_field3 (o);
 	} else if (IN_ROM(o)) {
-		if (!ROM_BIGNUM(o)) {
+		if (!ROM_BIGNUM_P(o)) {
 			TYPE_ERROR("decode_int.2", "integer");
 		}
 

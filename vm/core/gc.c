@@ -147,12 +147,12 @@ void sweep ()
 
 	while (visit >= (MIN_RAM_ENCODING + ((glovars + 1) >> 1))) {
 		// we don't want to sweep the global variables area
-		if ((RAM_COMPOSITE(visit)
+		if ((RAM_COMPOSITE_P(visit)
 		     && (ram_get_gc_tags (visit) == GC_TAG_UNMARKED)) // 2 mark bit
-		    || (!RAM_COMPOSITE(visit)
+		    || (!RAM_COMPOSITE_P(visit)
 		        && !(ram_get_gc_tags (visit) & GC_TAG_0_LEFT))) { // 1 mark bit
 			/* unmarked? */
-			if (RAM_VECTOR(visit)) {
+			if (RAM_VECTOR_P(visit)) {
 				// when we sweep a vector, we also have to mark its contents as free
 				// we subtract 1 to get to the header of the block, before the data
 				obj o = VEC_TO_RAM_OBJ(ram_get_cdr (visit) - 1);
@@ -162,7 +162,7 @@ void sweep ()
 			ram_set_car (visit, free_list);
 			free_list = visit;
 		} else {
-			if (RAM_COMPOSITE(visit)) {
+			if (RAM_COMPOSITE_P(visit)) {
 				ram_set_gc_tags (visit, GC_TAG_UNMARKED);
 			} else { // only 1 mark bit to unset
 				ram_set_gc_tag0 (visit, GC_TAG_UNMARKED);

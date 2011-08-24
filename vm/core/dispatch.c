@@ -21,7 +21,7 @@ void pop_procedure ()
 	arg1 = pop();
 
 	if (IN_RAM(arg1)) {
-		if (!RAM_CLOSURE(arg1)) {
+		if (!RAM_CLOSURE_P(arg1)) {
 			TYPE_ERROR("pop_procedure.0", "procedure");
 		}
 

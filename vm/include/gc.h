@@ -11,28 +11,28 @@
 #ifdef LESS_MACROS
 uint8 HAS_2_OBJECT_FIELDS(uint16 visit)
 {
-	return (RAM_PAIR(visit) || RAM_CONTINUATION(visit));
+	return (RAM_PAIR_P(visit) || RAM_CONTINUATION_P(visit));
 }
 
 #ifdef CONFIG_BIGNUM_LONG
 uint8 HAS_1_OBJECT_FIELD(uint16 visit)
 {
-	return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit) || RAM_BIGNUM(visit));
+	return (RAM_COMPOSITE_P(visit) || RAM_CLOSURE_P(visit) || RAM_BIGNUM_P(visit));
 }
 #else
 uint8 HAS_1_OBJECT_FIELD(uint16 visit)
 {
-	return (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit));
+	return (RAM_COMPOSITE_P(visit) || RAM_CLOSURE_P(visit));
 }
 #endif
 
 #else
-#define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR(visit) || RAM_CONTINUATION(visit))
+#define HAS_2_OBJECT_FIELDS(visit) (RAM_PAIR_P(visit) || RAM_CONTINUATION_P(visit))
 #ifdef CONFIG_BIGNUM_LONG
-#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) \
-				    || RAM_CLOSURE(visit) || RAM_BIGNUM(visit))
+#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE_P(visit) \
+				    || RAM_CLOSURE_P(visit) || RAM_BIGNUM_P(visit))
 #else
-#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE(visit) || RAM_CLOSURE(visit))
+#define HAS_1_OBJECT_FIELD(visit)  (RAM_COMPOSITE_P(visit) || RAM_CLOSURE_P(visit))
 #endif
 #endif
 // all composites except pairs and continuations have 1 object field

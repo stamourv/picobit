@@ -20,13 +20,13 @@ void show_obj (obj o)
 			in_ram = 0;
 		}
 
-		if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o))) { // TODO fix for new bignums, especially for the sign, a -5 is displayed as 251
+		if ((in_ram && RAM_BIGNUM_P(o)) || (!in_ram && ROM_BIGNUM_P(o))) { // TODO fix for new bignums, especially for the sign, a -5 is displayed as 251
 			printf ("%d", decode_int (o));
-		} else if ((in_ram && RAM_COMPOSITE(o)) || (!in_ram && ROM_COMPOSITE(o))) {
+		} else if ((in_ram && RAM_COMPOSITE_P(o)) || (!in_ram && ROM_COMPOSITE_P(o))) {
 			obj car;
 			obj cdr;
 
-			if ((in_ram && RAM_PAIR(o)) || (!in_ram && ROM_PAIR(o))) {
+			if ((in_ram && RAM_PAIR_P(o)) || (!in_ram && ROM_PAIR_P(o))) {
 				if (in_ram) {
 					car = ram_get_car (o);
 					cdr = ram_get_cdr (o);
@@ -42,8 +42,8 @@ loop:
 
 				if (cdr == OBJ_NULL) {
 					printf (")");
-				} else if ((IN_RAM(cdr) && RAM_PAIR(cdr))
-					   || (IN_ROM(cdr) && ROM_PAIR(cdr))) {
+				} else if ((IN_RAM(cdr) && RAM_PAIR_P(cdr))
+					   || (IN_ROM(cdr) && ROM_PAIR_P(cdr))) {
 					if (IN_RAM(cdr)) {
 						car = ram_get_car (cdr);
 						cdr = ram_get_cdr (cdr);
@@ -59,11 +59,11 @@ loop:
 					show_obj (cdr);
 					printf (")");
 				}
-			} else if ((in_ram && RAM_SYMBOL(o)) || (!in_ram && ROM_SYMBOL(o))) {
+			} else if ((in_ram && RAM_SYMBOL_P(o)) || (!in_ram && ROM_SYMBOL_P(o))) {
 				printf ("#<symbol>");
-			} else if ((in_ram && RAM_STRING(o)) || (!in_ram && ROM_STRING(o))) {
+			} else if ((in_ram && RAM_STRING_P(o)) || (!in_ram && ROM_STRING_P(o))) {
 				printf ("#<string>");
-			} else if ((in_ram && RAM_VECTOR(o)) || (!in_ram && ROM_VECTOR(o))) {
+			} else if ((in_ram && RAM_VECTOR_P(o)) || (!in_ram && ROM_VECTOR_P(o))) {
 				printf ("#<vector %d>", o);
 			} else {
 				printf ("(");

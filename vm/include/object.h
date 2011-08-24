@@ -99,125 +99,125 @@ uint8 IN_ROM(uint16 o)
 // bignum first byte : 00Gxxxxx
 #define BIGNUM_FIELD0 0
 #ifdef LESS_MACROS
-uint8 RAM_BIGNUM(uint16 o)
+uint8 RAM_BIGNUM_P(uint16 o)
 {
 	return ((ram_get_field0 (o) & 0xc0) == BIGNUM_FIELD0);
 }
-uint8 ROM_BIGNUM(uint16 o)
+uint8 ROM_BIGNUM_P(uint16 o)
 {
 	return ((rom_get_field0 (o) & 0xc0) == BIGNUM_FIELD0);
 }
 #else
-#define RAM_BIGNUM(o) ((ram_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
-#define ROM_BIGNUM(o) ((rom_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
+#define RAM_BIGNUM_P(o) ((ram_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
+#define ROM_BIGNUM_P(o) ((rom_get_field0 (o) & 0xc0) == BIGNUM_FIELD0)
 #endif
 
 // composite first byte : 1GGxxxxx
 #define COMPOSITE_FIELD0 0x80
 #ifdef LESS_MACROS
-uint8 RAM_COMPOSITE(uint16 o)
+uint8 RAM_COMPOSITE_P(uint16 o)
 {
 	return ((ram_get_field0 (o) & 0x80) == COMPOSITE_FIELD0);
 }
-uint8 ROM_COMPOSITE(uint16 o)
+uint8 ROM_COMPOSITE_P(uint16 o)
 {
 	return ((rom_get_field0 (o) & 0x80) == COMPOSITE_FIELD0);
 }
 #else
-#define RAM_COMPOSITE(o) ((ram_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
-#define ROM_COMPOSITE(o) ((rom_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
+#define RAM_COMPOSITE_P(o) ((ram_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
+#define ROM_COMPOSITE_P(o) ((rom_get_field0 (o) & 0x80) == COMPOSITE_FIELD0)
 #endif
 
 // pair third byte : 000xxxxx
 #define PAIR_FIELD2 0
 #ifdef LESS_MACROS
-uint8 RAM_PAIR(uint16 o)
+uint8 RAM_PAIR_P(uint16 o)
 {
-	return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == PAIR_FIELD2));
+	return (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == PAIR_FIELD2));
 }
-uint8 ROM_PAIR(uint16 o)
+uint8 ROM_PAIR_P(uint16 o)
 {
-	return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == PAIR_FIELD2));
+	return (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == PAIR_FIELD2));
 }
 #else
-#define RAM_PAIR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == PAIR_FIELD2))
-#define ROM_PAIR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == PAIR_FIELD2))
+#define RAM_PAIR_P(o) (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == PAIR_FIELD2))
+#define ROM_PAIR_P(o) (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == PAIR_FIELD2))
 #endif
 
 // symbol third byte : 001xxxxx
 #define SYMBOL_FIELD2 0x20
 #ifdef LESS_MACROS
-uint8 RAM_SYMBOL(uint16 o)
+uint8 RAM_SYMBOL_P(uint16 o)
 {
-	return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == SYMBOL_FIELD2));
+	return (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == SYMBOL_FIELD2));
 }
-uint8 ROM_SYMBOL(uint16 o)
+uint8 ROM_SYMBOL_P(uint16 o)
 {
-	return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == SYMBOL_FIELD2));
+	return (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == SYMBOL_FIELD2));
 }
 #else
-#define RAM_SYMBOL(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
-#define ROM_SYMBOL(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
+#define RAM_SYMBOL_P(o) (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
+#define ROM_SYMBOL_P(o) (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == SYMBOL_FIELD2))
 #endif
 
 // string third byte : 010xxxxx
 #define STRING_FIELD2 0x40
 #ifdef LESS_MACROS
-uint8 RAM_STRING(uint16 o)
+uint8 RAM_STRING_P(uint16 o)
 {
-	return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == STRING_FIELD2));
+	return (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == STRING_FIELD2));
 }
-uint8 ROM_STRING(uint16 o)
+uint8 ROM_STRING_P(uint16 o)
 {
-	return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2));
+	return (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2));
 }
 #else
-#define RAM_STRING(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == STRING_FIELD2))
-#define ROM_STRING(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2))
+#define RAM_STRING_P(o) (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == STRING_FIELD2))
+#define ROM_STRING_P(o) (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == STRING_FIELD2))
 #endif
 
 // u8vector third byte : 011xxxxx
 #define VECTOR_FIELD2 0x60
 #ifdef LESS_MACROS
-uint8 RAM_VECTOR(uint16 o)
+uint8 RAM_VECTOR_P(uint16 o)
 {
-	return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2));
+	return (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2));
 }
-uint8 ROM_VECTOR(uint16 o)
+uint8 ROM_VECTOR_P(uint16 o)
 {
-	return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2));
+	return (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2));
 }
 #else
-#define RAM_VECTOR(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
-#define ROM_VECTOR(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
+#define RAM_VECTOR_P(o) (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
+#define ROM_VECTOR_P(o) (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == VECTOR_FIELD2))
 #endif
 
 // continuation third byte : 100xxxxx
 #define CONTINUATION_FIELD2 0x80
 #ifdef LESS_MACROS
-uint8 RAM_CONTINUATION(uint16 o)
+uint8 RAM_CONTINUATION_P(uint16 o)
 {
-	return (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2));
+	return (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2));
 }
-uint8 ROM_CONTINUATION(uint16 o)
+uint8 ROM_CONTINUATION_P(uint16 o)
 {
-	return (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2));
+	return (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2));
 }
 #else
-#define RAM_CONTINUATION(o) (RAM_COMPOSITE (o) && ((ram_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
-#define ROM_CONTINUATION(o) (ROM_COMPOSITE (o) && ((rom_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
+#define RAM_CONTINUATION_P(o) (RAM_COMPOSITE_P (o) && ((ram_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
+#define ROM_CONTINUATION_P(o) (ROM_COMPOSITE_P (o) && ((rom_get_field2 (o) & 0xe0) == CONTINUATION_FIELD2))
 #endif
 
 // closure first byte : 01Gxxxxx
 // closures are only found in RAM
 #define CLOSURE_FIELD0 0x40
 #ifdef LESS_MACROS
-uint8 RAM_CLOSURE(uint16 o)
+uint8 RAM_CLOSURE_P(uint16 o)
 {
 	return ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0);
 }
 #else
-#define RAM_CLOSURE(o) ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
+#define RAM_CLOSURE_P(o) ((ram_get_field0 (o) & 0xc0) == CLOSURE_FIELD0)
 #endif
 
 #endif

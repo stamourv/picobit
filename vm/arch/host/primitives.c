@@ -91,9 +91,9 @@ void prim_numberp ()
 		arg1 = OBJ_TRUE;
 	} else {
 		if (IN_RAM(arg1)) {
-			arg1 = encode_bool (RAM_BIGNUM(arg1));
+			arg1 = encode_bool (RAM_BIGNUM_P(arg1));
 		} else if (IN_ROM(arg1)) {
-			arg1 = encode_bool (ROM_BIGNUM(arg1));
+			arg1 = encode_bool (ROM_BIGNUM_P(arg1));
 		} else {
 			arg1 = OBJ_FALSE;
 		}
@@ -243,9 +243,9 @@ void prim_xor ()
 void prim_pairp ()
 {
 	if (IN_RAM(arg1)) {
-		arg1 = encode_bool (RAM_PAIR(arg1));
+		arg1 = encode_bool (RAM_PAIR_P(arg1));
 	} else if (IN_ROM(arg1)) {
-		arg1 = encode_bool (ROM_PAIR(arg1));
+		arg1 = encode_bool (ROM_PAIR_P(arg1));
 	} else {
 		arg1 = OBJ_FALSE;
 	}
@@ -268,13 +268,13 @@ void prim_cons ()
 void prim_car ()
 {
 	if (IN_RAM(arg1)) {
-		if (!RAM_PAIR(arg1)) {
+		if (!RAM_PAIR_P(arg1)) {
 			TYPE_ERROR("car.0", "pair");
 		}
 
 		arg1 = ram_get_car (arg1);
 	} else if (IN_ROM(arg1)) {
-		if (!ROM_PAIR(arg1)) {
+		if (!ROM_PAIR_P(arg1)) {
 			TYPE_ERROR("car.1", "pair");
 		}
 
@@ -287,13 +287,13 @@ void prim_car ()
 void prim_cdr ()
 {
 	if (IN_RAM(arg1)) {
-		if (!RAM_PAIR(arg1)) {
+		if (!RAM_PAIR_P(arg1)) {
 			TYPE_ERROR("cdr.0", "pair");
 		}
 
 		arg1 = ram_get_cdr (arg1);
 	} else if (IN_ROM(arg1)) {
-		if (!ROM_PAIR(arg1)) {
+		if (!ROM_PAIR_P(arg1)) {
 			TYPE_ERROR("cdr.1", "pair");
 		}
 
@@ -306,7 +306,7 @@ void prim_cdr ()
 void prim_set_car ()
 {
 	if (IN_RAM(arg1)) {
-		if (!RAM_PAIR(arg1)) {
+		if (!RAM_PAIR_P(arg1)) {
 			TYPE_ERROR("set-car!.0", "pair");
 		}
 
@@ -321,7 +321,7 @@ void prim_set_car ()
 void prim_set_cdr ()
 {
 	if (IN_RAM(arg1)) {
-		if (!RAM_PAIR(arg1)) {
+		if (!RAM_PAIR_P(arg1)) {
 			TYPE_ERROR("set-cdr!.0", "pair");
 		}
 
@@ -345,9 +345,9 @@ void prim_nullp ()
 void prim_u8vectorp ()
 {
 	if (IN_RAM(arg1)) {
-		arg1 = encode_bool (RAM_VECTOR(arg1));
+		arg1 = encode_bool (RAM_VECTOR_P(arg1));
 	} else if (IN_ROM(arg1)) {
-		arg1 = encode_bool (ROM_VECTOR(arg1));
+		arg1 = encode_bool (ROM_VECTOR_P(arg1));
 	} else {
 		arg1 = OBJ_FALSE;
 	}
@@ -373,7 +373,7 @@ void prim_u8vector_ref ()
 
 	// TODO adapt for the new bignums
 	if (IN_RAM(arg1)) {
-		if (!RAM_VECTOR(arg1)) {
+		if (!RAM_VECTOR_P(arg1)) {
 			TYPE_ERROR("u8vector-ref.0", "vector");
 		}
 
@@ -383,7 +383,7 @@ void prim_u8vector_ref ()
 
 		arg1 = VEC_TO_RAM_OBJ(ram_get_cdr (arg1));
 	} else if (IN_ROM(arg1)) {
-		if (!ROM_VECTOR(arg1)) {
+		if (!ROM_VECTOR_P(arg1)) {
 			TYPE_ERROR("u8vector-ref.1", "vector");
 		}
 
@@ -427,7 +427,7 @@ void prim_u8vector_set ()   // TODO a lot in common with ref, abstract that
 	}
 
 	if (IN_RAM(arg1)) {
-		if (!RAM_VECTOR(arg1)) {
+		if (!RAM_VECTOR_P(arg1)) {
 			TYPE_ERROR("u8vector-set!.0", "vector");
 		}
 
@@ -453,13 +453,13 @@ void prim_u8vector_set ()   // TODO a lot in common with ref, abstract that
 void prim_u8vector_length ()
 {
 	if (IN_RAM(arg1)) {
-		if (!RAM_VECTOR(arg1)) {
+		if (!RAM_VECTOR_P(arg1)) {
 			TYPE_ERROR("u8vector-length.0", "vector");
 		}
 
 		arg1 = encode_int (ram_get_car (arg1));
 	} else if (IN_ROM(arg1)) {
-		if (!ROM_VECTOR(arg1)) {
+		if (!ROM_VECTOR_P(arg1)) {
 			TYPE_ERROR("u8vector-length.1", "vector");
 		}
 
@@ -488,9 +488,9 @@ void prim_not ()
 void prim_symbolp ()
 {
 	if (IN_RAM(arg1)) {
-		arg1 = encode_bool (RAM_SYMBOL(arg1));
+		arg1 = encode_bool (RAM_SYMBOL_P(arg1));
 	} else if (IN_ROM(arg1)) {
-		arg1 = encode_bool (ROM_SYMBOL(arg1));
+		arg1 = encode_bool (ROM_SYMBOL_P(arg1));
 	} else {
 		arg1 = OBJ_FALSE;
 	}
@@ -499,9 +499,9 @@ void prim_symbolp ()
 void prim_stringp ()
 {
 	if (IN_RAM(arg1)) {
-		arg1 = encode_bool (RAM_STRING(arg1));
+		arg1 = encode_bool (RAM_STRING_P(arg1));
 	} else if (IN_ROM(arg1)) {
-		arg1 = encode_bool (ROM_STRING(arg1));
+		arg1 = encode_bool (ROM_STRING_P(arg1));
 	} else {
 		arg1 = OBJ_FALSE;
 	}
@@ -510,13 +510,13 @@ void prim_stringp ()
 void prim_string2list ()
 {
 	if (IN_RAM(arg1)) {
-		if (!RAM_STRING(arg1)) {
+		if (!RAM_STRING_P(arg1)) {
 			TYPE_ERROR("string->list.0", "string");
 		}
 
 		arg1 = ram_get_car (arg1);
 	} else if (IN_ROM(arg1)) {
-		if (!ROM_STRING(arg1)) {
+		if (!ROM_STRING_P(arg1)) {
 			TYPE_ERROR("string->list.1", "string");
 		}
 
@@ -568,13 +568,13 @@ void show (obj o)
 			in_ram = 0;
 		}
 
-		if ((in_ram && RAM_BIGNUM(o)) || (!in_ram && ROM_BIGNUM(o))) { // TODO fix for new bignums, especially for the sign, a -5 is displayed as 251
+		if ((in_ram && RAM_BIGNUM_P(o)) || (!in_ram && ROM_BIGNUM_P(o))) { // TODO fix for new bignums, especially for the sign, a -5 is displayed as 251
 			printf ("%d", decode_int (o));
-		} else if ((in_ram && RAM_COMPOSITE(o)) || (!in_ram && ROM_COMPOSITE(o))) {
+		} else if ((in_ram && RAM_COMPOSITE_P(o)) || (!in_ram && ROM_COMPOSITE_P(o))) {
 			obj car;
 			obj cdr;
 
-			if ((in_ram && RAM_PAIR(o)) || (!in_ram && ROM_PAIR(o))) {
+			if ((in_ram && RAM_PAIR_P(o)) || (!in_ram && ROM_PAIR_P(o))) {
 				if (in_ram) {
 					car = ram_get_car (o);
 					cdr = ram_get_cdr (o);
@@ -591,8 +591,8 @@ loop:
 
 				if (cdr == OBJ_NULL) {
 					printf (")");
-				} else if ((IN_RAM(cdr) && RAM_PAIR(cdr))
-				           || (IN_ROM(cdr) && ROM_PAIR(cdr))) {
+				} else if ((IN_RAM(cdr) && RAM_PAIR_P(cdr))
+				           || (IN_ROM(cdr) && ROM_PAIR_P(cdr))) {
 					if (IN_RAM(cdr)) {
 						car = ram_get_car (cdr);
 						cdr = ram_get_cdr (cdr);
@@ -608,11 +608,11 @@ loop:
 					show (cdr);
 					printf (")");
 				}
-			} else if ((in_ram && RAM_SYMBOL(o)) || (!in_ram && ROM_SYMBOL(o))) {
+			} else if ((in_ram && RAM_SYMBOL_P(o)) || (!in_ram && ROM_SYMBOL_P(o))) {
 				printf ("#<symbol>");
-			} else if ((in_ram && RAM_STRING(o)) || (!in_ram && ROM_STRING(o))) {
+			} else if ((in_ram && RAM_STRING_P(o)) || (!in_ram && ROM_STRING_P(o))) {
 				printf ("#<string>");
-			} else if ((in_ram && RAM_VECTOR(o)) || (!in_ram && ROM_VECTOR(o))) {
+			} else if ((in_ram && RAM_VECTOR_P(o)) || (!in_ram && ROM_VECTOR_P(o))) {
 				printf ("#<vector %d>", o);
 			} else {
 				printf ("(");
@@ -924,7 +924,7 @@ void prim_network_cleanup ()   // TODO maybe put in halt ?
 void prim_receive_packet_to_u8vector ()
 {
 	// arg1 is the vector in which to put the received packet
-	if (!RAM_VECTOR(arg1)) {
+	if (!RAM_VECTOR_P(arg1)) {
 		TYPE_ERROR("receive-packet-to-u8vector", "vector");
 	}
 
@@ -967,7 +967,7 @@ void prim_send_packet_from_u8vector ()
 	// arg1 is the vector which contains the packet to be sent
 	// arg2 is the length of the packet
 	// TODO only works with ram vectors for now
-	if (!RAM_VECTOR(arg1)) {
+	if (!RAM_VECTOR_P(arg1)) {
 		TYPE_ERROR("send-packet-from-vector!", "vector");
 	}
 
