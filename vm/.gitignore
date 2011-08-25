@@ -1,4 +1,5 @@
 .config*
+include/arch
 picobit-vm
 picobit.hex
 picobit.elf
