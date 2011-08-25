@@ -2,6 +2,9 @@
 #include <bignum.h>
 #include <gc.h>
 
+#include <stdio.h>
+#include <sys/time.h>
+
 static uint16 a1, a2, a3;
 
 #ifdef CONFIG_DEBUG_STRINGS
@@ -535,7 +538,7 @@ void prim_booleanp ()
 
 // robot-specific primitives
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 
 void show (obj o)
 {
@@ -641,7 +644,7 @@ void print (obj o)
 
 void prim_print ()
 {
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 	print (arg1);
 #endif
 
@@ -656,7 +659,7 @@ uint32 read_clock ()
 	now = from_now( 0 );
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 #ifdef _WIN32
 	static int32 start = 0;
 	struct timeb tb;
@@ -669,7 +672,7 @@ uint32 read_clock ()
 
 	now -= start;
 #else
-	static int32 start = 0;
+	static uint32_t start = 0;
 	struct timeval tv;
 
 	if (gettimeofday (&tv, NULL) == 0) {
@@ -705,7 +708,7 @@ void prim_motor ()
 	MOTOR_set( a1, a2 );
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 	printf ("motor %d -> power=%d\n", a1, a2);
 	fflush (stdout);
 #endif
@@ -728,7 +731,7 @@ void prim_led ()
 	LED_set( a1, a2, a3 );
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 	printf ("led %d -> duty=%d period=%d\n", a1, a2, a3 );
 	fflush (stdout);
 #endif
@@ -751,7 +754,7 @@ void prim_led2_color ()
 	LED2_color_set( a1 );
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 	printf ("led2-color -> %s\n", (a1==0)?"green":"red");
 	fflush (stdout);
 #endif
@@ -782,7 +785,7 @@ void prim_getchar_wait ()
 	}
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 #ifdef _WIN32
 	arg1 = OBJ_FALSE;
 
@@ -815,7 +818,7 @@ void prim_putchar ()
 	uart_write(a1);
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 	putchar (a1);
 	fflush (stdout);
 #endif
@@ -837,7 +840,7 @@ void prim_beep ()
 	beep( a1, from_now( a2 ) );
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 	printf ("beep -> freq-div=%d duration=%d\n", a1, a2 );
 	fflush (stdout);
 #endif
@@ -849,7 +852,7 @@ void prim_beep ()
 
 void prim_adc ()
 {
-//	uint16 x;
+	uint16 x;
 
 	a1 = decode_int (arg1);
 
@@ -861,7 +864,7 @@ void prim_adc ()
 	x = adc( a1 );
 #endif
 
-#ifdef WORKSTATION
+#ifdef CONFIG_ARCH_HOST
 	x = read_clock () & 255;
 
 	if (x > 127) {
