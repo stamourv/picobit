@@ -6,8 +6,3 @@ MEMORY
 }
 
 INCLUDE common.ld
-
-SECTIONS
-{
-	__stack_end__ = 0x20000000 + 0x2000;
-}

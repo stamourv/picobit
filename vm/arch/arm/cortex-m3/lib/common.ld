@@ -18,19 +18,13 @@ SECTIONS {
 		__text_end__ = .;
 	} > flash
 
-	.data : {
-		__data_begin__ = .;
-
-		*(.data)
-
-		. = ALIGN(4);
-
-		__data_end__ = .;
-	} > ram AT>flash
-
-	. = ALIGN(4);
-
 	.bss : {
+		__stack_begin__ = .;
+
+		. += 128;
+
+		__stack_end__ = .;
+
 		__bss_begin__ = .;
 
 		*(.bss)
