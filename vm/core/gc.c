@@ -5,7 +5,7 @@
 
 static obj free_list, free_vec_pointer;
 
-#ifdef CONFIG_GC_DEBUG
+#ifdef CONFIG_GC_STATISTICS
 int max_live = 0;
 #endif
 
@@ -138,7 +138,7 @@ void sweep ()
 {
 	/* sweep phase */
 
-#ifdef CONFIG_GC_DEBUG
+#ifdef CONFIG_GC_STATISTICS
 	int n = 0;
 #endif
 
@@ -169,7 +169,7 @@ void sweep ()
 				ram_set_gc_tag0 (visit, GC_TAG_UNMARKED);
 			}
 
-#ifdef CONFIG_GC_DEBUG
+#ifdef CONFIG_GC_STATISTICS
 			n++;
 #endif
 		}
@@ -177,11 +177,13 @@ void sweep ()
 		visit--;
 	}
 
-#ifdef CONFIG_GC_DEBUG
+#ifdef CONFIG_GC_STATISTICS
 	if (n > max_live) {
 		max_live = n;
+#ifdef CONFIG_GC_DEBUG
 		printf ("**************** memory needed = %d\n", max_live+1);
 		fflush (stdout);
+#endif
 	}
 #endif
 }

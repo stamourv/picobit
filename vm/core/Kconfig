@@ -28,6 +28,13 @@ config VM_DEBUG
 	  will be printed before executing.
 	  
 
+config GC_STATISTICS
+	bool "Collect statistics in garbage collector"
+	help
+	  Enable measuring various memory allocation statistics.
+	  Currently it is only a maximal number of live objects.
+	  
+
 config GC_DEBUG
 	bool "Debug garbage collector"
 	help
