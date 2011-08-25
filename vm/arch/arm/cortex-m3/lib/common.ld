@@ -21,7 +21,7 @@ SECTIONS {
 	.bss : {
 		__stack_begin__ = .;
 
-		. += 128;
+		. += 0x100;
 
 		__stack_end__ = .;
 
