@@ -16,33 +16,33 @@ void show_type (obj o)
 	} else if (o < MIN_ROM_ENCODING) {
 		printf("fixnum");
 	} else if (IN_RAM (o)) {
-		if (RAM_BIGNUM(o)) {
+		if (RAM_BIGNUM_P(o)) {
 			printf("ram bignum");
-		} else if (RAM_PAIR(o)) {
+		} else if (RAM_PAIR_P(o)) {
 			printf("ram pair");
-		} else if (RAM_SYMBOL(o)) {
+		} else if (RAM_SYMBOL_P(o)) {
 			printf("ram symbol");
-		} else if (RAM_STRING(o)) {
+		} else if (RAM_STRING_P(o)) {
 			printf("ram string");
-		} else if (RAM_VECTOR(o)) {
+		} else if (RAM_VECTOR_P(o)) {
 			printf("ram vector");
-		} else if (RAM_CONTINUATION(o)) {
+		} else if (RAM_CONTINUATION_P(o)) {
 			printf("ram continuation");
-		} else if (RAM_CLOSURE(o)) {
+		} else if (RAM_CLOSURE_P(o)) {
 			printf("ram closure");
 		}
 	} else { // ROM
-		if (ROM_BIGNUM(o)) {
+		if (ROM_BIGNUM_P(o)) {
 			printf("rom bignum");
-		} else if (ROM_PAIR(o)) {
+		} else if (ROM_PAIR_P(o)) {
 			printf("rom pair");
-		} else if (ROM_SYMBOL(o)) {
+		} else if (ROM_SYMBOL_P(o)) {
 			printf("rom symbol");
-		} else if (ROM_STRING(o)) {
+		} else if (ROM_STRING_P(o)) {
 			printf("rom string");
-		} else if (ROM_VECTOR(o)) {
+		} else if (ROM_VECTOR_P(o)) {
 			printf("rom vector");
-		} else if (ROM_CONTINUATION(o)) {
+		} else if (ROM_CONTINUATION_P(o)) {
 			printf("rom continuation");
 		}
 
