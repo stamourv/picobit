@@ -16,4 +16,13 @@ BEGIN {
 	pr[prc, "c_name"] = opts[2]
 	pr[prc, "arguments"] = opts[3]
 	prc++
+
+	if(prc > 48) {
+		print "" >"/dev/stderr"
+		print "  ERROR: More than 48 primitives are defined." >"/dev/stderr"
+		print "    The bytecode cannot reference more than 48 different" >"/dev/stderr"
+		print "    primitives at the moment." >"/dev/stderr"
+		print "" >"/dev/stderr"
+		exit 1
+	}
 }
