@@ -41,8 +41,9 @@ function primgen(primclass, offset) {
 		print ""
 	}
 
-	print "\t\tgoto dispatch;"
 	print "\t}"
+	print ""
+	print "\tgoto dispatch;"
 	print ""
 }
 
