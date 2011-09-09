@@ -10,7 +10,6 @@ choice
 		  A very small bignum implementation which has a fixed
 		  precision. Currently it is only useful on 8-bit targets,
 		  and bignums are 24 bit long.
-		  
 
 	config BIGNUM_LONG
 		bool "Arbitrary"
@@ -18,7 +17,6 @@ choice
 		  Arbitrary precision bignums are represented by lists of
 		  16-bit values, and computations are performed by helper
 		  functions.
-		  
 endchoice
 
 config VM_DEBUG
@@ -26,20 +24,23 @@ config VM_DEBUG
 	help
 	  Enable virtual machine trace messages. Each instruction
 	  will be printed before executing.
-	  
 
 config GC_STATISTICS
 	bool "Collect statistics in garbage collector"
 	help
 	  Enable measuring various memory allocation statistics.
 	  Currently it is only a maximal number of live objects.
-	  
+
+config GC_STATISTICS_PRIMITIVE
+	depends on GC_STATISTICS
+	bool "Export statistics to user program"
+	help
+	  Add a #%gc-max-live primitive.
 
 config GC_DEBUG
 	bool "Debug garbage collector"
 	help
 	  Enable garbage collector trace messages.
-	  
 
 config GC_AGGRESSIVE
 	bool "Aggressive GC"
@@ -47,4 +48,3 @@ config GC_AGGRESSIVE
 	help
 	  Collect garbage before each allocation and not only
 	  when VM has no free memory.
-	  

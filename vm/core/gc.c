@@ -2,6 +2,7 @@
 #include <bignum.h>
 #include <debug.h>
 #include <gc.h>
+#include <primitives.h>
 
 static obj free_list, free_vec_pointer;
 
@@ -372,3 +373,10 @@ obj alloc_vec_cell (uint16 n, obj from)
 	// return pointer to start of data, skipping the header
 	return RAM_TO_VEC_OBJ(o + 1);
 }
+
+#ifdef CONFIG_GC_STATISTICS_PRIMITIVE
+PRIMITIVE(#%gc-max-live, gc_max_live, 0)
+{
+	arg1 = encode_int (max_live);
+}
+#endif
