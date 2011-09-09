@@ -34,11 +34,6 @@ Note: The `p' script is a shortcut for compiling and running programs:
      ./picobit prog.scm ; ./picobit-vm prog.hex
 
 
-WORKING ON PIC:
-
-  <TODO>
-
-
 SEE ALSO:
 
   * A paper describing PICOBIT has been presented to IFL 2009:
@@ -63,6 +58,7 @@ HISTORY:
  Vincent St-Amour took over development in 2008.
  Jim Shargo worked on a port to Racket in 2011.
  The Racket port was completed in June 2011.
+ Peter Zotov (whitequark) ported PICOBIT to ARM in August 2011.
 
 LICENCE:
 
