@@ -86,7 +86,7 @@ PRIMITIVE_UNSPEC(#%set-cdr!, set_cdr_bang, 2)
 	}
 }
 
-PRIMITIVE(#%null?, null_p, 2)
+PRIMITIVE(#%null?, null_p, 1)
 {
 	arg1 = encode_bool (arg1 == OBJ_NULL);
 }
