@@ -21,6 +21,13 @@ USAGE:
 
 2. Build the VM:
      make
+ This will build the VM with the default configuration (workstation,
+ no deubgging). To configure the VM for another architecture, or with
+ different options, run
+     make help
+ from the `vm' directory.
+
+Note: gawk is required to build the VM.
 
 2. Compile a Scheme program:
      ./picobit prog.scm
