@@ -14,5 +14,6 @@ extern const char* const primitive_names[];
 extern obj a1, a2, a3;
 
 void decode_2_int_args ();
+void push_arg1 ();
 
 #endif
