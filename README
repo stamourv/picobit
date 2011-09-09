@@ -1,5 +1,5 @@
 This is a very small Scheme system designed to run on small
-microcontrollers, currently the PIC microcontroller.
+microcontrollers, currently PIC18 and ARM.
 
 It consists of
 
