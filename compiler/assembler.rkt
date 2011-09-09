@@ -1,7 +1,7 @@
 #lang racket
 
 (require srfi/4) ; u8vector stuff
-(require "utilities.rkt" "asm.rkt" "primitives.rkt")
+(require "utilities.rkt" "asm.rkt" "gen.primitives.rkt")
 
 (provide assemble)
 

@@ -1,7 +1,7 @@
 #lang racket
 
 (provide parse-program)
-(require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt" "primitives.rkt")
+(require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt" "gen.primitives.rkt")
 
 (define (parse-program lst env)
   (define exprs (parse-top-list (append lst '((#%halt))) env))
