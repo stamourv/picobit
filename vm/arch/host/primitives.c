@@ -1,11 +1,10 @@
 #include <picobit.h>
 #include <bignum.h>
 #include <gc.h>
+#include <primitives.h>
 
 #include <stdio.h>
 #include <sys/time.h>
-
-static uint16 a1, a2, a3;
 
 // robot-specific primitives
 
