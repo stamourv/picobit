@@ -89,10 +89,17 @@ obj-y = $(addprefix $(arch)/,$(arch-y)) \
 .PHONY: arch-all
 arch-all:
 
-prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk $(obj-y) >$(2)
+prim-intermediate := .primitives.p
+prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk \
+	$(prim-intermediate) >$(2)
 
 .PHONY: primitive-gen
 primitive-gen: $(obj-y)
+	rm -f $(prim-intermediate)
+	for object in $(obj-y); do \
+		$(CROSS)cpp -DNO_PRIMITIVE_EXPAND $(CFLAGS) \
+			$$object -o - >>$(prim-intermediate); \
+	done
 	$(call prim-gen,headergen,include/gen.primitives.h)
 	$(call prim-gen,schemegen,../compiler/gen.primitives.rkt)
 	$(call prim-gen,dispatchgen,core/gen.dispatch.c)
