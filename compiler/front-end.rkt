@@ -1,6 +1,6 @@
 #lang racket
 
-(require "utilities.rkt" "ast.rkt" "env.rkt" "analysis.rkt" "gen.primitives.rkt")
+(require "utilities.rkt" "ast.rkt" "env.rkt" "analysis.rkt" "primitives.rkt")
 
 ;; Front-end code transformations.
 

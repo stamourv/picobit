@@ -24,3 +24,5 @@
        (set! global-env (mcons prim global-env))
        (set! primitive-encodings
              (dict-set primitive-encodings 'name encoding)))]))
+
+(require "gen.primitives.rkt")

@@ -2,7 +2,7 @@
 
 (require "utilities.rkt"
          "pretty-printer.rkt"
-         "gen.primitives.rkt"
+         "primitives.rkt"
          "reader.rkt"
          "parser.rkt"
          "front-end.rkt"
