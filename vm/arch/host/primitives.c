@@ -1,12 +1,13 @@
 #include <picobit.h>
-#include <bignum.h>
-#include <gc.h>
 #include <primitives.h>
+#include <bignum.h>
 
 #include <stdio.h>
 #include <sys/time.h>
 
-// robot-specific primitives
+// most of this is for the host architecture
+// there's some PIC18 code in there too
+// it should eventually be moved to its own architecture
 
 #ifdef CONFIG_ARCH_HOST
 
@@ -112,7 +113,7 @@ void print (obj o)
 
 #endif
 
-void prim_print ()
+PRIMITIVE_UNSPEC(#%print, print, 1)
 {
 #ifdef CONFIG_ARCH_HOST
 	print (arg1);
@@ -120,6 +121,7 @@ void prim_print ()
 
 	arg1 = OBJ_FALSE;
 }
+
 
 uint32 read_clock ()
 {
@@ -161,16 +163,16 @@ uint32 read_clock ()
 	return now;
 }
 
-void prim_clock ()
+PRIMITIVE(#%clock, clock, 0)
 {
 	arg1 = encode_int (read_clock ());
 }
 
-void prim_motor ()
+PRIMITIVE_UNSPEC(#%motor, motor, 2)
 {
 	decode_2_int_args ();
 
-	if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100) { // TODO since we now use undigned values, we can't go backwards anymore
+	if (a1 < 1 || a1 > 2 || a2 < -100 || a2 > 100) { // TODO since we now use unsigned values, we can't go backwards anymore
 		ERROR("motor", "argument out of range");
 	}
 
@@ -187,8 +189,7 @@ void prim_motor ()
 	arg2 = OBJ_FALSE;
 }
 
-
-void prim_led ()
+PRIMITIVE_UNSPEC(#%led, led, 3)
 {
 	decode_2_int_args ();
 	a3 = decode_int (arg3);
@@ -211,8 +212,7 @@ void prim_led ()
 	arg3 = OBJ_FALSE;
 }
 
-
-void prim_led2_color ()
+PRIMITIVE_UNSPEC(#%led2-color, led2_color, 1)
 {
 	a1 = decode_int (arg1);
 
@@ -232,8 +232,7 @@ void prim_led2_color ()
 	arg1 = OBJ_FALSE;
 }
 
-
-void prim_getchar_wait ()
+PRIMITIVE(#%getchar-wait, getchar_wait, 2)
 {
 	decode_2_int_args();
 	a1 = read_clock () + a1;
@@ -272,8 +271,7 @@ void prim_getchar_wait ()
 #endif
 }
 
-
-void prim_putchar ()
+PRIMITIVE(#%putchar, putchar, 2)
 {
 	decode_2_int_args ();
 
@@ -297,8 +295,7 @@ void prim_putchar ()
 	arg2 = OBJ_FALSE;
 }
 
-
-void prim_beep ()
+PRIMITIVE(#%beep, beep, 2)
 {
 	decode_2_int_args ();
 
@@ -319,8 +316,7 @@ void prim_beep ()
 	arg2 = OBJ_FALSE;
 }
 
-
-void prim_adc ()
+PRIMITIVE(#%adc, adc, 1)
 {
 	uint16 x;
 
@@ -348,20 +344,22 @@ void prim_adc ()
 	arg1 = encode_int (0);
 }
 
-void prim_sernum ()
+PRIMITIVE(#%sernum, sernum, 0)
 {
 	uint16 x = 0;
 
 	arg1 = encode_int (x);
 }
 
+
 /*---------------------------------------------------------------------------*/
 
 // networking primitives
 // to enable them, compilation must be done with the -lpcap option
 
-void prim_network_init ()   // TODO maybe put in the initialization of the vm
+PRIMITIVE_UNSPEC(#%network-init, network_init, 0)
 {
+	// TODO maybe put in the initialization of the vm
 #ifdef NETWORKING
 	handle = pcap_open_live(INTERFACE, MAX_PACKET_SIZE, PROMISC, TO_MSEC, errbuf);
 
@@ -372,14 +370,15 @@ void prim_network_init ()   // TODO maybe put in the initialization of the vm
 #endif
 }
 
-void prim_network_cleanup ()   // TODO maybe put in halt ?
+PRIMITIVE_UNSPEC(#%network-cleanup, network_cleanup, 0)
 {
+	// TODO maybe put in halt ?
 #ifdef NETWORKING
 	pcap_close(handle);
 #endif
 }
 
-void prim_receive_packet_to_u8vector ()
+PRIMITIVE(#%receive-packet-to-u8vector, receive_packet_to_u8vector, 1)
 {
 	// arg1 is the vector in which to put the received packet
 	if (!RAM_VECTOR_P(arg1)) {
@@ -420,7 +419,7 @@ void prim_receive_packet_to_u8vector ()
 #endif
 }
 
-void prim_send_packet_from_u8vector ()
+PRIMITIVE(#%send-packet-from-u8vector, send_packet_from_u8vector, 2)
 {
 	// arg1 is the vector which contains the packet to be sent
 	// arg2 is the length of the packet
