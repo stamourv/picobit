@@ -86,12 +86,21 @@ arch  = arch/$(call unquote,$(CONFIG_ARCH))
 obj-y = $(addprefix $(arch)/,$(arch-y)) \
 	  $(addprefix core/,$(core-y))
 
+.PHONY: arch-all
 arch-all:
+
+prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk $(obj-y) >$(2)
+
+.PHONY: primitive-gen
+primitive-gen: $(obj-y)
+	$(call prim-gen,headergen,include/gen.primitives.h)
+	$(call prim-gen,schemegen,../compiler/gen.primitives.rkt)
+	$(call prim-gen,dispatchgen,core/gen.dispatch.c)
 
 include core/Makefile
 include arch/Makefile
 
-all: include/arch arch-all
+all: include/arch primitive-gen arch-all
 
 endif # $(dot-config)
 

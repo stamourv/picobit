@@ -5,7 +5,7 @@ endif
 CFLAGS += -mcpu=cortex-m3 -mthumb -g -fno-hosted -nostdlib \
           -L$(arch)/lib -T$(ldscript) -Wl,-warn-common
 
-arch-y += init.s primitives.c
+arch-y += init.s
 arch-$(CONFIG_ARM_BOARD_STM32_VLDISCOVERY) += board-vldiscovery.c
 
 arch-all: picobit.hex
