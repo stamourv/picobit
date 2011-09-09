@@ -2,7 +2,7 @@ BEGIN {
 	prc = 0
 }
 
-/PRIMITIVE(_UNSPEC|)/ {
+/^\W*PRIMITIVE(_UNSPEC|)/ {
 	if(match($0, "PRIMITIVE_UNSPEC")) {
 		pr[prc, "scheme_options"] = "#:unspecified-result";
 	}
