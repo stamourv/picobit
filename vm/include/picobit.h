@@ -48,8 +48,4 @@ void halt_with_error () NORETURN;
 
 #endif /* CONFIG_ERROR_HANDLING */
 
-#ifdef CONFIG_DEBUG_STRINGS
-extern char* prim_name[];
-#endif /* CONFIG_DEBUG_STRINGS */
-
 #endif

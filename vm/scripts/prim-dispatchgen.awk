@@ -4,7 +4,7 @@ function primgen(primclass, offset) {
 
 	print "\tcase " primclass " :"
 	print "#ifdef CONFIG_DEBUG_STRINGS"
-	print "\t\tIF_TRACE(printf(\"  (%s)\\n\", prim_name[bytecode_lo4 + " offset "]));"
+	print "\t\tIF_TRACE(printf(\"  (%s)\\n\", primitive_names[bytecode_lo4 + " offset "]));"
 	print "#else"
 	print "\t\tIF_TRACE(printf(\"  (<primitive>)\\n\"));"
 	print "#endif"
