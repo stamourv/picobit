@@ -3,7 +3,7 @@ all: compiler vm
 # compiler can always be run, raco make will figure the rest out
 .PHONY: compiler vm
 
-compiler:
+compiler: vm
 	raco make compiler/picobit.rkt
 
 vm:
