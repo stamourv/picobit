@@ -25,4 +25,4 @@
        (set! primitive-encodings
              (dict-set primitive-encodings 'name encoding)))]))
 
-(require "gen.primitives.rkt")
+(load "gen.primitives.rkt")
