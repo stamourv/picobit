@@ -1,5 +1,9 @@
 BEGIN {
-	prc = 0
+	# #%halt is a bit special
+	pr[0, "scheme_name"] = "#%halt"
+	pr[0, "arguments"] = 0
+
+	prc = 1
 }
 
 /^\W*PRIMITIVE(_UNSPEC|)/ {

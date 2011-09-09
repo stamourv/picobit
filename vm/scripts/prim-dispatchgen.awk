@@ -17,6 +17,12 @@ function primgen(primclass, offset) {
 
 		print "\t\tcase " (i - offset) " :"
 
+		if(i == 0) {
+			print "\t\t\treturn;"
+			print "";
+			continue;
+		}
+
 		if(pr[i, "arguments"] > 3)
 			print "\t\t\targ4 = pop ();"
 		if(pr[i, "arguments"] > 2)

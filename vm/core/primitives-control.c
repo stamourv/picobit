@@ -40,8 +40,3 @@ PRIMITIVE(#%return-to-cont, return_to_cont, 2)
 
 	arg2 = OBJ_FALSE;
 }
-
-PRIMITIVE(#%halt, halt, 0)
-{
-  return; // TODO
-}
