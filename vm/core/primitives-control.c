@@ -16,12 +16,12 @@ PRIMITIVE_UNSPEC(pop, pop, 0)
 	pop();
 }
 
-PRIMITIVE(#%get-cont, get_cont, 0)
+PRIMITIVE(get-cont, get_cont, 0)
 {
 	arg1 = cont;
 }
 
-PRIMITIVE_UNSPEC(#%graft-to-cont, graft_to_cont, 2)
+PRIMITIVE_UNSPEC(graft-to-cont, graft_to_cont, 2)
 {
 	/* arg2 is thunk to call, arg1 is continuation */
 	cont = arg1;
@@ -39,7 +39,7 @@ PRIMITIVE_UNSPEC(#%graft-to-cont, graft_to_cont, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%return-to-cont, return_to_cont, 2)
+PRIMITIVE(return-to-cont, return_to_cont, 2)
 {
 	/* arg2 is value to return, arg1 is continuation */
 	cont = arg1;

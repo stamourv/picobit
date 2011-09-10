@@ -1,7 +1,7 @@
 #include <picobit.h>
 #include <primitives.h>
 
-PRIMITIVE(#%pair?, pair_p, 1)
+PRIMITIVE(pair?, pair_p, 1)
 {
 	if (IN_RAM(arg1)) {
 		arg1 = encode_bool (RAM_PAIR_P(arg1));
@@ -12,13 +12,13 @@ PRIMITIVE(#%pair?, pair_p, 1)
 	}
 }
 
-PRIMITIVE(#%cons, cons, 2)
+PRIMITIVE(cons, cons, 2)
 {
 	arg1 = cons (arg1, arg2);
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%car, car, 1)
+PRIMITIVE(car, car, 1)
 {
 	if (IN_RAM(arg1)) {
 		if (!RAM_PAIR_P(arg1)) {
@@ -37,7 +37,7 @@ PRIMITIVE(#%car, car, 1)
 	}
 }
 
-PRIMITIVE(#%cdr, cdr, 1)
+PRIMITIVE(cdr, cdr, 1)
 {
 	if (IN_RAM(arg1)) {
 		if (!RAM_PAIR_P(arg1)) {
@@ -56,7 +56,7 @@ PRIMITIVE(#%cdr, cdr, 1)
 	}
 }
 
-PRIMITIVE_UNSPEC(#%set-car!, set_car_bang, 2)
+PRIMITIVE_UNSPEC(set-car!, set_car_bang, 2)
 {
 	if (IN_RAM(arg1)) {
 		if (!RAM_PAIR_P(arg1)) {
@@ -71,7 +71,7 @@ PRIMITIVE_UNSPEC(#%set-car!, set_car_bang, 2)
 	}
 }
 
-PRIMITIVE_UNSPEC(#%set-cdr!, set_cdr_bang, 2)
+PRIMITIVE_UNSPEC(set-cdr!, set_cdr_bang, 2)
 {
 	if (IN_RAM(arg1)) {
 		if (!RAM_PAIR_P(arg1)) {
@@ -86,7 +86,7 @@ PRIMITIVE_UNSPEC(#%set-cdr!, set_cdr_bang, 2)
 	}
 }
 
-PRIMITIVE(#%null?, null_p, 1)
+PRIMITIVE(null?, null_p, 1)
 {
 	arg1 = encode_bool (arg1 == OBJ_NULL);
 }

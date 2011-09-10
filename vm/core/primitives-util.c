@@ -2,18 +2,18 @@
 #include <primitives.h>
 #include <gc.h>
 
-PRIMITIVE(#%eq?, eq_p, 2)
+PRIMITIVE(eq?, eq_p, 2)
 {
 	arg1 = encode_bool (arg1 == arg2);
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%not, not, 1)
+PRIMITIVE(not, not, 1)
 {
 	arg1 = encode_bool (arg1 == OBJ_FALSE);
 }
 
-PRIMITIVE(#%symbol?, symbol_p, 1)
+PRIMITIVE(symbol?, symbol_p, 1)
 {
 	if (IN_RAM(arg1)) {
 		arg1 = encode_bool (RAM_SYMBOL_P(arg1));
@@ -24,12 +24,12 @@ PRIMITIVE(#%symbol?, symbol_p, 1)
 	}
 }
 
-PRIMITIVE(#%boolean?, boolean_p, 1)
+PRIMITIVE(boolean?, boolean_p, 1)
 {
 	arg1 = encode_bool (arg1 < 2);
 }
 
-PRIMITIVE(#%string?, string_p, 1)
+PRIMITIVE(string?, string_p, 1)
 {
 	if (IN_RAM(arg1)) {
 		arg1 = encode_bool (RAM_STRING_P(arg1));
@@ -40,7 +40,7 @@ PRIMITIVE(#%string?, string_p, 1)
 	}
 }
 
-PRIMITIVE(#%string->list, string2list, 1)
+PRIMITIVE(string->list, string2list, 1)
 {
 	if (IN_RAM(arg1)) {
 		if (!RAM_STRING_P(arg1)) {
@@ -59,7 +59,7 @@ PRIMITIVE(#%string->list, string2list, 1)
 	}
 }
 
-PRIMITIVE(#%list->string, list2string, 1)
+PRIMITIVE(list->string, list2string, 1)
 {
 	arg1 = alloc_ram_cell_init (COMPOSITE_FIELD0 | ((arg1 & 0x1f00) >> 8),
 	                            arg1 & 0xff,

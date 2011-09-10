@@ -2,7 +2,7 @@
 #include <bignum.h>
 #include <primitives.h>
 
-PRIMITIVE(#%number?, number_p, 1)
+PRIMITIVE(number?, number_p, 1)
 {
 	if (arg1 >= MIN_FIXNUM_ENCODING
 	    && arg1 <= (MIN_FIXNUM_ENCODING + (MAX_FIXNUM - MIN_FIXNUM))) {
@@ -23,7 +23,7 @@ void decode_2_int_args () {
 	a2 = decode_int (arg2);
 }
 
-PRIMITIVE(#%=, equal, 2)
+PRIMITIVE(=, equal, 2)
 {
 #ifdef CONFIG_BIGNUM_LONG
 	arg1 = encode_bool(cmp (arg1, arg2) == 1);
@@ -113,7 +113,7 @@ PRIMITIVE(#%rem-non-neg, rem_non_neg, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%<, lt, 2)
+PRIMITIVE(<, lt, 2)
 {
 #ifdef CONFIG_BIGNUM_LONG
 	arg1 = encode_bool(cmp (arg1, arg2) < 1);
@@ -124,7 +124,7 @@ PRIMITIVE(#%<, lt, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%>, gt, 2)
+PRIMITIVE(>, gt, 2)
 {
 #ifdef CONFIG_BIGNUM_LONG
 	arg1 = encode_bool(cmp (arg1, arg2) > 1);
@@ -135,7 +135,7 @@ PRIMITIVE(#%>, gt, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%ior, ior, 2)
+PRIMITIVE(bitwise-ior, bitwise_ior, 2)
 {
 #ifdef CONFIG_BIGNUM_LONG
 	arg1 = bitwise_ior(arg1, arg2);
@@ -146,7 +146,7 @@ PRIMITIVE(#%ior, ior, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%xor, xor, 2)
+PRIMITIVE(bitwise-xor, bitwise_xor, 2)
 {
 #ifdef CONFIG_BIGNUM_LONG
 	arg1 = bitwise_xor(arg1, arg2);
@@ -156,3 +156,5 @@ PRIMITIVE(#%xor, xor, 2)
 #endif
 	arg2 = OBJ_FALSE;
 }
+
+// TODO add bitwise-and and bitwise-not

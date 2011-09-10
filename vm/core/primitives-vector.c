@@ -3,7 +3,7 @@
 #include <primitives.h>
 #include <gc.h>
 
-PRIMITIVE(#%u8vector?, u8vector_p, 1)
+PRIMITIVE(u8vector?, u8vector_p, 1)
 {
 	if (IN_RAM(arg1)) {
 		arg1 = encode_bool (RAM_VECTOR_P(arg1));
@@ -28,7 +28,7 @@ PRIMITIVE(#%make-u8vector, make_u8vector, 1)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%u8vector-ref, u8vector_ref, 2)
+PRIMITIVE(u8vector-ref, u8vector_ref, 2)
 {
 	a2 = decode_int (arg2);
 
@@ -78,7 +78,7 @@ PRIMITIVE(#%u8vector-ref, u8vector_ref, 2)
 	arg4 = OBJ_FALSE;
 }
 
-PRIMITIVE_UNSPEC(#%u8vector-set!, u8vector_set, 3)
+PRIMITIVE_UNSPEC(u8vector-set!, u8vector_set, 3)
 	// TODO a lot in common with ref, abstract that
 {
 	a2 = decode_int (arg2); // TODO adapt for bignums
@@ -112,7 +112,7 @@ PRIMITIVE_UNSPEC(#%u8vector-set!, u8vector_set, 3)
 	arg3 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%u8vector-length, u8vector_length, 1)
+PRIMITIVE(u8vector-length, u8vector_length, 1)
 {
 	if (IN_RAM(arg1)) {
 		if (!RAM_VECTOR_P(arg1)) {

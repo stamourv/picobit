@@ -113,7 +113,7 @@ void print (obj o)
 
 #endif
 
-PRIMITIVE_UNSPEC(#%print, print, 1)
+PRIMITIVE_UNSPEC(print, print, 1)
 {
 #ifdef CONFIG_ARCH_HOST
 	print (arg1);
@@ -163,12 +163,12 @@ uint32 read_clock ()
 	return now;
 }
 
-PRIMITIVE(#%clock, clock, 0)
+PRIMITIVE(clock, clock, 0)
 {
 	arg1 = encode_int (read_clock ());
 }
 
-PRIMITIVE_UNSPEC(#%motor, motor, 2)
+PRIMITIVE_UNSPEC(motor, motor, 2)
 {
 	decode_2_int_args ();
 
@@ -189,7 +189,7 @@ PRIMITIVE_UNSPEC(#%motor, motor, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE_UNSPEC(#%led, led, 3)
+PRIMITIVE_UNSPEC(led, led, 3)
 {
 	decode_2_int_args ();
 	a3 = decode_int (arg3);
@@ -295,7 +295,7 @@ PRIMITIVE(#%putchar, putchar, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%beep, beep, 2)
+PRIMITIVE(beep, beep, 2)
 {
 	decode_2_int_args ();
 
@@ -316,7 +316,7 @@ PRIMITIVE(#%beep, beep, 2)
 	arg2 = OBJ_FALSE;
 }
 
-PRIMITIVE(#%adc, adc, 1)
+PRIMITIVE(adc, adc, 1)
 {
 	uint16 x;
 
@@ -344,7 +344,7 @@ PRIMITIVE(#%adc, adc, 1)
 	arg1 = encode_int (0);
 }
 
-PRIMITIVE(#%sernum, sernum, 0)
+PRIMITIVE(sernum, sernum, 0)
 {
 	uint16 x = 0;
 
@@ -357,7 +357,7 @@ PRIMITIVE(#%sernum, sernum, 0)
 // networking primitives
 // to enable them, compilation must be done with the -lpcap option
 
-PRIMITIVE_UNSPEC(#%network-init, network_init, 0)
+PRIMITIVE_UNSPEC(network-init, network_init, 0)
 {
 	// TODO maybe put in the initialization of the vm
 #ifdef NETWORKING
@@ -370,7 +370,7 @@ PRIMITIVE_UNSPEC(#%network-init, network_init, 0)
 #endif
 }
 
-PRIMITIVE_UNSPEC(#%network-cleanup, network_cleanup, 0)
+PRIMITIVE_UNSPEC(network-cleanup, network_cleanup, 0)
 {
 	// TODO maybe put in halt ?
 #ifdef NETWORKING
@@ -378,7 +378,7 @@ PRIMITIVE_UNSPEC(#%network-cleanup, network_cleanup, 0)
 #endif
 }
 
-PRIMITIVE(#%receive-packet-to-u8vector, receive_packet_to_u8vector, 1)
+PRIMITIVE(receive-packet-to-u8vector, receive_packet_to_u8vector, 1)
 {
 	// arg1 is the vector in which to put the received packet
 	if (!RAM_VECTOR_P(arg1)) {
@@ -419,7 +419,7 @@ PRIMITIVE(#%receive-packet-to-u8vector, receive_packet_to_u8vector, 1)
 #endif
 }
 
-PRIMITIVE(#%send-packet-from-u8vector, send_packet_from_u8vector, 2)
+PRIMITIVE(send-packet-from-u8vector, send_packet_from_u8vector, 2)
 {
 	// arg1 is the vector which contains the packet to be sent
 	// arg2 is the length of the packet

@@ -145,7 +145,7 @@
   (define (build vars ctx)
     (if (null? vars)
         (gen-push-constant '() ctx)
-        (gen-prim '#%cons
+        (gen-prim 'cons
                   2
                   #f
                   (build (cdr vars)
