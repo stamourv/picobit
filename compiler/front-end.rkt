@@ -55,13 +55,13 @@
 
 ;-----------------------------------------------------------------------------
 
-(provide inline-primitives!)
+(provide inline-eta!)
 
-;; Some library functions are just the eta-expansion of primitives.
-;; They are necessary because primitives are not first-class.
-;; But, when used in operator position, these eta-expansions can be
-;; replaced by the primitive they are wrapping.
-(define (inline-primitives! node)
+;; When an eta-expansion is used in operator position, it can be replaced
+;; by the function it's wrapping.
+;; ex: (define (foo x y) (bar x y)) (foo 1)
+;;     => (bar 1)
+(define (inline-eta! node)
   (match node
     [(call p `(,(and orig-op (ref _ '() (app var-defs `(,d . ,rest))))
                . ,args))
@@ -69,25 +69,22 @@
      (match d
        [(def p `(,(prc _ `(,body) params #f entry)) v)
         (match body
-          [(seq _ `(,(call p `(,(ref _ '() (and prim-var
-                                                (app var-primitive
-                                                     prim)))
-                               . ,prim-args))))
-           (if (andmap ref? prim-args)
+          [(seq _ `(,(call p `(,(ref _ '() inside-op) . ,inside-args))))
+           (if (andmap ref? inside-args)
                ;; since the call is directly inside the lambda (no
                ;; intermediate scopes), we can compare ids directly
-               (let ([prim-args (map (lambda (x) (var-id (ref-var x)))
-                                     prim-args)]
+               (let ([inside-args (map (lambda (x) (var-id (ref-var x)))
+                                       inside-args)]
                      [params    (map var-id params)])
-                 (cond [(equal? prim-args params)
-                        ;; we can replace op with the primitive
-                        (set-ref-var! orig-op prim-var)]
+                 (cond [(equal? inside-args params)
+                        ;; we can replace orig-op with inside-op
+                        (set-ref-var! orig-op inside-op)]
                        [else (unmatch)]))
                (unmatch))]
           [_ (unmatch)])]
        [_ (unmatch)])]
     [_
-     (for-each inline-primitives! (node-children node))]))
+     (for-each inline-eta! (node-children node))]))
 
 ;-----------------------------------------------------------------------------
 
