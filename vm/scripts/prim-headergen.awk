@@ -2,6 +2,7 @@ END {
 	print "#include <picobit.h>"
 	print "#include <primitives.h>"
 	print ""
+	print "#ifdef CONFIG_DEBUG_STRINGS"
 	print "const char* const primitive_names[] = {"
 
 	for(i=0; i<prc; i++) {
@@ -9,4 +10,5 @@ END {
 	}
 
 	print "};"
+	print "#endif /* CONFIG_DEBUG_STRINGS */"
 }
