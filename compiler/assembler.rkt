@@ -358,9 +358,9 @@
                          (lambda ()
                            (compiler-error "unknown primitive" p))))]
         ['(return)
-         (prim 47)]
+         (prim (dict-ref primitive-encodings 'return))]
         ['(pop)
-         (prim 46)]
+         (prim (dict-ref primitive-encodings 'pop))]
         [_
          (compiler-error "unknown instruction" instr)]))
 
