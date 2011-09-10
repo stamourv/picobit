@@ -19,7 +19,7 @@ PRIMITIVE_UNSPEC(#%sleep, arch_sleep, 1)
 	a1 = decode_int (arg1);
 
 	for(a = 0; a < a1; a++) {
-		for(b = 0; b < 1000; b++) {
+		for(b = 0; b < 100; b++) {
 			__asm__ __volatile__("nop");
 		}
 	}
@@ -32,7 +32,7 @@ PRIMITIVE_UNSPEC(#%set-led!, arch_set_led, 1)
 	if (arg1 == OBJ_FALSE) {
 		GPIOC->ODR &= ~BIT(9);
 	} else {
-		GPIOC->ODR |= ~BIT(9);
+		GPIOC->ODR |= BIT(9);
 	}
 
 	arg1 = OBJ_FALSE;
