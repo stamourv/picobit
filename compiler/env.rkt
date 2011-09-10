@@ -16,7 +16,10 @@
    primitive)
   #:transparent)
 
-(define-struct primitive (nargs constant-folder unspecified-result?)
+(define-struct primitive
+  (nargs
+   (constant-folder #:mutable) ; added post-creation
+   unspecified-result?)
   #:transparent)
 
 (define allow-forward-references? (make-parameter #t))
