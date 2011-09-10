@@ -105,7 +105,14 @@ prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk \
 	$(call prim-gen,schemegen,../compiler/gen.primitives.rkt)
 	$(call prim-gen,dispatchgen,core/gen.dispatch.c)
 
-all: include/arch .primitives.p arch-all
+.PHONY: ../compiler/config.rkt
+../compiler/config.rkt:
+	@echo "#lang racket" >$@
+	@echo "" >>$@
+	@echo "(define code-start $(load-address))" >>$@
+	@echo "(provide code-start)" >>$@
+
+all: include/arch .primitives.p ../compiler/config.rkt arch-all
 
 endif # $(dot-config)
 

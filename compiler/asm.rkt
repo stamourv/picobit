@@ -27,7 +27,8 @@
 ;;  asm-listing      to add textual information to the listing
 
 (define (asm-begin! start-pos big-endian?)
-  (set! asm-start-pos start-pos)
+  (set! asm-start-pos (modulo start-pos #x10000))
+  (set! asm-start-pos-higher (quotient start-pos #x10000))
   (set! asm-big-endian? big-endian?)
   (set! asm-code-stream (asm-make-stream))
   #f)
@@ -395,6 +396,13 @@
         (print-byte sum)
         (newline port))))
 
+  (if (> asm-start-pos-higher 0)
+      (let ((le-bytes (list (asm-bits-0-to-7 asm-start-pos-higher)
+                            (asm-bits-8-and-up asm-start-pos-higher))))
+           (if asm-big-endian?
+               (print-line 3 0 (reverse le-bytes))
+               (print-line 3 0 le-bytes))))
+
   (let loop ((lst (cdr asm-code-stream))
              (pos asm-start-pos)
              (rev-bytes '()))
@@ -432,15 +440,16 @@
 
 ;; Utilities.
 
-(define asm-start-pos #f)   ; start position of the code stream
-(define asm-big-endian? #f) ; endianness to use
-(define asm-code-stream #f) ; current code stream
+(define asm-start-pos #f)        ; start position of the code stream
+(define asm-start-pos-higher #f) ; higher-order
+(define asm-big-endian? #f)      ; endianness to use
+(define asm-code-stream #f)      ; current code stream
 
 (define (asm-make-stream) ; create an empty stream
   (let ((x (cons '() '())))
     (set-car! x x)
     x))
-     
+
 (define (asm-code-extend item) ; add an item at the end of current code stream
   (let* ((stream asm-code-stream)
          (tail (car stream))

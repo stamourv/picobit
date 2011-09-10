@@ -8,6 +8,8 @@ CFLAGS += -mcpu=cortex-m3 -mthumb -g -fno-hosted -nostdlib \
 arch-y += init.s
 arch-$(CONFIG_ARM_BOARD_STM32_VLDISCOVERY) += board-vldiscovery.c
 
+load-address := \#x8008000
+
 arch-all: picobit.hex
 
 picobit.hex: picobit.elf

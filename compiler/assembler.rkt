@@ -1,7 +1,7 @@
 #lang racket
 
 (require srfi/4) ; u8vector stuff
-(require "utilities.rkt" "asm.rkt" "primitives.rkt")
+(require "utilities.rkt" "asm.rkt" "primitives.rkt" "gen.config.rkt")
 
 (provide assemble)
 
@@ -11,8 +11,6 @@
 (define max-fixnum 256)
 (define min-rom-encoding (+ min-fixnum-encoding (- max-fixnum min-fixnum) 1))
 (define min-ram-encoding 1280)
-
-(define code-start #x8000)
 
 (define (predef-constants) (list))
 
