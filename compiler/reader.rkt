@@ -52,7 +52,7 @@
 (define (read-program port)
   (parameterize ([current-readtable u8vector-readtable])
     (let ([library
-           (with-input-from-file (build-path compiler-dir "library.scm")
+           (with-input-from-file (build-path compiler-dir "gen.library.scm")
              read-all)])
       (expand-includes
        (append library (read-all read port))))))

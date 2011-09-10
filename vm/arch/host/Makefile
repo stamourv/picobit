@@ -1,4 +1,5 @@
-arch-y += entry.c primitives.c
+arch-y   += entry.c primitives.c
+stdlib-y += stdlib.scm
 
 load-address := \#x8000
 

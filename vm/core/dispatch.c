@@ -3,7 +3,10 @@
 #include <debug.h>
 #include <gc.h>
 #include <primitives.h>
+
+#ifndef NO_PRIMITIVE_EXPAND
 #include <gen.primitives.h>
+#endif /* NO_PRIMITIVE_EXPAND */
 
 /*
  * This pragma turns off GCC warning/error about implicit declaration
@@ -503,6 +506,8 @@ dispatch:
 
 		goto dispatch;
 
+	#ifndef NO_PRIMITIVE_EXPAND
 	#include "gen.dispatch.c"
+	#endif /* NO_PRIMITIVE_EXPAND */
 	}
 }

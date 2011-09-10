@@ -85,6 +85,7 @@ CFLAGS := -Iinclude/ -DPICOBIT -Wall -Werror -Os
 arch  = arch/$(call unquote,$(CONFIG_ARCH))
 obj-y = $(addprefix $(arch)/,$(arch-y)) \
 	  $(addprefix core/,$(core-y))
+scm-y = $(addprefix $(arch)/,$(stdlib-y))
 
 .PHONY: arch-all
 arch-all:
@@ -105,14 +106,21 @@ prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk \
 	$(call prim-gen,schemegen,../compiler/gen.primitives.rkt)
 	$(call prim-gen,dispatchgen,core/gen.dispatch.c)
 
-.PHONY: ../compiler/config.rkt
-../compiler/config.rkt:
+.PHONY: ../compiler/gen.config.rkt
+../compiler/gen.config.rkt:
 	@echo "#lang racket" >$@
 	@echo "" >>$@
 	@echo "(define code-start $(load-address))" >>$@
 	@echo "(provide code-start)" >>$@
 
-all: include/arch .primitives.p ../compiler/config.rkt arch-all
+../compiler/gen.library.scm: $(arch)/Makefile
+	echo "(include \"compiler/library.scm\")" >$@
+	for scm in $(scm-y); do \
+		echo "(include \"vm/$${scm}\")" >>$@; \
+	done
+
+all: include/arch .primitives.p ../compiler/gen.config.rkt \
+	../compiler/gen.library.scm arch-all
 
 endif # $(dot-config)
 
@@ -120,7 +128,9 @@ endif # $(config-targets)
 endif # $(mixed-targets)
 
 clean: FORCE
-	rm -f include/arch picobit-vm picobit.elf picobit.hex .primitives.p
+	rm -f include/arch picobit-vm picobit.elf picobit.hex \
+		.primitives.p ../compiler/gen.* include/gen.* \
+		core/gen.*
 
 mrproper: clean FORCE
 	make -C kconfig clean
