@@ -8,7 +8,7 @@ compiler: vm
 
 vm:
 	cd vm && make
-	cp vm/picobit-vm .
+	[ -e vm/picobit-vm ] && cp vm/picobit-vm . || rm picobit-vm
 
 clean:
 	cd vm && make clean
