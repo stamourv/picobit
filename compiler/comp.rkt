@@ -48,15 +48,20 @@
     [(cst _ '() val)
      (gen-push-constant val ctx)]
     [(ref _ '() var)
-     (if (var-global? var)
-         (if (null? (var-defs var))
-             (compiler-error "undefined variable:" (var-id var))
-             (let ([val (child1 (car (var-defs var)))])
-               (if (and (not (mutable-var? var))
-                        (cst? val)) ; immutable global, counted as cst
-                   (gen-push-constant (cst-val val) ctx)
-                   (gen-push-global   (var-id  var) ctx))))
-         (gen-push-local-var (var-id var) ctx))]
+     (cond [(not (var-global? var))
+            (gen-push-local-var (var-id var) ctx)]
+           ;; primitive used in a higher-order fashion, eta-expand
+           [(var-primitive var) =>
+            (lambda (prim)
+              (comp-push ((primitive-eta-expansion prim)) ctx))]
+           [(not (null? (var-defs var)))
+            (define val (child1 (car (var-defs var))))
+            (if (and (not (mutable-var? var))
+                     (cst? val)) ; immutable global, counted as cst
+                (gen-push-constant (cst-val val) ctx)
+                (gen-push-global   (var-id  var) ctx))]
+           [else
+            (compiler-error "undefined variable:" (var-id var))])]
     [(or (? def? node) (? set? node))
      (gen-push-unspecified (comp-none node ctx))]
     [(? if*? node)

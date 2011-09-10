@@ -19,6 +19,7 @@
 (define-struct primitive
   (nargs
    (constant-folder #:mutable) ; added post-creation
+   eta-expansion ; for higher-order uses
    unspecified-result?)
   #:transparent)
 
