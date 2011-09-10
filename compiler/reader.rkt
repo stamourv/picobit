@@ -51,8 +51,10 @@
 
 (define (read-program port)
   (parameterize ([current-readtable u8vector-readtable])
-    (let ([library
-           (with-input-from-file (build-path compiler-dir "gen.library.scm")
-             read-all)])
-      (expand-includes
-       (append library (read-all read port))))))
+    (define (read-lib f)
+      (with-input-from-file (build-path compiler-dir f)
+        read-all))
+    (define library
+      (append (read-lib "library.scm")       ; architecture-independent
+              (read-lib "gen.library.scm"))) ; architecture-dependent
+    (expand-includes (append library (read-all read port)))))

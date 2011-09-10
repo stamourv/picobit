@@ -114,7 +114,6 @@ prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk \
 	@echo "(provide code-start)" >>$@
 
 ../compiler/gen.library.scm: $(arch)/Makefile
-	echo "(include \"compiler/library.scm\")" >$@
 	for scm in $(scm-y); do \
 		echo "(include \"vm/$${scm}\")" >>$@; \
 	done
