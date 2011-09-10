@@ -89,25 +89,23 @@ obj-y = $(addprefix $(arch)/,$(arch-y)) \
 .PHONY: arch-all
 arch-all:
 
-prim-intermediate := .primitives.p
-prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk \
-	$(prim-intermediate) >$(2)
+include core/Makefile
+include arch/Makefile
 
-.PHONY: primitive-gen
-primitive-gen: $(obj-y)
-	rm -f $(prim-intermediate)
+prim-gen = gawk -f scripts/scanner.awk -f scripts/prim-$(1).awk \
+	.primitives.p >$(2)
+
+.primitives.p: include/arch $(obj-y)
+	rm -f $@
 	for object in $(obj-y); do \
 		$(CROSS)cpp -DNO_PRIMITIVE_EXPAND $(CFLAGS) \
-			$$object -o - >>$(prim-intermediate); \
+			$$object -o - >>$@; \
 	done
 	$(call prim-gen,headergen,include/gen.primitives.h)
 	$(call prim-gen,schemegen,../compiler/gen.primitives.rkt)
 	$(call prim-gen,dispatchgen,core/gen.dispatch.c)
 
-include core/Makefile
-include arch/Makefile
-
-all: include/arch primitive-gen arch-all
+all: include/arch .primitives.p arch-all
 
 endif # $(dot-config)
 
@@ -115,7 +113,7 @@ endif # $(config-targets)
 endif # $(mixed-targets)
 
 clean: FORCE
-	rm -f include/arch picobit-vm picobit.elf picobit.hex
+	rm -f include/arch picobit-vm picobit.elf picobit.hex .primitives.p
 
 mrproper: clean FORCE
 	make -C kconfig clean
