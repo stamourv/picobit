@@ -83,8 +83,8 @@ CROSS  := $(call unquote,$(CONFIG_CROSS_COMPILER))
 CFLAGS := -Iinclude/ -DPICOBIT -Wall -Werror -Os
 
 arch  = arch/$(call unquote,$(CONFIG_ARCH))
-obj-y = $(addprefix $(arch)/,$(arch-y)) \
-	  $(addprefix core/,$(core-y))
+obj-y = $(addprefix core/,$(core-y)) \
+	  $(addprefix $(arch)/,$(arch-y))
 scm-y = $(addprefix $(arch)/,$(stdlib-y))
 
 .PHONY: arch-all
