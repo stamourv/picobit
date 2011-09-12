@@ -83,6 +83,8 @@ CROSS  := $(call unquote,$(CONFIG_CROSS_COMPILER))
 CFLAGS := -Iinclude/ -DPICOBIT -Wall -Werror -Os
 
 arch  = arch/$(call unquote,$(CONFIG_ARCH))
+# Some linkers may have trouble with this order. Put arch first if
+# your linker cannot use linker scripts or is limited in other ways.
 obj-y = $(addprefix core/,$(core-y)) \
 	  $(addprefix $(arch)/,$(arch-y))
 scm-y = $(addprefix $(arch)/,$(stdlib-y))
