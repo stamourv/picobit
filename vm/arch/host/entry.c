@@ -5,7 +5,7 @@
 #include <dispatch.h>
 #include <gc.h>
 
-uint8 ram_mem[0x8000] = {0}, rom_mem[ROM_BYTES] = {0};
+uint8 ram_mem[RAM_BYTES + VEC_BYTES] = {0}, rom_mem[ROM_BYTES] = {0};
 
 void error (char *prim, char *msg)
 {
