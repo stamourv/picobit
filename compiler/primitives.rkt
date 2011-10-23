@@ -35,7 +35,7 @@
     (make-prc #f '() '() #f #f)) ; parent children params rest? entry-label
   (define ids     (build-list nargs (lambda (x) (gensym))))
   (define new-env (env-extend global-env ids r))
-  (define args    (for/list ([id ids]) (env-lookup new-env id)))
+  (define args    (for/list ([id (in-list ids)]) (env-lookup new-env id)))
   (define op      (create-ref prim-var))
   (define body    (make-call r (cons op (map create-ref args))))
   (fix-children-parent! body)
