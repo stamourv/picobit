@@ -81,7 +81,8 @@
                      [params    (map var-id params)])
                  (cond [(equal? inside-args params)
                         ;; we can replace orig-op with inside-op
-                        (set-ref-var! orig-op inside-op)]
+                        (set-ref-var! orig-op inside-op)
+                        (inline-eta! node)] ; maybe there's more to do
                        [else (unmatch)]))
                (unmatch))]
           [_ (unmatch)])]
