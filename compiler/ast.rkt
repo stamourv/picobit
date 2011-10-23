@@ -1,7 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require racket/list) ;; take
+(require syntax/parse)
 (require "utilities.rkt" "env.rkt")
 
 ;; Syntax-tree node representation.
@@ -25,20 +25,17 @@
 (define-struct (seq  node) ())   ; children: (body ...)
 
 
+;; parsing helpers
 (define (extract-ids pattern)
-  (cond [(pair? pattern)
-         (cons (car pattern) (extract-ids (cdr pattern)))]
-        [(symbol? pattern)
-         (cons pattern '())]
-        [else
-         '()]))
-
+  (syntax-parse pattern
+    [(x:identifier ...)                #'(x ...)]
+    [(x:identifier ... . y:identifier) #'(x ... y)]))
 (define (has-rest-param? pattern)
-  (if (pair? pattern)
-      (has-rest-param? (cdr pattern))
-      (symbol? pattern)))
+  (syntax-parse pattern
+    [(x:identifier ...)                #f]
+    [(x:identifier ... . y:identifier) #t]))
 
-;; helpers
+;; AST construction helpers
 (define (create-ref v)
   (define r (make-ref #f '() v)) ; parent needs to be set by caller
   (set-var-refs! v (cons r (var-refs v)))

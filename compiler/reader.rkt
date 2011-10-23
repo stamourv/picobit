@@ -62,7 +62,6 @@
     (define library
       #`(#,@(read-lib "library.scm")       ; architecture-independent
          #,@(read-lib "gen.library.scm"))) ; architecture-dependent
-    (syntax->datum
-     (expand-includes
-      #`(#,@library
-         #,@(read-all-syntax read-syntax port))))))
+    (expand-includes
+     #`(#,@library
+        #,@(read-all-syntax read-syntax port)))))
