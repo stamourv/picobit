@@ -7,7 +7,7 @@
 ;; Environment representation.
 
 (define-struct var
-  (id
+  (id ; identifier?
    global?
    (refs #:mutable)
    (sets #:mutable)
@@ -15,10 +15,6 @@
    (needed? #:mutable)
    primitive)
   #:transparent)
-(define (make-primitive-var id prim)
-  (make-var id #t '() '() '() #f prim))
-(define (make-global-var    id def)
-  (make-var id #t '() '() (list def) #f #f))
 
 (define-struct primitive
   (nargs
@@ -27,22 +23,34 @@
    unspecified-result?)
   #:transparent)
 
+(define/contract (make-primitive-var id prim)
+  (identifier? primitive? . -> . var?)
+  (make-var id #t '() '() '() #f prim))
+(define/contract (make-global-var    id def)
+  (identifier? any/c      . -> . var?)
+  (make-var id #t '() '() (list def) #f #f))
+
+(define (var-bare-id v) (syntax->datum (var-id v))) ; for code-generation
+
+
 (define allow-forward-references? (make-parameter #t))
 
-(define/contract (env-lookup env id) ((mlistof var?) symbol? . -> . var?)
+(define/contract (env-lookup env id) ((mlistof var?) identifier? . -> . var?)
   (or (for/first ([b (in-mlist env)]
-                  #:when (eq? (var-id b) id))
+                  #:when (eq? (syntax->datum (var-id b)) ;; TODO free-identifier=?
+                              (syntax->datum id)))
         b)
       ;; We didn't find it. If reasonable to do so, add it to the env.
       ;; This makes it possible to have forward references at the top level.
       (let ([x (make-var id #t '() '() '() #f #f)])
         (unless (allow-forward-references?)
-          (compiler-error "variable referenced before its definition:" id))
+          (compiler-error "variable referenced before its definition:"
+                          (syntax->datum id)))
         (mappend! env (mlist x))
         x)))
 
 (define/contract (env-extend env ids def)
-  ((mlistof var?) (listof symbol?) any/c . -> . (mlistof var?))
+  ((mlistof var?) (listof identifier?) any/c . -> . (mlistof var?))
   (mappend (list->mlist
             (map (lambda (id)
                    (make-var id #f '() '() (list def) #f #f))

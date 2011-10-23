@@ -14,12 +14,12 @@
          (comp-prc rhs #f ctx)
          (if (var-needed? var)
              (let ([ctx2 (comp-push rhs ctx)])
-               (gen-set-global (var-id var) ctx2))
+               (gen-set-global (var-bare-id var) ctx2))
              (comp-none rhs ctx)))]
     [(set _ `(,rhs) var)
      (if (var-needed? var)
          (let ((ctx2 (comp-push rhs ctx)))
-           (gen-set-global (var-id var) ctx2))
+           (gen-set-global (var-bare-id var) ctx2))
          (comp-none rhs ctx))]
     [(? if*? node)
      (comp-if node 'none ctx)]
@@ -49,15 +49,15 @@
      (gen-push-constant val ctx)]
     [(ref _ '() var)
      (cond [(not (var-global? var))
-            (gen-push-local-var (var-id var) ctx)]
+            (gen-push-local-var (var-bare-id var) ctx)]
            [(not (null? (var-defs var)))
             (define val (child1 (car (var-defs var))))
             (if (and (not (mutable-var? var))
                      (cst? val)) ; immutable global, counted as cst
                 (gen-push-constant (cst-val val) ctx)
-                (gen-push-global   (var-id  var) ctx))]
+                (gen-push-global   (var-bare-id  var) ctx))]
            [else
-            (compiler-error "undefined variable:" (var-id var))])]
+            (compiler-error "undefined variable:" (var-bare-id var))])]
     [(or (? def? node) (? set? node))
      (gen-push-unspecified (comp-none node ctx))]
     [(? if*? node)
@@ -176,8 +176,8 @@
 (define (prc->env prc)
   (make-env
    (let ([params (prc-params prc)])
-     (make-stack (length params) (map var-id params)))
-   (map var-id (non-global-fv prc))))
+     (make-stack (length params) (map var-bare-id params)))
+   (map var-bare-id (non-global-fv prc))))
 
 (define (comp-call node reason orig-ctx)
   (match node
@@ -192,7 +192,7 @@
      (match op
        
        [(ref _ '() (? var-primitive var)) ; primitive call
-        (define id         (var-id var))
+        (define id         (var-bare-id var))
         (define primitive  (var-primitive var))
         (define prim-nargs (primitive-nargs primitive))
         (define result-ctx

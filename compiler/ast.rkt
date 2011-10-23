@@ -27,9 +27,10 @@
 
 ;; parsing helpers
 (define (extract-ids pattern)
-  (syntax-parse pattern
-    [(x:identifier ...)                #'(x ...)]
-    [(x:identifier ... . y:identifier) #'(x ... y)]))
+  (syntax->list
+   (syntax-parse pattern
+     [(x:identifier ...)                #'(x ...)]
+     [(x:identifier ... . y:identifier) #'(x ... y)])))
 (define (has-rest-param? pattern)
   (syntax-parse pattern
     [(x:identifier ...)                #f]

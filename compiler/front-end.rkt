@@ -10,13 +10,16 @@
 
 (define (adjust-unmutable-references! node)
   (match node
-    [(call parent `(,(ref _ '() (app var-id '#%unbox))
+    [(call parent `(,(ref _ '() var)
                     ,(and child (ref _ '() (? immutable-var? v)))))
-     (set-node-parent! child parent)
-     (when parent
-       (set-node-children! parent (for/list ([c (node-children parent)])
-                                    (if (eq? c node) child c))))
-     child]
+     (=> fail!)
+     (cond [(eq? (syntax->datum (var-id var)) '#%unbox) ;; TODO check better
+            (set-node-parent! child parent)
+            (when parent
+              (set-node-children! parent (for/list ([c (node-children parent)])
+                                           (if (eq? c node) child c))))
+            child]
+           [else (fail!)])]
     [_
      (for-each adjust-unmutable-references! (node-children node))
      node]))

@@ -11,11 +11,11 @@
          val
          (list 'quote val))]
     [(ref _ '() var)
-     (var-id var)]
+     (var-bare-id var)]
     [(def _ `(,rhs) var)
-     (list 'define (var-id var) (node->expr rhs))]
+     (list 'define (var-bare-id var) (node->expr rhs))]
     [(set _ `(,rhs) var)
-     (list 'set!   (var-id var) (node->expr rhs))]
+     (list 'set!   (var-bare-id var) (node->expr rhs))]
     [(if* _ `(,tst ,thn ,els))
      (list 'if (node->expr tst) (node->expr thn) (node->expr els))]
     [(prc _ `(,body) params rest? entry-label)
@@ -24,10 +24,10 @@
               '()]
              [(null? (cdr params))
               (if rest?
-                  (var-id (car params))
-                  (list (var-id (car params))))]
+                  (var-bare-id (car params))
+                  (list (var-bare-id (car params))))]
              [else
-              (cons (var-id (car params))
+              (cons (var-bare-id (car params))
                     (build-pattern (cdr params) rest?))]))
      `(lambda ,(build-pattern params rest?)
         ,@(if (seq? body)

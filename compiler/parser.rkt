@@ -41,7 +41,7 @@
      (list (parse 'value expr env))]))
 
 (define (parse-define var val env [forward-references? #t])
-  (let ([var2 (env-lookup env (syntax->datum var))]) ;; TODO use identifiers in env
+  (let ([var2 (env-lookup env var)])
     (parameterize ([allow-forward-references? forward-references?])
       (let* ([val2 (parse 'value val env)]
              [r    (make-def #f (list val2) var2)])
@@ -55,9 +55,9 @@
      #:when (self-eval? (syntax->datum #'expr))
      (make-cst #f '() (syntax->datum #'expr))]
     [expr:identifier
-     (let ([expr (syntax->datum #'expr)]) ;; TODO
+     (let ()
        (define var
-         (let* ([v    (env-lookup env expr)]
+         (let* ([v    (env-lookup env #'expr)]
                 [prim (var-primitive v)])
            (if (and prim (not operator-position?))
                ;; We eta-expand any primitive used in a higher-order fashion.
@@ -73,17 +73,17 @@
     [(set! lhs rhs)
      ;; Again, hack.
      #:when (eq? (syntax->datum #'set!) 'set!)
-     (let ([var (env-lookup env (syntax->datum #'lhs))] ;; TODO
+     (let ([var (env-lookup env #'lhs)]
            [val (parse 'value #'rhs env)])
        (when (var-primitive var)
-         (compiler-error "cannot mutate primitive" (var-id var)))
+         (compiler-error "cannot mutate primitive" (var-bare-id var)))
        (if (var-global? var)
            (let ([r (make-set #f (list val) var)])
              (fix-children-parent! r)
              (set-var-sets! var (cons r (var-sets var)))
              r)
            (let* ([ref  (create-ref var)]
-                  [bs   (create-ref (env-lookup env '#%box-set!))]
+                  [bs   (create-ref (env-lookup env #'#%box-set!))]
                   [r    (make-call #f `(,bs ,ref ,val))])
              (fix-children-parent! r)
              (set-var-sets! var (cons r (var-sets var)))
@@ -126,7 +126,7 @@
                env)])]
     [(lambda* pattern body* ...)
      #:when (eq? (syntax->datum #'lambda*) 'lambda)
-     (let* ([ids (syntax->datum (extract-ids #'pattern))] ;; TODO
+     (let* ([ids (extract-ids #'pattern)]
             ;; parent children params rest? entry-label
             [r (make-prc #f '() #f (has-rest-param? #'pattern) #f)]
             [new-env (env-extend env ids r)]
@@ -151,9 +151,7 @@
                        r
                        (cons prc
                              (map (lambda (id)
-                                    (parse 'value
-                                           #`(#%box #,(datum->syntax #'here id)) ;; TODO
-                                           tmp-env))
+                                    (parse 'value #`(#%box #,id) tmp-env))
                                   new-vars)))])
                 ;; (lambda (a b) (set! a b))
                 ;; => (lambda (_a b) ((lambda (a) (box-set! a b)) (box _a)))
