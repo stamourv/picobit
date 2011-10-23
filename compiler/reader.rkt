@@ -1,7 +1,7 @@
 #lang racket
 
-(require (only-in unstable/port read-all)
-         racket/runtime-path
+(require (only-in unstable/port read-all-syntax)
+         racket/runtime-path unstable/syntax syntax/parse
          srfi/4)
 
 (provide read-program)
@@ -39,13 +39,18 @@
       (read-u8vector port)])))
 
 (define (expand-includes exprs)
-  (map (lambda (e)
-         (if (eq? (car e) 'include)
-             (cons 'begin
-                   (expand-includes
-                    (with-input-from-file (cadr e) read-all)))
-             e))
-       exprs))
+  #`(#,@(syntax-map
+         (syntax-parser
+           ;; This is a hack. Eventually, we should have the Racket expander
+           ;; take care of includes.
+           [(include file)
+            #:when (eq? (syntax->datum #'include) 'include)
+            #`(begin
+                #,@(expand-includes
+                    (with-input-from-file (syntax->datum #'file)
+                      read-all-syntax)))]
+           [e #'e])
+         exprs)))
 
 (define-runtime-path compiler-dir ".")
 
@@ -53,8 +58,11 @@
   (parameterize ([current-readtable u8vector-readtable])
     (define (read-lib f)
       (with-input-from-file (build-path compiler-dir f)
-        read-all))
+        read-all-syntax))
     (define library
-      (append (read-lib "library.scm")       ; architecture-independent
-              (read-lib "gen.library.scm"))) ; architecture-dependent
-    (expand-includes (append library (read-all read port)))))
+      #`(#,@(read-lib "library.scm")       ; architecture-independent
+         #,@(read-lib "gen.library.scm"))) ; architecture-dependent
+    (syntax->datum
+     (expand-includes
+      #`(#,@library
+         #,@(read-all-syntax read-syntax port))))))
