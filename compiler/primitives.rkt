@@ -36,15 +36,9 @@
   (define ids     (build-list nargs (lambda (x) (gensym))))
   (define new-env (env-extend global-env ids r))
   (define args    (for/list ([id ids]) (env-lookup new-env id)))
-  (define op      (make-ref #f '() prim-var))
-  (define body
-    (make-call r
-               (cons op
-                     (for/list ([var args])
-                       (define ref (make-ref #f '() var))
-                       (set-var-refs! var (cons ref (var-refs var)))
-                       ref))))
-  (for-each (lambda (x) (set-node-parent! x body)) (node-children body))
+  (define op      (create-ref prim-var))
+  (define body    (make-call r (cons op (map create-ref args))))
+  (fix-children-parent! body)
   (set-prc-params!    r args)
   (set-node-children! r (list body))
   (define eta-id  (gensym)) ; hidden. you need to know it to get it

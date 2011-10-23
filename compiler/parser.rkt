@@ -7,9 +7,9 @@
   (define exprs
     (append extra-code-env
             (parse-top-list (append lst '((#%halt))) env)))
-  (let ([r (make-seq #f exprs)])
-    (for ([x (in-list exprs)]) (set-node-parent! x r))
-    r))
+  (define r (make-seq #f exprs))
+  (fix-children-parent! r)
+  r)
 
 (define (parse-top-list lst env)
   (append-map (lambda (e) (parse-top e env)) lst))
@@ -35,7 +35,7 @@
     (parameterize ([allow-forward-references? forward-references?])
       (let* ([val2 (parse 'value val env)]
              [r    (make-def #f (list val2) var2)])
-        (set-node-parent! val2 r)
+        (fix-children-parent! r)
         (set-var-defs! var2 (cons r (var-defs var2)))
         (list r)))))
 
@@ -51,13 +51,11 @@
              ;; We eta-expand any primitive used in a higher-order fashion.
              (primitive-eta-expansion prim)
              v)))
-     (define r (make-ref #f '() var))
-     (set-var-refs! var (cons r (var-refs var)))
+     (define r (create-ref var))
      (if (not (var-global? var))
          (let* ([unbox (parse 'value '#%unbox env)]
                 [app (make-call #f (list unbox r))])
-           (set-node-parent! r app)
-           (set-node-parent! unbox app)
+           (fix-children-parent! app)
            app)
          r)]
     [`(set! ,lhs ,rhs)
@@ -66,16 +64,14 @@
        (when (var-primitive var)
          (compiler-error "cannot mutate primitive" (var-id var)))
        (if (var-global? var)
-           (let ([r   (make-set #f (list val) var)])
-             (set-node-parent! val r)
+           (let ([r (make-set #f (list val) var)])
+             (fix-children-parent! r)
              (set-var-sets! var (cons r (var-sets var)))
              r)
-           (let* ([ref  (make-ref #f '() var)]
-                  [bs   (make-ref #f '() (env-lookup env '#%box-set!))]
+           (let* ([ref  (create-ref var)]
+                  [bs   (create-ref (env-lookup env '#%box-set!))]
                   [r    (make-call #f `(,bs ,ref ,val))])
-             (set-node-parent! val r)
-             (set-node-parent! ref r)
-             (set-node-parent! bs r)
+             (fix-children-parent! r)
              (set-var-sets! var (cons r (var-sets var)))
              r)))]
     [`(quote ,datum)
@@ -87,9 +83,7 @@
                    (make-cst #f '() #f)
                    (parse use (cadddr expr) env))]
             [r (make-if* #f (list a b c))])
-       (set-node-parent! a r)
-       (set-node-parent! b r)
-       (set-node-parent! c r)
+       (fix-children-parent! r)
        r)]
     [`(cond . ,body) ; should eventually be a macro
      (match body
@@ -126,7 +120,7 @@
                                (map (lambda (id) (env-lookup new-env id))
                                     ids))
               (set-node-children! r (list body))
-              (set-node-parent! body r)
+              (fix-children-parent! r)
               r]
              [else
               (let* ([prc (make-prc #f (list body) mut-vars #f #f)]
@@ -145,14 +139,12 @@
                 ;; => (lambda (_a b) ((lambda (a) (box-set! a b)) (box _a)))
                 (for-each (lambda (var) (set-var-defs! var (list prc)))
                           mut-vars)
-                (for-each (lambda (n) (set-node-parent! n app))
-                          (cdr (node-children app)))
-                (set-node-parent! prc app)
+                (fix-children-parent! app)
                 (set-prc-params! r
                                  (map (lambda (id) (env-lookup tmp-env id))
                                       ids))
                 (set-node-children! r (list app))
-                (set-node-parent! body prc)
+                (fix-children-parent! prc)
                 r)]))]
     [`(letrec ((,ks ,vs) ...) . ,body)
      (parse use
@@ -164,7 +156,7 @@
     [`(begin . ,forms)
      (let* ([exprs (map (lambda (x) (parse 'value x env)) forms)]
             [r     (make-seq #f exprs)])
-       (for-each (lambda (x) (set-node-parent! x r)) exprs)
+       (fix-children-parent! r)
        r)]
     [`(let ,(? symbol? id) ((,ks ,vs) ...) . ,body) ; named let
      (parse use
@@ -214,7 +206,7 @@
              (for/list ([e (in-list args)])
                (parse 'value e env))))
      (define r (make-call #f exprs))
-     (for-each (lambda (x) (set-node-parent! x r)) exprs)
+     (fix-children-parent! r)
      r]
     [_
      (compiler-error "unknown expression" expr)]))

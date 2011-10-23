@@ -37,3 +37,11 @@
   (if (pair? pattern)
       (has-rest-param? (cdr pattern))
       (symbol? pattern)))
+
+;; helpers
+(define (create-ref v)
+  (define r (make-ref #f '() v)) ; parent needs to be set by caller
+  (set-var-refs! v (cons r (var-refs v)))
+  r)
+(define (fix-children-parent! p)
+  (for-each (lambda (x) (set-node-parent! x p)) (node-children p)))
