@@ -32,13 +32,15 @@
 
 (define (var-bare-id v) (syntax->datum (var-id v))) ; for code-generation
 
+(define (var=? x y) (eq? (syntax->datum x) (syntax->datum y)))
+;; TODO use free-identifier=?
+
 
 (define allow-forward-references? (make-parameter #t))
 
 (define/contract (env-lookup env id) ((mlistof var?) identifier? . -> . var?)
   (or (for/first ([b (in-mlist env)]
-                  #:when (eq? (syntax->datum (var-id b)) ;; TODO free-identifier=?
-                              (syntax->datum id)))
+                  #:when (var=? (var-id b) id))
         b)
       ;; We didn't find it. If reasonable to do so, add it to the env.
       ;; This makes it possible to have forward references at the top level.
