@@ -21,12 +21,14 @@
            [input    (path-replace-suffix file ".input")])
       (test-suite
        file-str
-       (begin (test-case "no expected file"
-                         (check-true (file-exists? expected)))
-              (when (file-exists? expected)
-                (f file-str hex expected input))
-              (when (file-exists? hex)
-                (delete-file hex)))))))
+       (begin
+         ;; (displayln file)
+         (test-case "no expected file"
+                    (check-true (file-exists? expected)))
+         (when (file-exists? expected)
+           (f file-str hex expected input))
+         (when (file-exists? hex)
+           (delete-file hex)))))))
 
 (define (run-succeed file)
   (run-one
