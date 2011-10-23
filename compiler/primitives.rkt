@@ -47,7 +47,11 @@
   (for-each (lambda (x) (set-node-parent! x body)) (node-children body))
   (set-prc-params!    r args)
   (set-node-children! r (list body))
-  r)
+  (define eta-id  (gensym)) ; hidden. you need to know it to get it
+  (define eta-var (make-var eta-id #t '() '() (list r) #f #f))
+  (define def     (make-def #f (list r) eta-var))
+  (add-extra-code def)
+  eta-var)
 
 (include "gen.primitives.rkt")
 

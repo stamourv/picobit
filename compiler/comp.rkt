@@ -50,10 +50,6 @@
     [(ref _ '() var)
      (cond [(not (var-global? var))
             (gen-push-local-var (var-id var) ctx)]
-           ;; primitive used in a higher-order fashion, eta-expand
-           [(var-primitive var) =>
-            (lambda (prim)
-              (comp-push (primitive-eta-expansion prim) ctx))]
            [(not (null? (var-defs var)))
             (define val (child1 (car (var-defs var))))
             (if (and (not (mutable-var? var))

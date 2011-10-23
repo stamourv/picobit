@@ -4,7 +4,9 @@
 (require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt")
 
 (define (parse-program lst env)
-  (define exprs (parse-top-list (append lst '((#%halt))) env))
+  (define exprs
+    (append extra-code-env
+            (parse-top-list (append lst '((#%halt))) env)))
   (let ([r (make-seq #f exprs)])
     (for ([x (in-list exprs)]) (set-node-parent! x r))
     r))
@@ -37,21 +39,27 @@
         (set-var-defs! var2 (cons r (var-defs var2)))
         (list r)))))
 
-(define (parse use expr env)
+(define (parse use expr env [operator-position? #f])
   (match expr
     [(? self-eval? expr)
      (make-cst #f '() expr)]
     [(? symbol? expr)
-     (let* ([var (env-lookup env expr)]
-            [r   (make-ref #f '() var)])
-       (set-var-refs! var (cons r (var-refs var)))
-       (if (not (var-global? var))
-           (let* ([unbox (parse 'value '#%unbox env)]
-                  [app (make-call #f (list unbox r))])
-             (set-node-parent! r app)
-             (set-node-parent! unbox app)
-             app)
-           r))]
+     (define var
+       (let* ([v    (env-lookup env expr)]
+              [prim (var-primitive v)])
+         (if (and prim (not operator-position?))
+             ;; We eta-expand any primitive used in a higher-order fashion.
+             (primitive-eta-expansion prim)
+             v)))
+     (define r (make-ref #f '() var))
+     (set-var-refs! var (cons r (var-refs var)))
+     (if (not (var-global? var))
+         (let* ([unbox (parse 'value '#%unbox env)]
+                [app (make-call #f (list unbox r))])
+           (set-node-parent! r app)
+           (set-node-parent! unbox app)
+           app)
+         r)]
     [`(set! ,lhs ,rhs)
      (let ([var (env-lookup env lhs)]
            [val (parse 'value rhs env)])
@@ -198,11 +206,14 @@
          (compiler-error "the compiler does not implement the special form"
                          (car expr))
          (fail!))]
-    [(? list? expr) ; call
-     (let* ([exprs (map (lambda (x) (parse 'value x env)) expr)]
-            [r     (make-call #f exprs)])
-       (for-each (lambda (x) (set-node-parent! x r)) exprs)
-       r)]
+    [`(,op . ,args) ; call
+     (define exprs
+       (cons (parse 'value op env #t) ; in operator position
+             (for/list ([e (in-list args)])
+               (parse 'value e env))))
+     (define r (make-call #f exprs))
+     (for-each (lambda (x) (set-node-parent! x r)) exprs)
+     r]
     [_
      (compiler-error "unknown expression" expr)]))
 
