@@ -63,6 +63,8 @@
     [`(set! ,lhs ,rhs)
      (let ([var (env-lookup env lhs)]
            [val (parse 'value rhs env)])
+       (when (var-primitive var)
+         (compiler-error "cannot mutate primitive" (var-id var)))
        (if (var-global? var)
            (let ([r   (make-set #f (list val) var)])
              (set-node-parent! val r)
