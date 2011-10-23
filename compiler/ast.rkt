@@ -43,3 +43,9 @@
   r)
 (define (fix-children-parent! p)
   (for-each (lambda (x) (set-node-parent! x p)) (node-children p)))
+
+(define (substitute-child! parent old new)
+  (set-node-parent! new parent)
+  (set-node-parent! old #f) ; just to be on the safe side
+  (set-node-children! parent (map (lambda (x) (if (eq? x old) new x))
+                                  (node-children parent))))

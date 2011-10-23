@@ -110,14 +110,12 @@
               ;; if the folding would raise an error, just don't do it, and
               ;; error at runtime
               (call-with-exception-handler
-               (lambda (e) (unmatch))
+               (lambda (e) (unmatch)) ; something went wrong, back off
+               ;; replace the call with the constant
                (lambda ()
                  (define res-val (apply folder (map cst-val args)))
                  (define res     (make-cst p '() res-val))
-                 ;; replace the call with the constant
-                 (set-node-children! p (map (lambda (x)
-                                              (if (eq? x node) res x))
-                                            (node-children p)))))]
+                 (substitute-child! p node res)))]
              [else
               (unmatch)]))]
     [_
