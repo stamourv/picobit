@@ -10,14 +10,12 @@
     r))
 
 (define (parse-top-list lst env)
-  (if (pair? lst)
-      (append (parse-top (car lst) env)
-              (parse-top-list (cdr lst) env))
-      '()))
+  (append-map (lambda (e) (parse-top e env)) lst))
 
+;; returns a list of parsed expressions
 (define (parse-top expr env)
   (match expr
-    [(cons 'begin body)
+    [(cons 'begin body) ; splicing begins
      (parse-top-list body env)]
     [(list-rest 'define (list-rest var params) body)
      (parse-define var `(lambda ,params ,@body) env)]
