@@ -3,7 +3,7 @@
 (require racket/mpair unstable/sequence)
 (require srfi/4)
 (require "env.rkt"
-         "parser.rkt" "front-end.rkt") ; to build the eta-expansions
+         "ast.rkt" "front-end.rkt") ; to build the eta-expansions
 
 ;-----------------------------------------------------------------------------
 
@@ -38,11 +38,24 @@
              (dict-set primitive-encodings 'name encoding)))]))
 
 (define (create-eta-expansion name nargs)
-  (define params (build-list nargs (lambda (x) (gensym))))
-  (define node
-    (parse #f `(lambda ,params (,name ,@params)) global-env))
-  (adjust-unmutable-references! node)
-  node)
+  ;; We create AST nodes directly. Looks a lot like the parsing of lambdas.
+  (define r
+    (make-prc #f '() '() #f #f)) ; parent children params rest? entry-label
+  (define ids     (build-list nargs (lambda (x) (gensym))))
+  (define new-env (env-extend global-env ids r))
+  (define args    (for/list ([id ids]) (env-lookup new-env id)))
+  (define op      (make-ref #f '() (env-lookup new-env name)))
+  (define body
+    (make-call r
+               (cons op
+                     (for/list ([var args])
+                       (define ref (make-ref #f '() var))
+                       (set-var-refs! var (cons ref (var-refs var)))
+                       ref))))
+  (for-each (lambda (x) (set-node-parent! x body)) (node-children body))
+  (set-prc-params!    r args)
+  (set-node-children! r (list body))
+  r)
 
 (include "gen.primitives.rkt")
 

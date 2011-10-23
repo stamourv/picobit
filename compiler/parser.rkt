@@ -1,6 +1,6 @@
 #lang racket
 
-(provide parse-program parse)
+(provide parse-program)
 (require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt")
 
 (define (parse-program lst env)
