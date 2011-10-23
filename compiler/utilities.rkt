@@ -6,9 +6,15 @@
 
 (define compiler-error
   (lambda (msg . others)
-    (display "*** PICOBIT ERROR -- ")
-    (display msg)
-    (for-each (lambda (x) (display " ") (write x)) others)
+    (printf "*** PICOBIT ERROR -- ~a" msg)
+    (for ([x (in-list others)])
+      (printf " ~a"
+              (if (identifier? x)
+                  (format "~a at ~a:~a"
+                          (syntax->datum x)
+                          (syntax-line   x)
+                          (syntax-column x))
+                  (format "~s" x))))
     (newline)
     (exit 1)))
 

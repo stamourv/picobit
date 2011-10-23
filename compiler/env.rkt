@@ -44,8 +44,7 @@
       ;; This makes it possible to have forward references at the top level.
       (let ([x (make-var id #t '() '() '() #f #f)])
         (unless (allow-forward-references?)
-          (compiler-error "variable referenced before its definition:"
-                          (syntax->datum id)))
+          (compiler-error "variable referenced before its definition:" id))
         (mappend! env (mlist x))
         x)))
 

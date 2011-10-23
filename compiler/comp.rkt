@@ -57,7 +57,7 @@
                 (gen-push-constant (cst-val val) ctx)
                 (gen-push-global   (var-bare-id  var) ctx))]
            [else
-            (compiler-error "undefined variable:" (var-bare-id var))])]
+            (compiler-error "undefined variable:" (var-id var))])]
     [(or (? def? node) (? set? node))
      (gen-push-unspecified (comp-none node ctx))]
     [(? if*? node)
