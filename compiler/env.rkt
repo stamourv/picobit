@@ -15,6 +15,10 @@
    (needed? #:mutable)
    primitive)
   #:transparent)
+(define (make-primitive-var id prim)
+  (make-var id #t '() '() '() #f prim))
+(define (make-global-var    id def)
+  (make-var id #t '() '() (list def) #f #f))
 
 (define-struct primitive
   (nargs

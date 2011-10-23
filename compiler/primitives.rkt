@@ -22,7 +22,7 @@
      (define-primitive name nargs encoding #:uns-res? #t)]
     [(define-primitive name nargs encoding #:uns-res? uns?)
      (let* ([prim (make-primitive nargs #f #f uns?)]
-            [var  (make-var 'name #t '() '() '() #f prim)])
+            [var  (make-primitive-var 'name prim)])
        ;; eta-expansion, for higher-order uses
        (set-primitive-eta-expansion! prim (create-eta-expansion var nargs))
        (set! global-env (mcons var global-env))
@@ -42,7 +42,7 @@
   (set-prc-params!    r args)
   (set-node-children! r (list body))
   (define eta-id  (gensym)) ; hidden. you need to know it to get it
-  (define eta-var (make-var eta-id #t '() '() (list r) #f #f))
+  (define eta-var (make-global-var eta-id r))
   (define def     (make-def #f (list r) eta-var))
   (add-extra-code def)
   eta-var)
