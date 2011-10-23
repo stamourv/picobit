@@ -21,30 +21,22 @@
     [(define-primitive name nargs encoding #:unspecified-result)
      (define-primitive name nargs encoding #:uns-res? #t)]
     [(define-primitive name nargs encoding #:uns-res? uns?)
-     (let ([prim (make-var
-                  'name #t '() '() '() #f
-                  (make-primitive
-                   nargs #f
-                   ;; eta-expansion, for higher-order uses, created lazily, to
-                   ;; avoid parsing before all the primitives are defined
-                   (lambda ()
-                     (define res #f)
-                     (or res
-                         (begin (set! res (create-eta-expansion 'name nargs))
-                                res)))
-              uns?))])
-       (set! global-env (mcons prim global-env))
+     (let* ([prim (make-primitive nargs #f #f uns?)]
+            [var  (make-var 'name #t '() '() '() #f prim)])
+       ;; eta-expansion, for higher-order uses
+       (set-primitive-eta-expansion! prim (create-eta-expansion var nargs))
+       (set! global-env (mcons var global-env))
        (set! primitive-encodings
              (dict-set primitive-encodings 'name encoding)))]))
 
-(define (create-eta-expansion name nargs)
+(define (create-eta-expansion prim-var nargs)
   ;; We create AST nodes directly. Looks a lot like the parsing of lambdas.
   (define r
     (make-prc #f '() '() #f #f)) ; parent children params rest? entry-label
   (define ids     (build-list nargs (lambda (x) (gensym))))
   (define new-env (env-extend global-env ids r))
   (define args    (for/list ([id ids]) (env-lookup new-env id)))
-  (define op      (make-ref #f '() (env-lookup new-env name)))
+  (define op      (make-ref #f '() prim-var))
   (define body
     (make-call r
                (cons op
