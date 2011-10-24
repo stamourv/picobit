@@ -1,7 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require syntax/parse)
+(require syntax/parse unstable/match)
 (require "utilities.rkt" "env.rkt")
 
 ;; Syntax-tree node representation.
@@ -18,7 +18,7 @@
 (define-struct (set node) (var)) ; children: (rhs)
 (define-struct (if* node) ())    ; children: (test then else)
 (define-struct (prc node)        ; children: (body)
-  ((params  #:mutable)
+  ((params  #:mutable) ; listof var?
    rest?
    (entry-label #:mutable)))
 (define-struct (call node) ())   ; children: (op . args)
@@ -49,3 +49,24 @@
   (set-node-parent! old #f) ; just to be on the safe side
   (set-node-children! parent (map (lambda (x) (if (eq? x old) new x))
                                   (node-children parent))))
+
+;; Capture-avoiding substitution.
+(define (substitute! e old new)
+  (define (do-it) (substitute-child! (node-parent e) e new))
+  (define (recur) (for ([c (in-list (node-children e))])
+                    (substitute! c old new)))
+  (match e
+    [(and (node p cs) (== old eq?)) ; eq? is used because of cycles
+     (do-it)]
+    [(ref p cs var) (=> fail!)
+     ;; variable references don't _need_ to be eq? to be the same
+     (if (and (ref? old) (var=? var (ref-var old)))
+         (do-it)
+         (fail!))]
+    [(prc p cs params rest? entry) ; the eq? case has already been handled
+     (define shadowed?
+       (and (ref? old) ; if it's not a ref, we use eq?, so no danger
+            (for/or ([p (in-list params)]) (var=? p (ref-var old)))))
+     (when (not shadowed?) (recur))]
+    [(node p cs)
+     (recur)]))

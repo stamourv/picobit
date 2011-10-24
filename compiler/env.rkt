@@ -32,6 +32,8 @@
 
 (define (var-bare-id v) (syntax->datum (var-id v))) ; for code-generation
 
+;; WARNING: currently is only symbol equality, so is defeater by shadowing.
+;; Once we plug in Racket's expander, we'll be able to do better.
 (define (var=? x y) (eq? (syntax->datum x) (syntax->datum y)))
 ;; TODO use free-identifier=?
 
