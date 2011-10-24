@@ -86,12 +86,9 @@
                                        inside-args)]
                      [params    (map var-id params)])
                  (cond [(equal? inside-args params)
-                        ;; remove dangling ref
-                        (discard-ref orig-op)
-                        ;; we can replace orig-op's var with inside-var
-                        (set-ref-var!  orig-op inside-var)
-                        (set-var-refs! inside-var
-                                       (cons orig-op (var-refs inside-var)))
+                        ;; we can replace the reference
+                        (define new (create-ref inside-var))
+                        (substitute-child! node orig-op new)
                         ;; maybe there's more to do
                         (inline-eta! node (cons orig-var seen))]
                        [else (unmatch)]))
