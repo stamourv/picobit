@@ -37,7 +37,8 @@
 
 ;; WARNING: currently is only symbol equality, so is defeater by shadowing.
 ;; Once we plug in Racket's expander, we'll be able to do better.
-(define (var=? x y) (eq? (syntax->datum x) (syntax->datum y)))
+(define (var=? x y) (id=? (var-id x)        (var-id y)))
+(define (id=?  x y) (eq?  (syntax->datum x) (syntax->datum y)))
 ;; TODO use free-identifier=?
 
 
@@ -45,7 +46,7 @@
 
 (define/contract (env-lookup env id) ((mlistof var?) identifier? . -> . var?)
   (or (for/first ([b (in-mlist env)]
-                  #:when (var=? (var-id b) id))
+                  #:when (id=? (var-id b) id))
         b)
       ;; We didn't find it. If reasonable to do so, add it to the env.
       ;; This makes it possible to have forward references at the top level.
