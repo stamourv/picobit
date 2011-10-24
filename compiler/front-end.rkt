@@ -133,18 +133,18 @@
   (match expr
     [(ref p cs (? immutable-var? (and var (app var-val (? values val)))))
      (=> fail!)
-     (define (replace-with! new)
+     (define (replace!)
        (set-var-refs! var (remq expr (var-refs var))) ; not a ref anymore
        (unless (node-parent expr) (fail!)) ; no parent, stale node, ignore
-       (substitute-child! p expr (copy-node new)))
+       (substitute-child! p expr (copy-node val))
+       (copy-propagate! p)) ;  there may be more to do, start our parent again
      (match val
        [(ref _ cs new-var)
-        (replace-with! val)
-        (copy-propagate! p)] ; there may be more to do, start our parent again
+        (replace!)]
        [(cst _ cs v)
         ;; constants are ok. even if they're large, they're just a pointer into
         ;; ROM, where the constant would have been anyway (and no duplication)
-        (replace-with! val)]
+        (replace!)]
        [_ (fail!)])] ; anything else would increase code size
     [_
      (for-each copy-propagate! (node-children expr))]))
