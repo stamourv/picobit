@@ -9,13 +9,14 @@ uint8 ram_mem[RAM_BYTES + VEC_BYTES] = {0}, rom_mem[ROM_BYTES] = {0};
 
 void error (char *prim, char *msg)
 {
-	printf ("ERROR: %s: %s\n", prim, msg);
+	fprintf (stderr, "ERROR: %s: %s\n", prim, msg);
 	exit (1);
 }
 
 void type_error (char *prim, char *type)
 {
-	printf ("ERROR: %s: An argument of type %s was expected\n", prim, type);
+	fprintf (stderr, "ERROR: %s: An argument of type %s was expected\n",
+		 prim, type);
 	exit (1);
 }
 

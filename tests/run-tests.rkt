@@ -41,7 +41,8 @@
        (parameterize ([current-input-port  (if (file-exists? input)
                                                (open-input-file input)
                                                (open-input-string ""))]
-                      [current-output-port out])
+                      [current-output-port out]
+                      [current-error-port  out]) ; run-fail-execute nedds that
          (system* "./picobit-vm" hex))
        (test-case "execution"
                   (check-equal? (get-output-string out)
