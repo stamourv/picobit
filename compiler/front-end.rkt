@@ -129,13 +129,14 @@
 
 (provide copy-propagate!)
 
-(define (copy-propagate! node)
-  (match node
+(define (copy-propagate! expr)
+  (match expr
     [(ref p cs (? immutable-var? (and var (app var-val (? values val)))))
      (=> fail!)
      (define (replace-with! new)
-       (set-var-refs! var (remq node (var-refs var))) ; not a ref anymore
-       (substitute-child! p node new))
+       (set-var-refs! var (remq expr (var-refs var))) ; not a ref anymore
+       (unless (node-parent expr) (fail!)) ; no parent, stale node, ignore
+       (substitute-child! p expr (copy-node new)))
      (match val
        [(ref _ cs new-var)
         (replace-with! val)
@@ -146,4 +147,4 @@
         (replace-with! val)]
        [_ (fail!)])] ; anything else would increase code size
     [_
-     (for-each copy-propagate! (node-children node))]))
+     (for-each copy-propagate! (node-children expr))]))
