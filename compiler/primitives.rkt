@@ -7,9 +7,6 @@
 
 ;-----------------------------------------------------------------------------
 
-(provide global-env)
-(define global-env (mlist))
-
 (provide primitive-encodings)
 (define primitive-encodings '())
 
@@ -25,7 +22,8 @@
             [var  (make-primitive-var #'name prim)])
        ;; eta-expansion, for higher-order uses
        (set-primitive-eta-expansion! prim (create-eta-expansion var nargs))
-       (set! global-env (mcons var global-env))
+       ;; we need to set env directly, since we create the variables ourselves
+       (set-global-env! (mcons var global-env))
        (set! primitive-encodings
              (dict-set primitive-encodings 'name encoding)))]))
 

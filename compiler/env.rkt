@@ -6,6 +6,9 @@
 
 ;; Environment representation.
 
+(define global-env (mlist))
+(define (set-global-env! e) (set! global-env e)) ; for primitive generation
+
 (define-struct var
   (id ; identifier?
    global?
