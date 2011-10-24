@@ -58,17 +58,16 @@
 
 ;; Capture-avoiding substitution.
 (define (substitute! e old new)
-  (define (do-it) (substitute-child! (node-parent e) e new))
   (define (recur) (for ([c (in-list (node-children e))])
                     (substitute! c old new)))
   (match e
-    [(and (node p cs) (== old eq?)) ; eq? is used because of cycles
-     (do-it)]
     [(ref p cs var) (=> fail!)
      ;; variable references don't _need_ to be eq? to be the same
      (if (and (ref? old) (var=? var (ref-var old)))
-         (do-it)
+         (substitute-child! p e (copy-node new)) ; maybe multiple old, copy
          (fail!))]
+    [(and (node p cs) (== old eq?)) ; eq? is used because of cycles
+     (substitute-child! p e new)] ; there's only one of e, no need to copy
     [(prc p cs params rest? entry) ; the eq? case has already been handled
      (define shadowed?
        (and (ref? old) ; if it's not a ref, we use eq?, so no danger
@@ -76,3 +75,45 @@
      (when (not shadowed?) (recur))]
     [(node p cs)
      (recur)]))
+
+
+;; Since nodes know their parents, we can't just reuse them directly.
+;; For this reason, this is a deep copy.
+(define (copy-node e)
+  (define new
+    (match e
+      [(cst p cs val) ; no need to copy val
+       (make-cst #f '() val)]
+      [(ref p cs var) ; no need to copy var
+       (create-ref var)] ; registers the reference
+      [(def p cs var) ; only at the top-level, makes no sense to copy
+       (compiler-error "copying the definition of" (var-id var))]
+      [(set p cs var) ; no need to copy var
+       (make-set #f '() var)]
+      [(if* p cs)
+       (make-if* #f '())]
+      [(prc p cs params rest? entry)
+       (define new (make-prc #f '() '() rest? entry))
+       ;; we need to create new parameters, and replace the old ones in body
+       ;; Note: with Racket identifiers being used for variables, we'll need
+       ;; to freshen the new vars, otherwise the new ones will be
+       ;; free-identifier=? with the old ones, and we don't want that!
+       (define (copy-var v) (make-local-var (var-id v) new))
+       (set-prc-params! new (map copy-var params))
+       ;; param substitution below
+       new]
+      [(call p cs)
+       (make-call #f '())]
+      [(seq p cs)
+       (make-seq #f '())]))
+  ;; parent is left #f, caller must set it
+  (set-node-children!   new (map copy-node (node-children e)))
+  (fix-children-parent! new)
+  (when (prc? new) ; do the param substitution in body
+    (for ([o (prc-params e)]
+          [n (prc-params new)])
+      (substitute! (car (node-children new))
+                   (make-ref #f '() o)    ; fake reference, don't register
+                   ;; registration will happen when substitute! calls copy-node
+                   (make-ref #f '() n))))
+  new)

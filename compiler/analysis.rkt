@@ -28,6 +28,8 @@
                           (eq? (child1 parent) r)
                           (= (length (prc-params prc))
                              (- (length (node-children parent)) 1)))))
+                 ;; may point to refs that are not in the program anymore
+                 ;; this makes the analysis conservative, so we're safe
                  (var-refs var))
          prc)))
 
