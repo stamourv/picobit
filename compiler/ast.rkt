@@ -9,8 +9,6 @@
 (define-struct node (parent children) #:mutable #:transparent)
 
 (define (child1 node) (car   (node-children node)))
-(define (child2 node) (cadr  (node-children node)))
-(define (child3 node) (caddr (node-children node)))
 
 ;; If v is defined, return the node corresponding to its value.
 ;; Caller needs to check that v is immutable.
