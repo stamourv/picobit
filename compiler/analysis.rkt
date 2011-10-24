@@ -14,8 +14,7 @@
 
 (define (toplevel-prc? var)
   (and (not (mutable-var? var))
-       (var-def var)
-       (let ([val (child1 (var-def var))])
+       (let ([val (var-val var)])
          (and (prc? val)
               val))))
 

@@ -34,15 +34,12 @@
              ;; globals that obey the following conditions are considered
              ;; to be constants
              (not (and (not (mutable-var? var))
-                       ;; to weed out primitives, which have no definition
-                       (var-def var)
-                       (cst? (child1 (var-def var))))))
+                       ;; below fails if no definition (e.g. primitives)
+                       (cst? (var-val var)))))
     (set-var-needed?! var #t)
-    (define def (var-def var))
-    (when def
-      (let ([val (child1 def)])
-        (when (side-effect-less? val)
-          (mark-needed-global-vars! val))))))
+    (let ([val (var-val var)])
+      (when (and val (side-effect-less? val))
+        (mark-needed-global-vars! val)))))
 
 (define (mark-needed-global-vars! node)
   (match node
@@ -67,11 +64,11 @@
 ;;     => (bar 1)
 (define (inline-eta! node)
   (match node
-    [(call p `(,(and orig-op (ref _ '() (app var-def (? values d))))
+    [(call p `(,(and orig-op (ref _ '() (app var-val (? values val))))
                . ,args))
      (=> unmatch)
-     (match d
-       [(def p `(,(prc _ `(,body) params #f entry)) v)
+     (match val
+       [(prc _ `(,body) params #f entry)
         (match body
           [(seq _ `(,(call p `(,(ref _ '() inside-op) . ,inside-args))))
            (if (andmap ref? inside-args)

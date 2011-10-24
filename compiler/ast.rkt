@@ -12,6 +12,14 @@
 (define (child2 node) (cadr  (node-children node)))
 (define (child3 node) (caddr (node-children node)))
 
+;; If v is defined, return the node corresponding to its value.
+;; Caller needs to check that v is immutable.
+;; Returns #f if something goes wrong.
+(define (var-val v)
+  (define def (var-def v))
+  (and def (child1 def)))
+
+
 (define-struct (cst node) (val))
 (define-struct (ref node) (var) #:mutable)
 (define-struct (def node) (var)) ; children: (rhs)
