@@ -63,9 +63,12 @@
   (match e
     [(ref p cs var) (=> fail!)
      ;; variable references don't _need_ to be eq? to be the same
-     (if (and (ref? old) (var=? var (ref-var old)))
-         (substitute-child! p e (copy-node new)) ; maybe multiple old, copy
-         (fail!))]
+     (cond [(and (ref? old) (var=? var (ref-var old)))
+            (define old-var (ref-var old))
+            ;; discard dangling reference, to avoid losing precision later
+            (set-var-refs! old-var (remq e (var-refs old-var)))
+            (substitute-child! p e (copy-node new))] ; maybe multiple old, copy
+           [else (fail!)])]
     [(and (node p cs) (== old eq?)) ; eq? is used because of cycles
      (substitute-child! p e new)] ; there's only one of e, no need to copy
     [(prc p cs params rest? entry) ; the eq? case has already been handled
