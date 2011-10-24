@@ -14,5 +14,5 @@ clean:
 	cd vm && make clean
 
 test: compiler vm
-	raco make run-tests.rkt
-	racket run-tests.rkt
+	raco make tests/run-tests.rkt
+	racket tests/run-tests.rkt
