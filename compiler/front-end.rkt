@@ -4,6 +4,8 @@
 
 ;; Front-end code transformations.
 
+;; Note: All optimizations should be careful not to increase code size.
+
 ;------------------------------------------------------------------------------
 
 (provide adjust-unmutable-references!)
@@ -122,3 +124,23 @@
               (unmatch)]))]
     [_
      (for-each constant-fold! (node-children node))]))
+
+;-----------------------------------------------------------------------------
+
+(provide copy-propagate!)
+
+(define (copy-propagate! node)
+  (match node
+    [(ref p cs (? immutable-var? (and var (app var-val (? values val)))))
+     (=> fail!)
+     (define (replace-with! new)
+       (set-var-refs! var (remq node (var-refs var))) ; not a ref anymore
+       (substitute-child! p node new))
+     (match val
+       [(cst _ cs v)
+        ;; constants are ok. even if they're large, they're just a pointer into
+        ;; ROM, where the constant would have been anyway (and no duplication)
+        (replace-with! val)]
+       [_ (fail!)])] ; anything else would increase code size
+    [_
+     (for-each copy-propagate! (node-children node))]))

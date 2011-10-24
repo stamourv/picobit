@@ -23,8 +23,11 @@
     (when (show-parsed?)
       (pretty-print (node->expr node)))
     (adjust-unmutable-references! node)
+    ;; done first to expose more left-left-lambdas, help constant prop., etc.
+    (copy-propagate!              node)
     (inline-eta!                  node) ; gives constant folding more to do
     (constant-fold!               node)
+    (copy-propagate!              node) ; again, for cleanup
     (mark-needed-global-vars!     node)
     (when (show-post-front-end?)
       (pretty-print (node->expr node)))
