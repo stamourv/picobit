@@ -12,3 +12,8 @@
 (define b a) ; all 3 globals should be gone
 (define c b)
 (displayln c) ; should be 4
+
+(define aa 5)
+(define (f x)
+  (+ x aa)) ; make sure it inlines inside functions
+(displayln (f 3))
