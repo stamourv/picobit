@@ -4,8 +4,8 @@
 
 (require srfi/4)
 
-(define compiler-error
-  (lambda (msg . others)
+(define (compiler-error msg . others)
+  (parameterize ([current-output-port (current-error-port)])
     (printf "*** PICOBIT ERROR -- ~a" msg)
     (for ([x (in-list others)])
       (printf " ~a"

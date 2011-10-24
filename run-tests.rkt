@@ -37,27 +37,27 @@
      (system* "./picobit" file-str)
      (test-case "compilation" (check-true (file-exists? hex)))
      (when (file-exists? hex)
-       (let ([out (with-output-to-string
-                    (lambda ()
-                      (parameterize
-                          ([current-input-port
-                            (if (file-exists? input)
-                                (open-input-file input)
-                                (open-input-string ""))])
-                        (system* "./picobit-vm" hex))))])
-         (test-case "execution"
-                    (check-equal? out (file->string expected))))))))
+       (define out (open-output-string))
+       (parameterize ([current-input-port  (if (file-exists? input)
+                                               (open-input-file input)
+                                               (open-input-string ""))]
+                      [current-output-port out])
+         (system* "./picobit-vm" hex))
+       (test-case "execution"
+                  (check-equal? (get-output-string out)
+                                (file->string expected)))))))
 
 (define (run-fail-compile file)
   (run-one
    file
    (lambda (file-str hex expected input)
-     (let ([out (with-output-to-string
-                  (lambda ()
-                    (system* "./picobit" file-str)))])
-       (test-case "compilation error"
-                  (check-false (file-exists? hex))
-                  (check-equal? out (file->string expected)))))))
+     (define err (open-output-string))
+     (parameterize ([current-error-port err])
+       (system* "./picobit" file-str))
+     (test-case "compilation error"
+                (check-false (file-exists? hex))
+                (check-equal? (get-output-string err)
+                              (file->string expected))))))
 
 (define (run-fail-execute file) (run-succeed file))
 
