@@ -7,7 +7,7 @@
 (define (parse-program lst env)
   (define exprs
     (append extra-code-env
-            (parse-top-list #`(#,@lst ((#%halt))) env)))
+            (parse-top-list #`(#,@lst (#%halt)) env)))
   (define r (make-seq #f exprs))
   (fix-children-parent! r)
   r)
