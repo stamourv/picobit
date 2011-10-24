@@ -22,10 +22,10 @@
          [node         (parse-program forms global-env)])
     (when (show-parsed?)
       (pretty-print (node->expr node)))
-    (mark-needed-global-vars!     node)
     (adjust-unmutable-references! node)
     (inline-eta!                  node) ; gives constant folding more to do
     (constant-fold!               node)
+    (mark-needed-global-vars!     node)
     (when (show-post-front-end?)
       (pretty-print (node->expr node)))
     (let* ([ctx  (comp-none node (make-init-context))]
