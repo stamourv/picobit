@@ -7,3 +7,8 @@
 (define y 2)
 (displayln y) ; no can do, mutation
 (set! y 1)
+
+(define a 4) ; transsitive chain
+(define b a) ; all 3 globals should be gone
+(define c b)
+(displayln c) ; should be 4

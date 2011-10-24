@@ -137,6 +137,9 @@
        (set-var-refs! var (remq node (var-refs var))) ; not a ref anymore
        (substitute-child! p node new))
      (match val
+       [(ref _ cs new-var)
+        (replace-with! val)
+        (copy-propagate! p)] ; there may be more to do, start our parent again
        [(cst _ cs v)
         ;; constants are ok. even if they're large, they're just a pointer into
         ;; ROM, where the constant would have been anyway (and no duplication)
