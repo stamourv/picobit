@@ -89,8 +89,7 @@
                         ;; we can replace orig-op's var with inside-var
                         (set-ref-var! orig-op inside-var)
                         ;; remove dangling ref
-                        (set-var-refs! orig-var
-                                       (remq orig-op (var-refs orig-var)))
+                        (discard-ref orig-op)
                         ;; maybe there's more to do
                         (inline-eta! node (cons orig-var seen))]
                        [else (unmatch)]))
@@ -141,7 +140,7 @@
     [(ref p cs (? immutable-var? (and var (app var-val (? values val)))))
      (=> fail!)
      (define (replace!)
-       (set-var-refs! var (remq expr (var-refs var))) ; not a ref anymore
+       (discard-ref expr)
        (unless (node-parent expr) (fail!)) ; no parent, stale node, ignore
        (substitute-child! p expr (copy-node val))
        (copy-propagate! p)) ;  there may be more to do, start our parent again

@@ -47,6 +47,12 @@
   (define r (make-ref #f '() v)) ; parent needs to be set by caller
   (set-var-refs! v (cons r (var-refs v)))
   r)
+;; Needs to be called every time we remove a ref from the AST to avoid
+;; dangling references which hurt analysis precision.
+(define (discard-ref r)
+  (define var  (ref-var r))
+  (define refs (var-refs var))
+  (set-var-refs! var (remq r refs)))
 (define (fix-children-parent! p)
   (for-each (lambda (x) (set-node-parent! x p)) (node-children p)))
 
@@ -56,9 +62,7 @@
     (compiler-error "substitute-child!: old is not in children"))
   (set-node-parent! new parent)
   (set-node-parent! old #f) ; just to be on the safe side
-  (when (ref? old) ; remove dangling ref
-    (define var (ref-var old))
-    (set-var-refs! var (remq old (var-refs var))))
+  (when (ref? old) (discard-ref old)) ; remove dangling ref
   (set-node-children! parent (map (lambda (x) (if (eq? x old) new x))
                                   children)))
 
@@ -72,7 +76,7 @@
      (cond [(and (ref? old) (var=? var (ref-var old)))
             (define old-var (ref-var old))
             ;; discard dangling reference, to avoid losing precision later
-            (set-var-refs! old-var (remq e (var-refs old-var)))
+            (discard-ref e)
             (substitute-child! p e (copy-node new))] ; maybe multiple old, copy
            [else (fail!)])]
     [(and (node p cs) (== old eq?)) ; eq? is used because of cycles
