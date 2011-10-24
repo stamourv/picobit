@@ -114,7 +114,7 @@
                (lambda ()
                  (define res-val (apply folder (map cst-val args)))
                  (define res     (make-cst p '() res-val))
-                 (substitute! p node res)))]
+                 (substitute-child! p node res)))]
              [else
               (unmatch)]))]
     [_
