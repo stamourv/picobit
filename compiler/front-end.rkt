@@ -64,7 +64,7 @@
 ;;     => (bar 1)
 (define (inline-eta! node)
   (match node
-    [(call p `(,(and orig-op (ref _ '() (app var-val (? values val))))
+    [(call p `(,(and orig-op (ref _ '() (and orig-var (app var-val val))))
                . ,args))
      (=> unmatch)
      (match val
@@ -80,6 +80,9 @@
                  (cond [(equal? inside-args params)
                         ;; we can replace orig-op with inside-op
                         (set-ref-var! orig-op inside-op)
+                        ;; remove dangling ref
+                        (set-var-refs! orig-var
+                                       (remq orig-op (var-refs orig-var)))
                         (inline-eta! node)] ; maybe there's more to do
                        [else (unmatch)]))
                (unmatch))]

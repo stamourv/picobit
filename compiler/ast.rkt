@@ -53,6 +53,9 @@
 (define (substitute-child! parent old new)
   (set-node-parent! new parent)
   (set-node-parent! old #f) ; just to be on the safe side
+  (when (ref? old) ; remove dangling ref
+    (define var (ref-var old))
+    (set-var-refs! var (remq old (var-refs var))))
   (set-node-children! parent (map (lambda (x) (if (eq? x old) new x))
                                   (node-children parent))))
 
