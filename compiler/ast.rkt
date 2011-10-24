@@ -51,13 +51,16 @@
   (for-each (lambda (x) (set-node-parent! x p)) (node-children p)))
 
 (define (substitute-child! parent old new)
+  (define children (node-children parent))
+  (unless (memq old children)
+    (compiler-error "substitute-child!: old is not in children"))
   (set-node-parent! new parent)
   (set-node-parent! old #f) ; just to be on the safe side
   (when (ref? old) ; remove dangling ref
     (define var (ref-var old))
     (set-var-refs! var (remq old (var-refs var))))
   (set-node-children! parent (map (lambda (x) (if (eq? x old) new x))
-                                  (node-children parent))))
+                                  children)))
 
 ;; Capture-avoiding substitution.
 (define (substitute! e old new)
