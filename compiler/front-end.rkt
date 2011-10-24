@@ -86,10 +86,12 @@
                                        inside-args)]
                      [params    (map var-id params)])
                  (cond [(equal? inside-args params)
-                        ;; we can replace orig-op's var with inside-var
-                        (set-ref-var! orig-op inside-var)
                         ;; remove dangling ref
                         (discard-ref orig-op)
+                        ;; we can replace orig-op's var with inside-var
+                        (set-ref-var!  orig-op inside-var)
+                        (set-var-refs! inside-var
+                                       (cons orig-op (var-refs inside-var)))
                         ;; maybe there's more to do
                         (inline-eta! node (cons orig-var seen))]
                        [else (unmatch)]))
@@ -140,7 +142,6 @@
     [(ref p cs (? immutable-var? (and var (app var-val (? values val)))))
      (=> fail!)
      (define (replace!)
-       (discard-ref expr)
        (unless (node-parent expr) (fail!)) ; no parent, stale node, ignore
        (substitute-child! p expr (copy-node val))
        (copy-propagate! p)) ;  there may be more to do, start our parent again
