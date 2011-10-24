@@ -11,7 +11,7 @@
    global?
    (refs #:mutable)
    (sets #:mutable)
-   (defs #:mutable)
+   (def  #:mutable) ; #f or node
    (needed? #:mutable)
    primitive)
   #:transparent)
@@ -25,10 +25,13 @@
 
 (define/contract (make-primitive-var id prim)
   (identifier? primitive? . -> . var?)
-  (make-var id #t '() '() '() #f prim))
+  (make-var id #t '() '() #f #f prim))
 (define/contract (make-global-var    id def)
   (identifier? any/c      . -> . var?)
-  (make-var id #t '() '() (list def) #f #f))
+  (make-var id #t '() '() def #f #f))
+(define/contract (make-local-var     id def)
+  (identifier? any/c      . -> . var?)
+  (make-var id #f '() '() def #f #f))
 
 (define (var-bare-id v) (syntax->datum (var-id v))) ; for code-generation
 
@@ -46,7 +49,7 @@
         b)
       ;; We didn't find it. If reasonable to do so, add it to the env.
       ;; This makes it possible to have forward references at the top level.
-      (let ([x (make-var id #t '() '() '() #f #f)])
+      (let ([x (make-var id #t '() '() #f #f #f)])
         (unless (allow-forward-references?)
           (compiler-error "variable referenced before its definition:" id))
         (mappend! env (mlist x))
@@ -56,7 +59,7 @@
   ((mlistof var?) (listof identifier?) any/c . -> . (mlistof var?))
   (mappend (list->mlist
             (map (lambda (id)
-                   (make-var id #f '() '() (list def) #f #f))
+                   (make-var id #f '() '() def #f #f))
                  ids))
            env))
 

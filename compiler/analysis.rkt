@@ -14,12 +14,10 @@
 
 (define (toplevel-prc? var)
   (and (not (mutable-var? var))
-       (let ([d (var-defs var)])
-         (and (pair? d)
-              (null? (cdr d))
-              (let ([val (child1 (car d))])
-                (and (prc? val)
-                     val))))))
+       (var-def var)
+       (let ([val (child1 (var-def var))])
+         (and (prc? val)
+              val))))
 
 (define (toplevel-prc-with-non-rest-correct-calls? var)
   (let ([prc (toplevel-prc? var)])

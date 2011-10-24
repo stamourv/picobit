@@ -50,12 +50,13 @@
     [(ref _ '() var)
      (cond [(not (var-global? var))
             (gen-push-local-var (var-bare-id var) ctx)]
-           [(not (null? (var-defs var)))
-            (define val (child1 (car (var-defs var))))
-            (if (and (not (mutable-var? var))
-                     (cst? val)) ; immutable global, counted as cst
-                (gen-push-constant (cst-val val) ctx)
-                (gen-push-global   (var-bare-id  var) ctx))]
+           [(var-def var) =>
+            (lambda (def)
+              (define val (child1 def))
+              (if (and (not (mutable-var? var))
+                       (cst? val)) ; immutable global, counted as cst
+                  (gen-push-constant (cst-val val) ctx)
+                  (gen-push-global   (var-bare-id  var) ctx))) ]
            [else
             (compiler-error "undefined variable:" (var-id var))])]
     [(or (? def? node) (? set? node))

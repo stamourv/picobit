@@ -46,7 +46,9 @@
       (let* ([val2 (parse 'value val env)]
              [r    (make-def #f (list val2) var2)])
         (fix-children-parent! r)
-        (set-var-defs! var2 (cons r (var-defs var2)))
+        (when (var-def var2)
+          (compiler-error "variable redefinition forbidden" var2))
+        (set-var-def! var2 r)
         (list r)))))
 
 (define (parse use expr env [operator-position? #f])
@@ -155,7 +157,7 @@
                                   new-vars)))])
                 ;; (lambda (a b) (set! a b))
                 ;; => (lambda (_a b) ((lambda (a) (box-set! a b)) (box _a)))
-                (for-each (lambda (var) (set-var-defs! var (list prc)))
+                (for-each (lambda (var) (set-var-def! var prc))
                           mut-vars)
                 (fix-children-parent! app)
                 (set-prc-params! r
