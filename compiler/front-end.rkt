@@ -64,7 +64,10 @@
 ;; by the function it's wrapping.
 ;; ex: (define (foo x y) (bar x y)) (foo 1)
 ;;     => (bar 1)
-(define (inline-eta! node)
+;; Optionally takes a list of vars seen for a given call site.
+;; Every time we successfully change the operator, we add it to the list.
+;; If we see something again, we're looping, so stop there.
+(define (inline-eta! node [seen '()])
   (match node
     [(call p `(,(and orig-op (ref _ '() (and orig-var (app var-val val))))
                . ,args))
@@ -72,20 +75,24 @@
      (match val
        [(prc _ `(,body) params #f entry)
         (match body
-          [(seq _ `(,(call p `(,(ref _ '() inside-op) . ,inside-args))))
-           (if (andmap ref? inside-args)
-               ;; since the call is directly inside the lambda (no
-               ;; intermediate scopes), we can compare ids directly
+          [(seq _ `(,(call p `(,(ref _ '() inside-var) . ,inside-args))))
+           (if (and
+                ;; Since the call is directly inside the lambda (no
+                ;; intermediate scopes), we can compare ids directly.
+                (andmap ref? inside-args)
+                ;; Don't loop.
+                (not (for/or ([s seen]) (var=? s inside-var))))
                (let ([inside-args (map (lambda (x) (var-id (ref-var x)))
                                        inside-args)]
                      [params    (map var-id params)])
                  (cond [(equal? inside-args params)
-                        ;; we can replace orig-op with inside-op
-                        (set-ref-var! orig-op inside-op)
+                        ;; we can replace orig-op's var with inside-var
+                        (set-ref-var! orig-op inside-var)
                         ;; remove dangling ref
                         (set-var-refs! orig-var
                                        (remq orig-op (var-refs orig-var)))
-                        (inline-eta! node)] ; maybe there's more to do
+                        ;; maybe there's more to do
+                        (inline-eta! node (cons orig-var seen))]
                        [else (unmatch)]))
                (unmatch))]
           [_ (unmatch)])]
