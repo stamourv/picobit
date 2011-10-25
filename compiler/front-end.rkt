@@ -58,6 +58,57 @@
 
 ;-----------------------------------------------------------------------------
 
+;; Beta reduction. Side-effectful. Returns the new node if succeeds, else #f.
+(define (beta! e)
+  (match e
+    [(call parent `(,op . ,args)) (=> fail!)
+     (define proc
+       (match op
+         [(ref p cs (? immutable-var? (app var-val proc)))
+          ;; ref to an immutable var bound to a lambda, we're generous
+          proc]
+         [(? prc? proc)
+          proc]
+         [_ (fail!)]))
+     (match proc
+       [(prc p `(,body) params #f entry)
+        (define new (copy-node body))
+        (unless (= (length params) (length args))
+          (fail!))
+        (for ([o (in-list params)]
+              [n (in-list args)])
+          (substitute! new
+                       (make-ref #f '() o) ; fake ref, don't register
+                       ;; substitute-child! clears references to old params
+                       n))
+        ;; Hook the new node up.
+        (cond [(and (seq? parent) (seq? new)) ; splice the new begin in the old
+               (set-node-children!
+                parent
+                (apply append
+                       (for/list ([c (node-children parent)])
+                         (if (eq? c e) ; we replace that
+                             (node-children new)
+                             (list c))))) ; keep that one
+               (fix-children-parent! parent)]
+              [(and (seq? new) (= (length (node-children new)) 1))
+               ;; we can get rid of the begin that we got from the proc body
+               (substitute-child! parent e (child1 new))]
+              [else ; just replace the original child
+               (substitute-child! parent e new)])
+        ;; We return the new node.
+        ;; Note: new may not actually be in the program. It may have been
+        ;; spliced away in its parent.
+        ;; So far, all we do with the return value of beta! is to recur on it,
+        ;; which basically means exploring its children. In the splicing case,
+        ;; the children will have new's parent (not new itself) as parent, so
+        ;; traversing them should do the right thing. (Replacing them in place
+        ;; will change new's parent's children, as it should.)
+        new])]
+    [_ #f])) ; invalid beta, do nothing
+
+;-----------------------------------------------------------------------------
+
 (provide inline-eta!)
 
 ;; When an eta-expansion is used in operator position, it can be replaced
