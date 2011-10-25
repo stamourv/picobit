@@ -80,11 +80,6 @@
            [else (fail!)])]
     [(and (node p cs) (== old eq?)) ; eq? is used because of cycles
      (substitute-child! p e new)] ; there's only one of e, no need to copy
-    [(prc p cs params rest? entry) ; the eq? case has already been handled
-     (define shadowed?
-       (and (ref? old) ; if it's not a ref, we use eq?, so no danger
-            (for/or ([p (in-list params)]) (var=? p (ref-var old)))))
-     (when (not shadowed?) (recur))]
     [(node p cs)
      (recur)]))
 
