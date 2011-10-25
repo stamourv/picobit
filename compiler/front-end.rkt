@@ -110,16 +110,18 @@
 
 ;-----------------------------------------------------------------------------
 
-(provide inline-eta!)
+(provide inline-calls-to-calls!)
 
-;; When an eta-expansion is used in operator position, it can be replaced
-;; by the function it's wrapping.
+;; When an operator is a reference to a function whose body is just a call, we
+;; may be able to inline without increasing code size.
+;; All args to the inner call need to be trivial (cst or ref), and there needs
+;; to be at most as many as there are arguments in the original call.
 ;; ex: (define (foo x y) (bar x y)) (foo 1)
 ;;     => (bar 1)
 ;; Optionally takes a list of vars seen for a given call site.
 ;; Every time we successfully change the operator, we add it to the list.
 ;; If we see something again, we're looping, so stop there.
-(define (inline-eta! node [seen '()])
+(define (inline-calls-to-calls! node [seen '()])
   (match node
     [(call p `(,(and orig-op (ref _ '() (and orig-var (app var-val val))))
                . ,args))
@@ -128,7 +130,10 @@
        [(prc _ `(,body) params #f entry)
         (match body
           [(seq _ `(,(call new-p `(,(ref _ '() inside-var) . ,inside-args))))
-           (if (and (andmap ref? inside-args)
+           ;; We need to be careful to not increase code size.
+           (if (and (<= (length inside-args) (length args)) ; not too many
+                    (for/and ([i-a (in-list inside-args)])
+                      (or (ref? i-a) (cst? i-a))) ; not too big
                     ;; Don't loop.
                     (not (for/or ([s seen]) (var=? s inside-var))))
                (let ([new (beta! node)])
@@ -138,12 +143,12 @@
                  ;; If beta succeeds, we recur, there may be new opportunities.
                  ;; Note: new may not be a node that's actually in the program.
                  ;; See comment in beta!.
-                 (when new (inline-eta! new (cons orig-var seen))))
+                 (when new (inline-calls-to-calls! new (cons orig-var seen))))
                (unmatch))]
           [_ (unmatch)])]
        [_ (unmatch)])]
     [_
-     (for-each inline-eta! (node-children node))]))
+     (for-each inline-calls-to-calls! (node-children node))]))
 
 ;-----------------------------------------------------------------------------
 

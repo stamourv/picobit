@@ -25,7 +25,7 @@
     (adjust-unmutable-references! node)
     ;; done first to expose more left-left-lambdas, help constant folding, etc.
     (copy-propagate!              node)
-    (inline-eta!                  node) ; gives constant folding more to do
+    (inline-calls-to-calls!       node) ; gives constant folding more to do
     (copy-propagate!              node) ; exposes more constant folding
     (constant-fold!               node)
     (copy-propagate!              node) ; again, for cleanup
