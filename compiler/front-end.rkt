@@ -47,7 +47,7 @@
   (match node
     [(ref _ '() var)
      (mark-var! var)]
-    [(def _ `(,val) var)
+    [(def _ `(,val) _)
      (when (not (side-effect-less? val))
        (mark-needed-global-vars! val))]
     [(or (? cst? node) (? set? node) (? if*? node) (? prc? node)
@@ -64,14 +64,14 @@
     [(call parent `(,op . ,args)) (=> fail!)
      (define proc
        (match op
-         [(ref p cs (? immutable-var? (app var-val proc)))
+         [(ref _ _ (? immutable-var? (app var-val proc)))
           ;; ref to an immutable var bound to a lambda, we're generous
           proc]
          [(? prc? proc)
           proc]
          [_ (fail!)]))
      (match proc
-       [(prc p `(,body) params #f entry)
+       [(prc _ `(,body) params #f _) ; no rest arg
         (define new
           (match body
             ;; We may be able to get rid of the begin we got from the proc body
@@ -123,13 +123,12 @@
 ;; If we see something again, we're looping, so stop there.
 (define (inline-calls-to-calls! node [seen '()])
   (match node
-    [(call p `(,(and orig-op (ref _ '() (and orig-var (app var-val val))))
-               . ,args))
+    [(call _ `(,(ref _ '() (and orig-var (app var-val val))) . ,args))
      (=> fail!)
      (match val
-       [(prc _ `(,body) params #f entry)
+       [(prc _ `(,body) _ #f _)
         (match body
-          [(seq _ `(,(call new-p `(,(ref _ '() inside-var) . ,inside-args))))
+          [(seq _ `(,(call _ `(,(ref _ '() inside-var) . ,inside-args))))
            ;; We need to be careful to not increase code size.
            (if (and (<= (length inside-args) (length args)) ; not too many
                     (for/and ([i-a (in-list inside-args)])
@@ -157,8 +156,7 @@
 (define (constant-fold! node)
   (match node
     ;; if we're calling a primitive
-    [(call p `(,(ref _ '() (? var-primitive op))
-               . ,args))
+    [(call p `(,(ref _ '() (? var-primitive op)) . ,args))
      (=> fail!)
      (for-each constant-fold! args) ; fold args before the whole call
      (let ([folder (primitive-constant-folder (var-primitive op))]
@@ -188,16 +186,14 @@
 
 (define (copy-propagate! expr)
   (match expr
-    [(ref p cs (? immutable-var? (and var (app var-val (? values val)))))
+    [(ref p '() (? immutable-var? (app var-val (? values val))))
      (=> fail!)
      (define (replace!)
        (unless (node-parent expr) (fail!)) ; no parent, stale node, ignore
        (substitute-child! p expr (copy-node val))
        (copy-propagate! p)) ;  there may be more to do, start our parent again
      (match val
-       [(ref _ cs new-var)
-        (replace!)]
-       [(cst _ cs v)
+       [(or (ref _ '() _) (cst _ '() _))
         ;; constants are ok. even if they're large, they're just a pointer into
         ;; ROM, where the constant would have been anyway (and no duplication)
         (replace!)]

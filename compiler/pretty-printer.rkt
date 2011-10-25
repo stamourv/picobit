@@ -18,7 +18,7 @@
      (list 'set!   (var-bare-id var) (node->expr rhs))]
     [(if* _ `(,tst ,thn ,els))
      (list 'if (node->expr tst) (node->expr thn) (node->expr els))]
-    [(prc _ `(,body) params rest? entry-label)
+    [(prc _ `(,body) params rest? _)
      (define (build-pattern params rest?)
        (cond [(null? params)
               '()]

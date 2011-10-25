@@ -69,7 +69,7 @@
      (set-add (fv val) var)]
     [(set _ `(,val) var)
      (set-add (fv val) var)]
-    [(prc _ `(,body) params rest? entry-label)
+    [(prc _ `(,body) params _ _)
      (set-subtract
       (fv body)
       (build-params-varset params))]

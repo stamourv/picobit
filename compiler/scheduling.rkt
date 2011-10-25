@@ -79,7 +79,7 @@
   (and (mpair? r-todo)
        (if fallthrough-to-next?
            (match r-todo
-             [(mcons (and label-pos `(,label . ,_)) rest )
+             [(mcons (and label-pos `(,label . ,_)) rest)
               (unless (mpair? rest)
                 (set-mcar! todo todo))
               (set-mcdr! todo rest)

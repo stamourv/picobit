@@ -242,7 +242,7 @@
 
 (define (assemble-constant x constants)
   (match x
-    [`(,obj . ,(and descr `#(,d0 ,label ,d2 ,d3)))
+    [`(,obj . ,(and descr `#(,_ ,label ,_ ,d3)))
      (asm-label label)
      ;; see the vm source for a description of encodings
      (cond [(exact-integer? obj)

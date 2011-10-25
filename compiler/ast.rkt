@@ -73,12 +73,12 @@
   (define (recur) (for ([c (in-list (node-children e))])
                     (substitute! c old new)))
   (match e
-    [(ref p cs var) (=> fail!)
+    [(ref p _ var) (=> fail!)
      ;; variable references don't _need_ to be eq? to be the same
      (cond [(and (ref? old) (var=? var (ref-var old)))
             (substitute-child! p e (copy-node new))] ; maybe multiple old, copy
            [else (fail!)])]
-    [(and (node p cs) (== old eq?)) ; eq? is used because of cycles
+    [(and (node p _) (== old eq?)) ; eq? is used because of cycles
      (substitute-child! p e new)] ; there's only one of e, no need to copy
     [(node p cs)
      (recur)]))
@@ -90,17 +90,18 @@
   (define new
     (match e
       ;; parent is left #f, caller must set it
-      [(cst p cs val) ; no need to copy val
+      ;; children are copied below
+      [(cst _ _ val) ; no need to copy val
        (make-cst #f '() val)]
-      [(ref p cs var) ; no need to copy var
+      [(ref _ _ var) ; no need to copy var
        (create-ref var)] ; registers the reference
-      [(def p cs var) ; only at the top-level, makes no sense to copy
+      [(def _ _ var) ; only at the top-level, makes no sense to copy
        (compiler-error "copying the definition of" (var-id var))]
-      [(set p cs var) ; no need to copy var
+      [(set _ _ var) ; no need to copy var
        (make-set #f '() var)]
-      [(if* p cs)
+      [(if* _ _)
        (make-if* #f '())]
-      [(prc p cs params rest? entry)
+      [(prc _ _ params rest? entry)
        (define new (make-prc #f '() '() rest? entry))
        ;; we need to create new parameters, and replace the old ones in body
        ;; Note: with Racket identifiers being used for variables, we'll need
@@ -112,9 +113,9 @@
        (set-prc-params! new new-params)
        ;; param substitution below
        new]
-      [(call p cs)
+      [(call _ _)
        (make-call #f '())]
-      [(seq p cs)
+      [(seq _ _)
        (make-seq #f '())]))
   (set-node-children! new (map copy-node (node-children e)))
   (fix-children-parent! new)
