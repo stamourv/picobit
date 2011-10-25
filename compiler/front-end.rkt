@@ -127,23 +127,12 @@
      (match val
        [(prc _ `(,body) params #f entry)
         (match body
-          [(seq _ `(,(call p `(,(ref _ '() inside-var) . ,inside-args))))
-           (if (and
-                ;; Since the call is directly inside the lambda (no
-                ;; intermediate scopes), we can compare ids directly.
-                (andmap ref? inside-args)
-                ;; Don't loop.
-                (not (for/or ([s seen]) (var=? s inside-var))))
-               (let ([inside-args (map (lambda (x) (var-id (ref-var x)))
-                                       inside-args)]
-                     [params    (map var-id params)])
-                 (cond [(equal? inside-args params)
-                        ;; we can replace the reference
-                        (define new (create-ref inside-var))
-                        (substitute-child! node orig-op new)
-                        ;; maybe there's more to do
-                        (inline-eta! node (cons orig-var seen))]
-                       [else (unmatch)]))
+          [(seq _ `(,(call new-p `(,(ref _ '() inside-var) . ,inside-args))))
+           (if (and (andmap ref? inside-args)
+                    ;; Don't loop.
+                    (not (for/or ([s seen]) (var=? s inside-var))))
+               (let ([new (beta! node)]) ; maybe there's more to do
+                 (when new (inline-eta! new (cons orig-var seen))))
                (unmatch))]
           [_ (unmatch)])]
        [_ (unmatch)])]
