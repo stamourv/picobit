@@ -12,7 +12,7 @@
 (displayln (foo (foo 1 2) 3)) ; same here
 
 
-(define (f x) (g 3)) ; opt should happen
+(define (f x) (g 3)) ; no, f has 2 args, g has 2
 (define (g x) (#%+ x 2))
 (displayln (f 2)) ; should be (g 3)
 
