@@ -72,7 +72,11 @@
          [_ (fail!)]))
      (match proc
        [(prc p `(,body) params #f entry)
-        (define new (copy-node body))
+        (define new
+          (match body
+            ;; We may be able to get rid of the begin we got from the proc body
+            [(seq _ `(,c)) (copy-node c)]
+            [_             (copy-node body)]))
         (unless (= (length params) (length args))
           (fail!))
         (for ([o (in-list params)]
@@ -91,9 +95,6 @@
                              (node-children new)
                              (list c))))) ; keep that one
                (fix-children-parent! parent)]
-              [(and (seq? new) (= (length (node-children new)) 1))
-               ;; we can get rid of the begin that we got from the proc body
-               (substitute-child! parent e (child1 new))]
               [else ; just replace the original child
                (substitute-child! parent e new)])
         ;; We return the new node.
