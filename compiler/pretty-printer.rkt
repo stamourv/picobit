@@ -30,26 +30,10 @@
               (cons (var-bare-id (car params))
                     (build-pattern (cdr params) rest?))]))
      `(lambda ,(build-pattern params rest?)
-        ,@(if (seq? body)
-              (nodes->exprs (node-children body))
-              (list (node->expr body))))]
+        ,(node->expr body))]
     [(call _ children)
      (map node->expr children)]
     [(seq _ children)
-     (cond [(null? children)
-            '(void)]
-           [(null? (cdr children))
-            (node->expr (car children))]
-           [else
-            (cons 'begin (nodes->exprs children))])]
+     (cons 'begin (map node->expr children))]
     [_
      (compiler-error "unknown expression type" node)]))
-
-(define (nodes->exprs nodes)
-  (if (null? nodes)
-      '()
-      (if (seq? (car nodes))
-          (append (nodes->exprs (node-children (car nodes)))
-                  (nodes->exprs (cdr nodes)))
-          (cons (node->expr (car nodes))
-                (nodes->exprs (cdr nodes))))))
