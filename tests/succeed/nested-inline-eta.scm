@@ -34,3 +34,8 @@
 (define (gg x y) (#%+ y 2))
 (displayln (ff 2)) ; no, same
 (displayln (ff 2))
+
+(define (hh x y) (#%+ x (aa y 34))) ; yes
+(define (aa x y) (#%+ x 3)) ; hh's y is aa's x, tests capture-avoiding subst.
+(displayln (hh 2 3)) ; no, one inner arg is non-trivial: (aa y)
+(displayln (hh 2 3))

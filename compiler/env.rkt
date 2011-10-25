@@ -38,11 +38,11 @@
 
 (define (var-bare-id v) (syntax->datum (var-id v))) ; for code-generation
 
-;; WARNING: currently is only symbol equality, so is defeater by shadowing.
 ;; Once we plug in Racket's expander, we'll be able to do better.
-(define (var=? x y) (id=? (var-id x)        (var-id y)))
+(define (var=? x y)
+  (and (id=? (var-id  x) (var-id  y))   ; same symbol
+       (eq?  (var-def x) (var-def y)))) ; defined in the same place
 (define (id=?  x y) (eq?  (syntax->datum x) (syntax->datum y)))
-;; TODO use free-identifier=?
 
 
 (define allow-forward-references? (make-parameter #t))
