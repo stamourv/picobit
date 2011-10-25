@@ -1,7 +1,7 @@
 #lang racket
 
 (provide (all-defined-out))
-(require syntax/parse unstable/match)
+(require syntax/parse unstable/match racket/syntax)
 (require "utilities.rkt" "env.rkt")
 
 ;; Syntax-tree node representation.
@@ -94,6 +94,7 @@
 (define (copy-node e)
   (define new
     (match e
+      ;; parent is left #f, caller must set it
       [(cst p cs val) ; no need to copy val
        (make-cst #f '() val)]
       [(ref p cs var) ; no need to copy var
@@ -110,16 +111,17 @@
        ;; Note: with Racket identifiers being used for variables, we'll need
        ;; to freshen the new vars, otherwise the new ones will be
        ;; free-identifier=? with the old ones, and we don't want that!
-       (define (copy-var v) (make-local-var (var-id v) new))
-       (set-prc-params! new (map copy-var params))
+       (define (copy-var v)
+         (make-local-var (generate-temporary (var-id v)) new))
+       (define new-params (map copy-var params))
+       (set-prc-params! new new-params)
        ;; param substitution below
        new]
       [(call p cs)
        (make-call #f '())]
       [(seq p cs)
        (make-seq #f '())]))
-  ;; parent is left #f, caller must set it
-  (set-node-children!   new (map copy-node (node-children e)))
+  (set-node-children! new (map copy-node (node-children e)))
   (fix-children-parent! new)
   (when (prc? new) ; do the param substitution in body
     (for ([o (prc-params e)]
