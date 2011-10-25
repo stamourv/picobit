@@ -125,7 +125,7 @@
   (match node
     [(call p `(,(and orig-op (ref _ '() (and orig-var (app var-val val))))
                . ,args))
-     (=> unmatch)
+     (=> fail!)
      (match val
        [(prc _ `(,body) params #f entry)
         (match body
@@ -144,9 +144,9 @@
                  ;; Note: new may not be a node that's actually in the program.
                  ;; See comment in beta!.
                  (when new (inline-calls-to-calls! new (cons orig-var seen))))
-               (unmatch))]
-          [_ (unmatch)])]
-       [_ (unmatch)])]
+               (fail!))]
+          [_ (fail!)])]
+       [_ (fail!)])]
     [_
      (for-each inline-calls-to-calls! (node-children node))]))
 
@@ -159,7 +159,7 @@
     ;; if we're calling a primitive
     [(call p `(,(ref _ '() (? var-primitive op))
                . ,args))
-     (=> unmatch)
+     (=> fail!)
      (for-each constant-fold! args) ; fold args before the whole call
      (let ([folder (primitive-constant-folder (var-primitive op))]
            ;; (we need to access the children again (can't just use `args',
@@ -171,14 +171,14 @@
               ;; if the folding would raise an error, just don't do it, and
               ;; error at runtime
               (call-with-exception-handler
-               (lambda (e) (unmatch)) ; something went wrong, back off
+               (lambda (e) (fail!)) ; something went wrong, back off
                ;; replace the call with the constant
                (lambda ()
                  (define res-val (apply folder (map cst-val args)))
                  (define res     (make-cst p '() res-val))
                  (substitute-child! p node res)))]
              [else
-              (unmatch)]))]
+              (fail!)]))]
     [_
      (for-each constant-fold! (node-children node))]))
 
