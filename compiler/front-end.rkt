@@ -131,7 +131,13 @@
            (if (and (andmap ref? inside-args)
                     ;; Don't loop.
                     (not (for/or ([s seen]) (var=? s inside-var))))
-               (let ([new (beta! node)]) ; maybe there's more to do
+               (let ([new (beta! node)])
+                 ;; If beta fails, nothing was changed. No point in recurring,
+                 ;; since trying again is useless, and all our children are
+                 ;; trivial (cst or ref).
+                 ;; If beta succeeds, we recur, there may be new opportunities.
+                 ;; Note: new may not be a node that's actually in the program.
+                 ;; See comment in beta!.
                  (when new (inline-eta! new (cons orig-var seen))))
                (unmatch))]
           [_ (unmatch)])]
