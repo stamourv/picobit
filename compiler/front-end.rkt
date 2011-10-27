@@ -133,7 +133,8 @@
            ;; We need to be careful to not increase code size.
            (if (and (<= (length inside-args) (length args)) ; not too many
                     (for/and ([i-a (in-list inside-args)])
-                      (or (ref? i-a) (cst? i-a))) ; not too big
+                      (and (or (ref? i-a) (cst? i-a)) ; not too big
+                           (side-effect-oblivious? i-a))) ; can be moved
                     ;; Don't loop.
                     (not (for/or ([s seen]) (var=? s inside-var))))
                (let ([new (beta! node)])
@@ -167,7 +168,7 @@
                   ;; non-trivial args can be inlined if they're used only once
                   ;; otherwise, may increase code size
                   (and (= (length (var-refs p)) 1)
-                       (side-effect-less? arg))))
+                       (side-effect-oblivious? arg))))
             (define new (beta! node))
             (when new
               (inline-left-left-lambda! new))] ; maybe there's more

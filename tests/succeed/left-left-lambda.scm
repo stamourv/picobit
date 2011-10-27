@@ -16,9 +16,9 @@
        [y 4]) ; chain. body of one l-l-l is another.
   (displayln (+ x y)))
 
-(define z 3)
-(set! z 4) ; to fool copy-propagation and constant folding
-(displayln ((lambda (x) (+ x 3)) (#%+ 1 z))) ; yes, side-effect-less? call
+;; can't mutate to fool other opts, mutable vars are not side-effect oblivious
+(define z 4)
+(displayln ((lambda (x) (+ x 3)) (#%+ 1 z))) ; yes, side-effect-oblivious
 
 (define (f x) (#%+ 1 x))
 (displayln ((lambda (x) (+ x 3)) (f z))) ; yes, body of f is ok
@@ -32,3 +32,5 @@
 (displayln ((lambda (x) (+ x (* x 2))) 3)) ; yes, trivial arg used twice
 (displayln ((lambda (x) (+ x (* x 2)))
             (#%+ 1 z))) ; no, non-trivial arg used twice
+;; Note: currently, the arg is only non-trivial because left-left-lambda
+;; inlining is done before constant propagation. _Very_ brittle.

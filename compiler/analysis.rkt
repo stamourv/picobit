@@ -1,13 +1,13 @@
 #lang racket
 
-(require "utilities.rkt" "env.rkt" "ast.rkt")
+(require "utilities.rkt" "env.rkt" "ast.rkt" "primitives.rkt")
 
 ;-----------------------------------------------------------------------------
 
 (provide immutable-var? mutable-var?
          toplevel-prc?
          toplevel-prc-with-non-rest-correct-calls?
-         side-effect-less?)
+         side-effect-less? side-effect-oblivious?)
 
 (define (immutable-var? var) (null? (var-sets var)))
 (define (mutable-var?   var) (not (immutable-var? var)))
@@ -33,21 +33,33 @@
                  (var-refs var))
          prc)))
 
-(define (side-effect-less? node [seen '()])
-  (or (cst? node) (ref? node) (prc? node) ; values
+;; oblivious? is true if we want to check for side-effect obliviousless, which
+;; is stronger
+(define (side-effect-less? node [oblivious? #f] [seen '()])
+  (and (or (cst? node) (prc? node) ; values
+      ;; mutable var references are side-effect-less, but not oblivious
+      (and (ref? node)
+           (not (and oblivious? (mutable-var? (ref-var node)))))
       (and (or (seq? node) (if*? node))
            (for/and ([c (in-list (node-children node))])
-             (side-effect-less? c seen)))
+             (side-effect-less? c oblivious? seen)))
       (and (call? node)
            (for/and ([c (in-list (cdr (node-children node)))]) ; args
-             (side-effect-less? c seen))
+             (side-effect-less? c oblivious? seen))
            (let ([op (car (node-children node))])
              (cond [(prc? op)
-                    (side-effect-less? (child1 op))] ; body
+                    (side-effect-less? oblivious? (child1 op))] ; body
                    [(ref? op)
-                    (or (let ([prim (var-primitive (ref-var op))])
+                    (or (let* ([var  (ref-var op)]
+                               [prim (var-primitive var)])
                           ;; has a folder implies side-effect-less?
-                          (and prim (primitive-constant-folder prim)))
+                          (and prim (primitive-constant-folder prim)
+                               ;; for obliviousness, we also need it not to
+                               ;; access mutable state
+                               (if oblivious?
+                                   (not (memf (lambda (x) (var=? x var))
+                                              mutable-data-accessors))
+                                   #t)))
                         (let* ([var (ref-var op)]
                                [val (var-val var)])
                           ;; refers to a side-effect-less? proc
@@ -58,10 +70,17 @@
                           (and (prc? val)
                                (not (for/or ([s (in-list seen)]) (var=? s var)))
                                (side-effect-less? (child1 val) ; body
-                                                  (cons var seen)))))])))))
+                                                  oblivious?
+                                                  (cons var seen)))))]))))))
 ;; could look into if*, seq, etc in operator position, making sure it refers to
 ;; a side-effect-less? proc (refs encountered during that are not automatically
 ;; ok)
+
+;; The result of this expression does not depend on other side effects.
+;; Implies: side-effect-less?
+;; Corollary: this expression can be moved.
+(define (side-effect-oblivious? node)
+  (side-effect-less? node #t))
 
 ;-----------------------------------------------------------------------------
 
