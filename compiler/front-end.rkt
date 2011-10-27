@@ -152,6 +152,32 @@
 
 ;-----------------------------------------------------------------------------
 
+(provide inline-left-left-lambda!)
+
+;; If it would not cause a code size increase, inline immediately applied
+;; lambdas.
+;; This should be done after copy propagation, which exposes more of these.
+(define (inline-left-left-lambda! node)
+  (match node
+    [(call _ `(,(prc _ `(,body) params #f _) . ,args))
+     (=> fail!)
+     (cond [(for/and ([arg (in-list args)]
+                      [p   (in-list params)])
+              (or (cst? arg) (ref? arg) ; trivial, won't increase size
+                  ;; non-trivial args can be inlined if they're used only once
+                  ;; otherwise, may increase code size
+                  (and (= (length (var-refs p)) 1)
+                       (side-effect-less? arg))))
+            (define new (beta! node))
+            (when new
+              (inline-left-left-lambda! new))] ; maybe there's more
+           [else
+            (fail!)])]
+    [_
+     (for-each inline-left-left-lambda! (node-children node))]))
+
+;-----------------------------------------------------------------------------
+
 (provide constant-fold!)
 
 (define (constant-fold! node)
