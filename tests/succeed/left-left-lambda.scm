@@ -15,3 +15,15 @@
 (let* ([x 3] ; yes
        [y 4]) ; chain. body of one l-l-l is another.
   (displayln (+ x y)))
+
+(define z 3)
+(set! z 4) ; to fool copy-propagation and constant folding
+(displayln ((lambda (x) (+ x 3)) (#%+ 1 z))) ; yes, side-effect-less? call
+
+(define (f x) (#%+ 1 x))
+(displayln ((lambda (x) (+ x 3)) (f z))) ; yes, body of f is ok
+(displayln ((lambda (x) (+ x 3)) (+ 1 z))) ; no, body of + is recursive
+
+(displayln ((lambda (x) (+ x 3)) (if z 2 3))) ; yes
+
+(displayln ((lambda (x) (+ x 3)) (begin 2 3))) ; yes
