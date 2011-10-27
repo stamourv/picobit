@@ -79,12 +79,6 @@
             [_             (copy-node body)]))
         (unless (= (length params) (length args))
           (fail!))
-        (for ([o (in-list params)]
-              [n (in-list args)])
-          (substitute! new
-                       (make-ref #f '() o) ; fake ref, don't register
-                       ;; substitute-child! clears references to old params
-                       n))
         ;; Hook the new node up.
         (cond [(and (seq? parent) (seq? new)) ; splice the new begin in the old
                (set-node-children!
@@ -97,6 +91,13 @@
                (fix-children-parent! parent)]
               [else ; just replace the original child
                (substitute-child! parent e new)])
+        ;; Do the substitutions.
+        (for ([o (in-list params)]
+              [n (in-list args)])
+          (substitute! new
+                       (make-ref #f '() o) ; fake ref, don't register
+                       ;; substitute-child! clears references to old params
+                       n))
         ;; We return the new node.
         ;; Note: new may not actually be in the program. It may have been
         ;; spliced away in its parent.
