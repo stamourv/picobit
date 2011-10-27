@@ -27,3 +27,8 @@
 (displayln ((lambda (x) (+ x 3)) (if z 2 3))) ; yes
 
 (displayln ((lambda (x) (+ x 3)) (begin 2 3))) ; yes
+
+
+(displayln ((lambda (x) (+ x (* x 2))) 3)) ; yes, trivial arg used twice
+(displayln ((lambda (x) (+ x (* x 2)))
+            (#%+ 1 z))) ; no, non-trivial arg used twice
