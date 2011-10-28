@@ -213,17 +213,33 @@
 
 (define (copy-propagate! expr)
   (match expr
-    [(ref p '() (? immutable-var? (app var-val (? values val))))
+    [(ref p '() (and var (? immutable-var? (app var-val (? values val)))))
      (=> fail!)
-     (define (replace!)
+     (define (replace! new)
        (unless (node-parent expr) (fail!)) ; no parent, stale node, ignore
-       (substitute-child! p expr (copy-node val))
+       (substitute-child! p expr new)
        (copy-propagate! p)) ;  there may be more to do, start our parent again
-     (match val
-       [(or (ref _ '() _) (cst _ '() _))
-        ;; constants are ok. even if they're large, they're just a pointer into
-        ;; ROM, where the constant would have been anyway (and no duplication)
-        (replace!)]
-       [_ (fail!)])] ; anything else would increase code size
+     ;; Single use, copy-propagate away! Can't increase code size.
+     ;; Note: due to dangling references, we may be conservative, and
+     ;; not notice when something has a single reference.
+     (cond [(and (= (length (var-refs var)) 1)
+                 (side-effect-oblivious? val))
+            ;; Can't inline lambdas that close over something.
+            (when (and (prc? val) (not (set-empty? (fv val))))
+              (fail!))
+            ;; We need to make sure we're not inlining in ourselves.
+            (let loop ([p p]) ; try to reach val through our parent
+              (cond [(eq? p val) (fail!)]    ; in ourselves, unsafe
+                    [(eq? p #f) ; safe
+                     (replace! val)] ; no need to copy, single-use
+                    [else        (loop (node-parent p))]))] ; keep going
+           [else ; multiple uses, but maybe we can do it anyway
+            (match val
+              [(or (ref _ '() _) (cst _ '() _))
+               ;; constants are ok. even if they're large, they're just a
+               ;; pointer into ROM, where the constant would have been anyway
+               ;; (and no duplication)
+               (replace! (copy-node val))]
+              [_ (fail!)])])] ; anything else would increase code size
     [_
      (for-each copy-propagate! (node-children expr))]))
