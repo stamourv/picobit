@@ -51,9 +51,8 @@
      (cond [(not (var-global? var))
             (gen-push-local-var (var-bare-id var) ctx)]
            [(var-def var)
-            (define val (var-val var))
-            (if (and (not (mutable-var? var))
-                     (cst? val)) ; immutable global, counted as cst
+            (define val (var-val var)) ; non-false implies immutable
+            (if (cst? val) ; immutable global, counted as cst
                 (gen-push-constant (cst-val val) ctx)
                 (gen-push-global   (var-bare-id  var) ctx)) ]
            [else

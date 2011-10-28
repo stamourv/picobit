@@ -33,11 +33,10 @@
 (define (mark-var! var)
   (when (and (var-global? var)
              (not (var-needed? var))
-             ;; globals that obey the following conditions are considered
+             ;; globals that obey the following condition are considered
              ;; to be constants
-             (not (and (not (mutable-var? var))
-                       ;; below fails if no definition (e.g. primitives)
-                       (cst? (var-val var)))))
+             ;; below fails if no definition (e.g. primitives), or mutable
+             (not (cst? (var-val var))))
     (set-var-needed?! var #t)
     (let ([val (var-val var)])
       (when (and val (side-effect-less? val))

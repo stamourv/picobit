@@ -10,12 +10,16 @@
 
 (define (child1 node) (car   (node-children node)))
 
+(define (immutable-var? var) (null? (var-sets var)))
+(define (mutable-var?   var) (not (immutable-var? var)))
+
 ;; If v is defined, return the node corresponding to its value.
-;; Caller needs to check that v is immutable.
 ;; Returns #f if something goes wrong.
 (define (var-val v)
   (define def (var-def v))
-  (and def (child1 def)))
+  (and (immutable-var? v)
+       def
+       (child1 def)))
 
 
 (define-struct (cst node) (val))

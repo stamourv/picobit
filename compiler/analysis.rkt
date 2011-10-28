@@ -4,19 +4,15 @@
 
 ;-----------------------------------------------------------------------------
 
-(provide immutable-var? mutable-var?
-         toplevel-prc?
+(provide toplevel-prc?
          toplevel-prc-with-non-rest-correct-calls?
          side-effect-less? side-effect-oblivious?)
 
-(define (immutable-var? var) (null? (var-sets var)))
-(define (mutable-var?   var) (not (immutable-var? var)))
 
 (define (toplevel-prc? var)
-  (and (not (mutable-var? var))
-       (let ([val (var-val var)])
-         (and (prc? val)
-              val))))
+  (let ([val (var-val var)]) ; non-false implies immutable
+    (and (prc? val)
+         val)))
 
 (define (toplevel-prc-with-non-rest-correct-calls? var)
   (let ([prc (toplevel-prc? var)])
@@ -61,7 +57,7 @@
                                               mutable-data-accessors))
                                    #t)))
                         (let* ([var (ref-var op)]
-                               [val (var-val var)])
+                               [val (var-val var)]) ; non-false -> immutable
                           ;; refers to a side-effect-less? proc
                           ;; to avoid non-termination, we reject recursive funs
                           ;; Note: we could chase references further.
