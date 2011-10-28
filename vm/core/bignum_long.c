@@ -298,7 +298,7 @@ integer add (integer x, integer y)
 	/* add(x,y) returns the sum of the integers x and y */
 
 	integer negc = ZERO; /* negative carry */
-	bignum_tmp1 = OBJ_FALSE; /* nil terminated for the norm function */
+	bignum_tmp1 = OBJ_FALSE; /* #f terminated for the norm function */
 	digit dx;
 	digit dy;
 
