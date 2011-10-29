@@ -27,7 +27,7 @@
 (define-struct (def node) (var)) ; children: (rhs)
 (define-struct (set node) (var)) ; children: (rhs)
 (define-struct (if* node) ())    ; children: (test then else)
-(define-struct (prc node)        ; children: (body) -- body is always a seq
+(define-struct (prc node)        ; children: (body)
   ((params  #:mutable) ; listof var?
    rest?
    (entry-label #:mutable)))

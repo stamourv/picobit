@@ -175,10 +175,13 @@
             env)]
     [(begin forms ...)
      #:when (eq? (syntax->datum #'begin) 'begin)
-     (let* ([exprs (syntax-map (lambda (x) (parse 'value x env)) #'(forms ...))]
-            [r     (make-seq #f exprs)])
-       (fix-children-parent! r)
-       r)]
+     (let ([exprs (syntax-map (lambda (x) (parse 'value x env)) #'(forms ...))])
+       (cond [(> (length exprs) 1)
+              (define r (make-seq #f exprs))
+              (fix-children-parent! r)
+              r]
+             [else
+              (car exprs)]))]
     [(let id:identifier ((ks vs) ...) body ...) ; named let
      #:when (eq? (syntax->datum #'let) 'let)
      (parse use

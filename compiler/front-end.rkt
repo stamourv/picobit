@@ -71,13 +71,9 @@
          [_ (fail!)]))
      (match proc
        [(prc _ `(,body) params #f _) ; no rest arg
-        (define new
-          (match body
-            ;; We may be able to get rid of the begin we got from the proc body
-            [(seq _ `(,c)) (copy-node c)]
-            [_             (copy-node body)]))
         (unless (= (length params) (length args))
           (fail!))
+        (define new (copy-node body))
         ;; Hook the new node up.
         (cond [(and (seq? parent) (seq? new)) ; splice the new begin in the old
                (set-node-children!
@@ -128,7 +124,7 @@
      (match val
        [(prc _ `(,body) _ #f _)
         (match body
-          [(seq _ `(,(call _ `(,(ref _ '() inside-var) . ,inside-args))))
+          [(call _ `(,(ref _ '() inside-var) . ,inside-args))
            ;; We need to be careful to not increase code size.
            (if (and (<= (length inside-args) (length args)) ; not too many
                     (for/and ([i-a (in-list inside-args)])

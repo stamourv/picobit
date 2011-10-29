@@ -36,10 +36,8 @@
   (define op      (create-ref prim-var))
   (define call    (make-call #f (cons op (map create-ref args))))
   (fix-children-parent! call)
-  (define body    (make-seq  r (list call)))
-  (fix-children-parent! body)
   (set-prc-params!    r args)
-  (set-node-children! r (list body))
+  (set-node-children! r (list call))
   ;; hidden. you need to know it to get it
   (define eta-id  (generate-temporary (var-id prim-var)))
   (define eta-var (make-global-var eta-id r))
