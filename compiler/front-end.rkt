@@ -179,8 +179,7 @@
 (define (constant-fold! node)
   (match node
     ;; if we're calling a primitive
-    [(call p `(,(ref _ '() (? var-primitive op)) . ,args))
-     (=> fail!)
+    [(call p `(,(ref _ '() (? var-primitive op)) . ,args)) (=> fail!)
      (for-each constant-fold! args) ; fold args before the whole call
      (let ([folder (primitive-constant-folder (var-primitive op))]
            ;; (we need to access the children again (can't just use `args',
@@ -200,13 +199,13 @@
                  (substitute-child! p node res)))]
              [else
               (fail!)]))]
-    [(if* _ cs) ; if result of test is known, keep only the used branch
+    [(if* _ cs) (=> fail!) ; if result of test is known, discard unused branch
      (for-each constant-fold! cs) ; fold each branch
      (match node
        [(if* p `(,(cst _ '() val) ,thn ,els))
         (substitute-child! p node (if val thn els))]
        [_
-        (void)])] ; nothing to do, we folded children already
+        (fail!)])]
     [_
      (for-each constant-fold! (node-children node))]))
 
