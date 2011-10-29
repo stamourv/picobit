@@ -204,6 +204,13 @@
                  (substitute-child! p node res)))]
              [else
               (fail!)]))]
+    [(if* _ cs) ; if result of test is known, keep only the used branch
+     (for-each constant-fold! cs) ; fold each branch
+     (match node
+       [(if* p `(,(cst _ '() val) ,thn ,els))
+        (substitute-child! p node (if val thn els))]
+       [_
+        (void)])] ; nothing to do, we folded children already
     [_
      (for-each constant-fold! (node-children node))]))
 
