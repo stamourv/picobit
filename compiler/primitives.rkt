@@ -40,8 +40,10 @@
   (set-node-children! r (list call))
   ;; hidden. you need to know it to get it
   (define eta-id  (generate-temporary (var-id prim-var)))
-  (define eta-var (make-global-var eta-id r))
+  (define eta-var (make-global-var eta-id #f))
   (define def     (make-def #f (list r) eta-var))
+  (fix-children-parent! def)
+  (set-var-def! eta-var def)
   (add-extra-code def)
   eta-var)
 
