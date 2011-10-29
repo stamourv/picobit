@@ -206,6 +206,14 @@
         (substitute-child! p node (if val thn els))]
        [_
         (fail!)])]
+    [(seq p cs) (=> fail!) ; can discard effect-free non-final elements
+     (for-each constant-fold! cs)
+     (define new-cs (node-children node)) ; original cs may have been mutated
+     (define result (last new-cs))
+     (define before (remq result new-cs))
+     (if (andmap side-effect-less? before)
+         (substitute-child! p node result)
+         (fail!))]
     [_
      (for-each constant-fold! (node-children node))]))
 
