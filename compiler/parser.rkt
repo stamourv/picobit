@@ -147,7 +147,7 @@
              [else
               (let* ([prc (make-prc #f (list body) mut-vars #f #f)]
                      [new-vars (map var-id mut-vars)]
-                     [tmp-env (env-extend env new-vars r)]
+                     [tmp-env (env-extend new-env new-vars r)]
                      [app
                       (make-call
                        r
