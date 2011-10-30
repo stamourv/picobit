@@ -2,7 +2,7 @@
 
 (provide parse-program)
 (require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt")
-(require syntax/parse unstable/syntax)
+(require syntax/parse racket/syntax unstable/syntax)
 
 (define (parse-program lst env)
   (define exprs
@@ -113,7 +113,7 @@
         (parse use #'(begin rhs ...) env)]
        [((tst => rhs) other-clauses ...)
         #:when (eq? (syntax->datum #'=>) '=>)
-        (let ([x (datum->syntax #'here (gensym))])
+        (let ([x (generate-temporary)])
           (parse use
                  #`(let ([#,x tst])
                      (if #,x
@@ -226,7 +226,7 @@
          ;; its "truthiness"
          (parse use #'(if tst #t (or rest ...)) env)
          (parse use
-                (let ([v (datum->syntax #'here (gensym))])
+                (let ([v (generate-temporary)])
                   #`(let ([#,v tst])
                       (if #,v #,v (or rest ...))))
                 env))]
