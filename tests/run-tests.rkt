@@ -42,7 +42,7 @@
                                                (open-input-file input)
                                                (open-input-string ""))]
                       [current-output-port out]
-                      [current-error-port  out]) ; run-fail-execute nedds that
+                      [current-error-port  out]) ; run-fail-execute needs that
          (system* "./picobit-vm" hex))
        (test-case "execution"
                   (check-equal? (get-output-string out)
