@@ -19,7 +19,8 @@
   (define def (var-def v))
   (and (immutable-var? v)
        def
-       (child1 def)))
+       (not (prc? def)) ; var defined in a lambda, no fixed value
+       (child1 def)))   ; rhs of a define
 
 
 (define-struct (cst node) (val))
