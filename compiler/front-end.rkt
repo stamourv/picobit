@@ -234,14 +234,11 @@
      ;; not notice when something has a single reference.
      (cond [(and (= (length (var-refs var)) 1)
                  (side-effect-oblivious? val))
-            ;; Can't inline lambdas that close over something.
-            (when (and (prc? val) (not (set-empty? (fv val))))
-              (fail!))
             ;; We need to make sure we're not inlining in ourselves.
             (let loop ([p p]) ; try to reach val through our parent
               (cond [(eq? p val) (fail!)]    ; in ourselves, unsafe
                     [(eq? p #f) ; safe
-                     (replace! val)] ; no need to copy, single-use
+                     (replace! (copy-node val))]
                     [else        (loop (node-parent p))]))] ; keep going
            [else ; multiple uses, but maybe we can do it anyway
             (match val
