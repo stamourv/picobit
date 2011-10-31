@@ -18,25 +18,21 @@
 
 ;; returns a list of parsed expressions
 (define (parse-top expr env)
-  (syntax-parse expr
+  (syntax-parse expr #:literals (define lambda)
     ;; As in the reader, this is a hack. The Racket expander will eventually
     ;; take care of begin, define, etc. and spit out core forms.
     [(begin body ...) ; splicing begins
      #:when (eq? (syntax->datum #'begin) 'begin)
      (parse-top-list #'(body ...) env)]
     [(define (var params ...) body ...)
-     #:when (eq? (syntax->datum #'define) 'define)
      (parse-define #'var #'(lambda (params ...) body ...) env)]
     [(define var:identifier val)
-     #:when (eq? (syntax->datum #'define) 'define)
      (parse-define #'var #'val env
       ;; If we're not defining a function, forward references are
       ;; invalid.
       (syntax-parse #'val
-        [(lambda etc ...)
-         #:when (eq? (syntax->datum #'lambda) 'lambda)
-         #t]
-        [_ #f]))]
+        [(lambda etc ...) #t]
+        [_                #f]))]
     [_
      (list (parse 'value expr env))]))
 
@@ -53,6 +49,7 @@
 
 (define (parse use expr env [operator-position? #f])
   (syntax-parse expr
+    #:literals (set! quote if cond else => lambda letrec begin let let* and or)
     [expr
      #:when (self-eval? (syntax->datum #'expr))
      (make-cst #f '() (syntax->datum #'expr))]
@@ -74,7 +71,6 @@
            r))]
     [(set! lhs rhs)
      ;; Again, hack.
-     #:when (eq? (syntax->datum #'set!) 'set!)
      (let ([var (env-lookup env #'lhs)]
            [val (parse 'value #'rhs env)])
        (when (var-primitive var)
@@ -90,11 +86,9 @@
              (fix-children-parent! r)
              (set-var-sets! var (cons r (var-sets var)))
              r)))]
-    [(quote* datum)
-     #:when (eq? (syntax->datum #'quote*) 'quote)
+    [(quote datum)
      (make-cst #f '() (syntax->datum #'datum))]
-    [(if* tst thn els ...)
-     #:when (eq? (syntax->datum #'if*) 'if)
+    [(if tst thn els ...)
      (let* ([a (parse 'test #'tst env)]
             [b (parse use #'thn env)]
             [c (if (null? (syntax->list #'(els ...)))
@@ -104,15 +98,12 @@
        (fix-children-parent! r)
        r)]
     [(cond body ...) ; should eventually be a macro
-     #:when (eq? (syntax->datum #'cond) 'cond)
      (syntax-parse #'(body ...)
        [()
         (parse use #'(if #f #f) env)]
        [((else rhs ...))
-        #:when (eq? (syntax->datum #'else) 'else)
         (parse use #'(begin rhs ...) env)]
        [((tst => rhs) other-clauses ...)
-        #:when (eq? (syntax->datum #'=>) '=>)
         (let ([x (generate-temporary)])
           (parse use
                  #`(let ([#,x tst])
@@ -126,8 +117,7 @@
                      (begin rhs ...)
                      (cond other-clauses ...))
                env)])]
-    [(lambda* pattern body* ...)
-     #:when (eq? (syntax->datum #'lambda*) 'lambda)
+    [(lambda pattern body* ...)
      (let* ([ids (extract-ids #'pattern)]
             ;; parent children params rest? entry-label
             [r (make-prc #f '() #f (has-rest-param? #'pattern) #f)]
@@ -167,14 +157,12 @@
                 (fix-children-parent! prc)
                 r)]))]
     [(letrec ((ks vs) ...) body ...)
-     #:when (eq? (syntax->datum #'letrec) 'letrec)
      (parse use
             #'(let ([ks #f] ...)
                 (set! ks vs) ...
                 body ...)
             env)]
     [(begin forms ...)
-     #:when (eq? (syntax->datum #'begin) 'begin)
      (let ([exprs (syntax-map (lambda (x) (parse 'value x env)) #'(forms ...))])
        (cond [(> (length exprs) 1)
               (define r (make-seq #f exprs))
@@ -183,44 +171,33 @@
              [else
               (car exprs)]))]
     [(let id:identifier ((ks vs) ...) body ...) ; named let
-     #:when (eq? (syntax->datum #'let) 'let)
      (parse use
             #'(letrec ([id (lambda (ks ...) body ...)])
                 (id vs ...))
             env)]
     [(let () body ...)
-     #:when (eq? (syntax->datum #'let) 'let)
      (parse use #'(begin body ...) env)]
     [(let ((ks vs) ...) body ...)
-     #:when (eq? (syntax->datum #'let) 'let)
      (parse use #'((lambda (ks ...) body ...) vs ...) env)]
     [(let* () body ...) ; base case for let*
-     #:when (eq? (syntax->datum #'let*) 'let*)
      (parse use #'(let () body ...) env)]
     [(let* ((k v) bindings ...) body ...)
-     #:when (eq? (syntax->datum #'let*) 'let*)
      (parse use
             #'(let ([k v])
                 (let* (bindings ...)
                   body ...))
             env)]
     [(and)
-     #:when (eq? (syntax->datum #'and) 'and)
      (parse use #'#t env)]
     [(and tst)
-     #:when (eq? (syntax->datum #'and) 'and)
      (parse use #'tst env)]
     [(and tst rest ...)
-     #:when (eq? (syntax->datum #'and) 'and)
      (parse use #'(if tst (and rest ...) #f) env)]
     [(or) ; base case for or
-     #:when (eq? (syntax->datum #'or) 'or)
      (parse use #'#f env)]
     [(or tst)
-     #:when (eq? (syntax->datum #'or) 'or)
      (parse use #'tst env)]
     [(or tst rest ...)
-     #:when (eq? (syntax->datum #'or) 'or)
      (if (eq? use 'test)
          ;; we don't need to keep the actual result, we only care about
          ;; its "truthiness"

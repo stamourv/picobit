@@ -62,6 +62,8 @@
     (define library
       #`(#,@(read-lib "library.scm")       ; architecture-independent
          #,@(read-lib "gen.library.scm"))) ; architecture-dependent
-    (expand-includes
-     #`(#,@library
-        #,@(read-all-syntax read-syntax port)))))
+    (datum->syntax
+     #'here ; to get the Racket bindings for define and co, for syntax-parse
+     (syntax->datum (expand-includes
+                     #`(#,@library
+                        #,@(read-all-syntax read-syntax port)))))))
