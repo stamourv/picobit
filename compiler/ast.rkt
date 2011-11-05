@@ -47,7 +47,9 @@
     [(x:identifier ...)                #f]
     [(x:identifier ... . y:identifier) #t]))
 
+
 ;; AST construction helpers
+
 (define (create-ref v)
   (define r (make-ref #f '() v)) ; parent needs to be set by caller
   (set-var-refs! v (cons r (var-refs v)))
@@ -60,6 +62,12 @@
   (unless (memq r refs)
     (compiler-error "discard-ref: ref does not refer to the variable"))
   (set-var-refs! var (remq r refs)))
+
+(define (create-prc children params rest?)
+  (make-prc #f children params rest?
+            #f)) ; entry-label, will be filled later
+
+
 (define (fix-children-parent! p)
   (for-each (lambda (x) (set-node-parent! x p)) (node-children p)))
 

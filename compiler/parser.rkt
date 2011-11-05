@@ -119,8 +119,8 @@
                env)])]
     [(lambda pattern body* ...)
      (let* ([ids (extract-ids #'pattern)]
-            ;; parent children params rest? entry-label
-            [r (make-prc #f '() #f (has-rest-param? #'pattern) #f)]
+            ;; children params rest?
+            [r (create-prc '() #f (has-rest-param? #'pattern))]
             [new-env (env-extend env ids r)]
             [body (parse-body #'(body* ...) new-env)]
             [mut-vars (for*/list ([id (in-list ids)]
@@ -135,7 +135,7 @@
               (fix-children-parent! r)
               r]
              [else
-              (let* ([prc (make-prc #f (list body) mut-vars #f #f)]
+              (let* ([prc (create-prc (list body) mut-vars #f)] ; no rest
                      [new-vars (map var-id mut-vars)]
                      [tmp-env (env-extend new-env new-vars r)]
                      [app

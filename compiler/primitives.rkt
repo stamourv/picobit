@@ -28,8 +28,7 @@
 
 (define (create-eta-expansion prim-var nargs)
   ;; We create AST nodes directly. Looks a lot like the parsing of lambdas.
-  (define r
-    (make-prc #f '() '() #f #f)) ; parent children params rest? entry-label
+  (define r       (create-prc '() '() #f)) ; children params rest?
   (define ids     (build-list nargs (lambda (x) (generate-temporary))))
   (define new-env (env-extend global-env ids r))
   (define args    (for/list ([id (in-list ids)]) (env-lookup new-env id)))
