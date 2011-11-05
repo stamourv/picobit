@@ -17,9 +17,7 @@
      (=> fail!)
      (cond [(eq? (syntax->datum (var-id var)) '#%unbox) ;; TODO check better
             (set-node-parent! child parent)
-            (when parent
-              (set-node-children! parent (for/list ([c (node-children parent)])
-                                           (if (eq? c node) child c))))
+            (when parent (substitute-child! parent node child))
             child]
            [else (fail!)])]
     [_
