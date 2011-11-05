@@ -12,19 +12,21 @@
                (equal? (read-char port) #\())
     (error "bad byte vector syntax"))
   (let ([s (open-output-string)])
-    (let loop ([c (read-char port)])
+    (let loop ([c (read-char port)]
+               [n 4]) ; how many characters we've seen (so far, "#u8(")
       ;; parse until the closing paren
       (cond [(eof-object? c)
              (error "bad byte vector syntax")]
             [(not (equal? c #\)))
              (display c s)
-             (loop (read-char port))]
+             (loop (read-char port) (add1 n))]
             [else
              ;; we saw the closing paren, we're done
              (let ([contents (regexp-split #px"[[:space:]]+"
                                            (get-output-string s))])
-               (list->u8vector
-                (map string->number contents)))]))))
+               (values (list->u8vector
+                        (map string->number contents))
+                       n))]))))
 
 ;; u8vector literals are not natively supported by Racket
 (define u8vector-readtable
@@ -36,7 +38,10 @@
      [(char port) ; read
       (read-u8vector port)]
      [(char port src line col pos) ; read-syntax
-      (read-u8vector port)])))
+      (define-values (vec span) (read-u8vector port))
+      (datum->syntax #'here
+                     vec
+                     (list src line col pos span))])))
 
 (define (expand-includes exprs)
   #`(#,@(syntax-map
