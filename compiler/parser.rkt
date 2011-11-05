@@ -54,21 +54,20 @@
      #:when (self-eval? (syntax->datum #'expr))
      (make-cst #f '() (syntax->datum #'expr))]
     [expr:identifier
-     (let ()
-       (define var
-         (let* ([v    (env-lookup env #'expr)]
-                [prim (var-primitive v)])
-           (if (and prim (not operator-position?))
-               ;; We eta-expand any primitive used in a higher-order fashion.
-               (primitive-eta-expansion prim)
-               v)))
-       (define r (create-ref var))
-       (if (not (var-global? var))
-           (let* ([unbox (parse 'value #'#%unbox env)]
-                  [app (make-call #f (list unbox r))])
-             (fix-children-parent! app)
-             app)
-           r))]
+     (define var
+       (let* ([v    (env-lookup env #'expr)]
+              [prim (var-primitive v)])
+         (if (and prim (not operator-position?))
+             ;; We eta-expand any primitive used in a higher-order fashion.
+             (primitive-eta-expansion prim)
+             v)))
+     (define r (create-ref var))
+     (if (not (var-global? var))
+         (let* ([unbox (parse 'value #'#%unbox env)]
+                [app (make-call #f (list unbox r))])
+           (fix-children-parent! app)
+           app)
+         r)]
     [(set! lhs rhs)
      ;; Again, hack.
      (let ([var (env-lookup env #'lhs)]
