@@ -30,6 +30,7 @@
     (copy-propagate!              node) ; same
     (constant-fold!               node)
     (copy-propagate!              node) ; again, for cleanup
+    ;; analysis needed by the back-end
     (mark-needed-global-vars!     node)
     (when (show-post-front-end?)
       (pretty-print (node->expr node)))

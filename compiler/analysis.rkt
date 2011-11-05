@@ -4,10 +4,36 @@
 
 ;-----------------------------------------------------------------------------
 
-(provide toplevel-prc?
-         toplevel-prc-with-non-rest-correct-calls?
-         side-effect-less? side-effect-oblivious?)
+(provide mark-needed-global-vars!)
 
+(define (mark-var! var)
+  (when (and (var-global? var)
+             (not (var-needed? var))
+             ;; globals that obey the following condition are considered
+             ;; to be constants
+             ;; below fails if no definition (e.g. primitives), or mutable
+             (not (cst? (var-val var))))
+    (set-var-needed?! var #t)
+    (let ([val (var-val var)])
+      (when (and val (side-effect-less? val))
+        (mark-needed-global-vars! val)))))
+
+(define (mark-needed-global-vars! node)
+  (match node
+    [(ref _ '() var)
+     (mark-var! var)]
+    [(def _ `(,val) _)
+     (when (not (side-effect-less? val))
+       (mark-needed-global-vars! val))]
+    [(or (? cst? node) (? set? node) (? if*? node) (? prc? node)
+         (? call? node) (? seq? node))
+     (for-each mark-needed-global-vars! (node-children node))]
+    [_
+     (compiler-error "unknown expression type" node)]))
+
+;-----------------------------------------------------------------------------
+
+(provide toplevel-prc-with-non-rest-correct-calls?)
 
 (define (toplevel-prc? var)
   ;; Since we don't have internal defines, the only way a variable can have
@@ -31,6 +57,10 @@
                  ;; this makes the analysis conservative, so we're safe
                  (var-refs var))
          prc)))
+
+;-----------------------------------------------------------------------------
+
+(provide side-effect-less? side-effect-oblivious?)
 
 ;; oblivious? is true if we want to check for side-effect obliviousless, which
 ;; is stronger
