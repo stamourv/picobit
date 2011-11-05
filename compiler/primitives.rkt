@@ -4,7 +4,7 @@
 (require srfi/4)
 (require "env.rkt" "ast.rkt") ; to build the eta-expansions
 
-;-----------------------------------------------------------------------------
+;;-----------------------------------------------------------------------------
 
 (provide primitive-encodings)
 (define primitive-encodings '())

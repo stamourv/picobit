@@ -15,7 +15,7 @@
          "tree-shaker.rkt")
 (require racket/pretty)
 
-;-----------------------------------------------------------------------------
+;;-----------------------------------------------------------------------------
 
 (define (compile in-port out-port-thunk)
   (let* ([forms        (read-program in-port)]
