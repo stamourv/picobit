@@ -10,6 +10,9 @@
 
 
 (define (toplevel-prc? var)
+  ;; Since we don't have internal defines, the only way a variable can have
+  ;; a val is to be defined at the toplevel. Otherwise, it would be lambda
+  ;; -bound, in which case it has no val.
   (let ([val (var-val var)]) ; non-false implies immutable
     (and (prc? val)
          val)))
