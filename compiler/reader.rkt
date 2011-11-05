@@ -47,8 +47,9 @@
             #:when (eq? (syntax->datum #'include) 'include)
             #`(begin
                 #,@(expand-includes
-                    (with-input-from-file (syntax->datum #'file)
-                      read-all-syntax)))]
+                    (let ([in (open-input-file (syntax->datum #'file))])
+                      (port-count-lines! in)
+                      (read-all-syntax read-syntax in))))]
            [e #'e])
          exprs)))
 
@@ -57,11 +58,13 @@
 (define (read-program port)
   (parameterize ([current-readtable u8vector-readtable])
     (define (read-lib f)
-      (with-input-from-file (build-path compiler-dir f)
-        read-all-syntax))
+      (define in (open-input-file (build-path compiler-dir f)))
+      (port-count-lines! in)
+      (read-all-syntax read-syntax in))
     (define library
       #`(#,@(read-lib "library.scm")       ; architecture-independent
          #,@(read-lib "gen.library.scm"))) ; architecture-dependent
+    (port-count-lines! port)
     (datum->syntax
      #'here ; to get the Racket bindings for define and co, for syntax-parse
      (syntax->datum (expand-includes
