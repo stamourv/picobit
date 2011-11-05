@@ -10,7 +10,7 @@
     [(or (? cst? node) (? ref? node) (? prc? node))
      ctx] ; we can drop any of these if we don't care about their value
     [(def _ `(,rhs) var)
-     (if (toplevel-prc-with-non-rest-correct-calls? var)
+     (if (needs-closure? var)
          (comp-prc rhs #f ctx)
          (if (var-needed? var)
              (let ([ctx2 (comp-push rhs ctx)])
@@ -215,7 +215,7 @@
 
        [(ref _ '() var)
         (=> unmatch)
-        (cond [(toplevel-prc-with-non-rest-correct-calls? var)
+        (cond [(needs-closure? var)
                =>
                (lambda (prc)
                  (case reason

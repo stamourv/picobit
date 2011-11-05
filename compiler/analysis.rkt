@@ -33,7 +33,7 @@
 
 ;;-----------------------------------------------------------------------------
 
-(provide toplevel-prc-with-non-rest-correct-calls?)
+(provide needs-closure?)
 
 (define (toplevel-prc? var)
   ;; Since we don't have internal defines, the only way a variable can have
@@ -43,7 +43,9 @@
     (and (prc? val)
          val)))
 
-(define (toplevel-prc-with-non-rest-correct-calls? var)
+;; A lambda needs a closure if it has rest args, or if forced to because of
+;; how one of its references uses it.
+(define (needs-closure? var)
   (let ([prc (toplevel-prc? var)])
     (and prc
          (not (prc-rest? prc))
