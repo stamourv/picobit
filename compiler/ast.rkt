@@ -60,7 +60,8 @@
   (define var  (ref-var r))
   (define refs (var-refs var))
   (unless (memq r refs)
-    (compiler-error "discard-ref: ref does not refer to the variable"))
+    (compiler-error "discard-ref: ref does not refer to the variable"
+                    (var-id var)))
   (set-var-refs! var (remq r refs)))
 
 (define (create-prc children params rest?)
