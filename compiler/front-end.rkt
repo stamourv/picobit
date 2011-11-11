@@ -204,11 +204,9 @@
      (cond [(and (= (length (var-refs var)) 1)
                  (side-effect-oblivious? val))
             ;; We need to make sure we're not inlining in ourselves.
-            (let loop ([p p]) ; try to reach val through our parent
-              (cond [(eq? p val) (fail!)]    ; in ourselves, unsafe
-                    [(eq? p #f) ; safe
-                     (replace! (copy-node val))]
-                    [else        (loop (node-parent p))]))] ; keep going
+            (if (inside? p val)
+                (fail!)
+                (replace! (copy-node val)))]
            [else ; multiple uses, but maybe we can do it anyway
             (match val
               [(or (ref _ '() _) (cst _ '() _))

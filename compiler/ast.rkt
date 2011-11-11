@@ -97,6 +97,12 @@
   (set-node-children! parent (map (lambda (x) (if (eq? x old) new x))
                                   children)))
 
+;; Is c a descendant of p?
+(define (inside? c p)
+  (or (eq? c p)
+      (and c ; not at the top of the program
+           (inside? (node-parent c) p))))
+
 ;; Capture-avoiding substitution.
 (define (substitute! e old new)
   (define (recur) (for ([c (in-list (node-children e))])
