@@ -103,20 +103,16 @@
       (and c ; not at the top of the program
            (inside? (node-parent c) p))))
 
-;; Capture-avoiding substitution.
-(define (substitute! e old new)
-  (define (recur) (for ([c (in-list (node-children e))])
-                    (substitute! c old new)))
-  (match e
-    [(ref p _ var) (=> fail!)
-     ;; variable references don't _need_ to be eq? to be the same
-     (cond [(and (ref? old) (var=? var (ref-var old)))
-            (substitute-child! p e (copy-node new))] ; maybe multiple old, copy
-           [else (fail!)])]
-    [(and (node p _) (== old eq?)) ; eq? is used because of cycles
-     (substitute-child! p e new)] ; there's only one of e, no need to copy
-    [(node p cs)
-     (recur)]))
+;; Splice the child begin inside the parent begin in place of the old node.
+(define (splice-begin! old child parent)
+  (set-node-children!
+   parent
+   (apply append
+          (for/list ([c (node-children parent)])
+            (if (eq? c old) ; we replace that
+                (node-children child)
+                (list c))))) ; keep that one
+  (fix-children-parent! parent))
 
 
 ;; Since nodes know their parents, we can't just reuse them directly.

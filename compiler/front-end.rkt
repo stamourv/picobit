@@ -38,30 +38,33 @@
          [(? prc? proc)
           proc]
          [_ (fail!)]))
-     (match proc
+     ;; We copy the entire proc to make sure that the body always has a parent.
+     ;; Otherwise, substitution may error. Of course, only the body ends up in
+     ;; the actual program.
+     (define new-proc (copy-node proc))
+     (match new-proc
        [(prc _ `(,body) params #f _) ; no rest arg
         (unless (= (length params) (length args))
           (fail!))
-        (define new (copy-node body))
-        ;; Hook the new node up.
+        ;; Bottom-up beta reduction, this is due to Shivers and Wand.
+        ;; For each variable we need to substitute, we iterate over its refs,
+        ;; and substitute directly from there, without having to traverse the
+        ;; whole term.
+        (for ([o (in-list params)]
+              [n (in-list args)])
+          (for ([r (in-list (var-refs o))]
+                #:when (inside? r body))
+            ;; Since we just copied the lambda, we're guaranteed that all the
+            ;; refs will be in its body.
+            (substitute-child! (node-parent r) r (copy-node n))))
+        ;; Hook the new body up. We need to get it from new-proc, since the
+        ;; original body may have been substituted away.
+        (define new (child1 new-proc))
         (cond [(and (seq? parent) (seq? new)) ; splice the new begin in the old
-               (set-node-children!
-                parent
-                (apply append
-                       (for/list ([c (node-children parent)])
-                         (if (eq? c e) ; we replace that
-                             (node-children new)
-                             (list c))))) ; keep that one
+               (splice-begin! e new parent)
                (fix-children-parent! parent)]
               [else ; just replace the original child
                (substitute-child! parent e new)])
-        ;; Do the substitutions.
-        (for ([o (in-list params)]
-              [n (in-list args)])
-          (substitute! new
-                       (make-ref #f '() o) ; fake ref, don't register
-                       ;; substitute-child! clears references to old params
-                       n))
         ;; We return the new node.
         ;; Note: new may not actually be in the program. It may have been
         ;; spliced away in its parent.
