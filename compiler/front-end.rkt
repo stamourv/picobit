@@ -16,8 +16,7 @@
                     ,(and child (ref _ '() (? immutable-var? v)))))
      (=> fail!)
      (cond [(eq? (syntax->datum (var-id var)) '#%unbox) ;; TODO check better
-            (set-node-parent! child parent)
-            (when parent (substitute-child! parent node child))
+            (substitute-child! parent node (copy-node child))
             child]
            [else (fail!)])]
     [_
@@ -64,7 +63,9 @@
                (splice-begin! e new parent)
                (fix-children-parent! parent)]
               [else ; just replace the original child
-               (substitute-child! parent e new)])
+               ;; This discards e, which includes the lambda (if left-left-
+               ;; lambda) and the args. This shouldn't leave leftover nodes.
+               (substitute-child! parent e (copy-node new))])
         ;; We return the new node.
         ;; Note: new may not actually be in the program. It may have been
         ;; spliced away in its parent.
@@ -175,7 +176,7 @@
      (for-each constant-fold! cs) ; fold each branch
      (match node
        [(if* p `(,(cst _ '() val) ,thn ,els))
-        (substitute-child! p node (if val thn els))]
+        (substitute-child! p node (copy-node (if val thn els)))]
        [_
         (fail!)])]
     [(seq p cs) (=> fail!) ; can discard effect-free non-final elements
@@ -184,7 +185,7 @@
      (define result (last new-cs))
      (define before (remq result new-cs))
      (if (andmap side-effect-less? before)
-         (substitute-child! p node result)
+         (substitute-child! p node (copy-node result))
          (fail!))]
     [_
      (for-each constant-fold! (node-children node))]))
@@ -199,7 +200,7 @@
      (=> fail!)
      (define (replace! new)
        (unless (node-parent expr) (fail!)) ; no parent, stale node, ignore
-       (substitute-child! p expr new)
+       (substitute-child! p expr (copy-node new))
        (copy-propagate! p)) ;  there may be more to do, start our parent again
      ;; Single use, copy-propagate away! Can't increase code size.
      ;; Note: due to dangling references, we may be conservative, and
@@ -209,14 +210,14 @@
             ;; We need to make sure we're not inlining in ourselves.
             (if (inside? p val)
                 (fail!)
-                (replace! (copy-node val)))]
+                (replace! val))]
            [else ; multiple uses, but maybe we can do it anyway
             (match val
               [(or (ref _ '() _) (cst _ '() _))
                ;; constants are ok. even if they're large, they're just a
                ;; pointer into ROM, where the constant would have been anyway
                ;; (and no duplication)
-               (replace! (copy-node val))]
+               (replace! val)]
               [_ (fail!)])])] ; anything else would increase code size
     [_
      (for-each copy-propagate! (node-children expr))]))

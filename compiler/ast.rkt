@@ -75,9 +75,29 @@
   (define var  (ref-var r))
   (define refs (var-refs var))
   (unless (memq r refs)
-    (compiler-error "discard-ref: ref does not refer to the variable"
+    (compiler-error "discard-ref: ref is not in the variable's refs"
                     (var-id var)))
   (set-var-refs! var (remq r refs)))
+(define (discard-set s)
+  (define var  (ref-var s))
+  (define sets (var-sets var))
+  (unless (memq s sets)
+    (compiler-error "discard-set: set is not in the variable's sets"
+                    (var-id var)))
+  (set-var-sets! var (remq s sets)))
+
+;; Crawls e and discards any refs, and sets it encounters, so that e can
+;; be dropped without leaving dangling references.
+(define (discard-node! e parent)
+  (when (memq e (node-children (node-parent e)))
+    (error "discard-node!: can't discard a node that's still attached"
+           (node->expr e)))
+  (set-node-parent! e #f)
+  (when (ref? e) (discard-ref e))
+  (when (set? e) (discard-set e))
+  (define cs (node-children e))
+  (set-node-children! e '()) ; detach children, so they can be discarded too
+  (for ([c (in-list cs)]) (discard-node! c e)))
 
 (define (create-prc children params rest?)
   (make-prc #f children params rest?
@@ -87,15 +107,17 @@
 (define (fix-children-parent! p)
   (for-each (lambda (x) (set-node-parent! x p)) (node-children p)))
 
+;; Note: if new is a descendant of old, it needs to be copied before begin
+;; substituted in. This is because we discard old and all its descendants.
 (define (substitute-child! parent old new)
   (define children (node-children parent))
   (unless (memq old children)
-    (compiler-error "substitute-child!: old is not in children"))
+    (compiler-error "substitute-child!: old is not in children"
+                    (node->expr old)))
   (set-node-parent! new parent)
-  (set-node-parent! old #f) ; just to be on the safe side
-  (when (ref? old) (discard-ref old)) ; remove dangling ref
   (set-node-children! parent (map (lambda (x) (if (eq? x old) new x))
-                                  children)))
+                                  children))
+  (discard-node! old parent))
 
 ;; Is c a descendant of p?
 (define (inside? c p)
