@@ -15,7 +15,7 @@
     [(call parent `(,(ref _ '() var)
                     ,(and child (ref _ '() (? immutable-var? v)))))
      (=> fail!)
-     (cond [(eq? (syntax->datum (var-id var)) '#%unbox) ;; TODO check better
+     (cond [(var=? var (env-lookup global-env #'#%unbox))
             (substitute-child! parent node (copy-node child))
             child]
            [else (fail!)])]
