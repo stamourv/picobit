@@ -6,6 +6,21 @@
 
 ;; Syntax-tree node representation.
 
+;; The AST is doubly linked, children point to their parent. This makes it
+;; possible to crawl the tree backwards, which is useful for some analysis
+;; and transformations.
+
+;; In addition, variable objects are doubly linked as well. Defs, refs, sets
+;; and prcs point to the variables involved, and the variables point back to
+;; their definition, references and assignments. Again, this makes analysis
+;; and transformations easier.
+
+;; Important invariant: No node sharing.
+;; If we create identical nodes, or copy an existing node, the results
+;; must _not_ be eq?.
+;; Otherwise, this may screw up accounting (e.g. for refs) or cycle
+;; detection in analysis, etc.
+
 (define-struct node (parent children) #:mutable #:transparent)
 
 (define (child1 node) (car   (node-children node)))
