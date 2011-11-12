@@ -115,19 +115,25 @@
 
 ;; Since nodes know their parents, we can't just reuse them directly.
 ;; For this reason, this is a deep copy.
-(define (copy-node e)
+;; Optionally takes a list of variable substitutions. When we copy lambdas,
+;; we need to create new var objects, otherwise the copy's variables will be
+;; the same as the original's.
+(define (copy-node e [substs '()]) ; substs : (listof (pair var var))
+  (define (maybe-substitute-var var)
+    (cond [(assoc var substs var=?) => cdr]
+          [else var]))
   (define new
     (match e
       ;; parent is left #f, caller must set it
       ;; children are copied below
       [(cst _ _ val) ; no need to copy val
        (make-cst #f '() val)]
-      [(ref _ _ var) ; no need to copy var
-       (create-ref var)] ; registers the reference
+      [(ref _ _ var) ; we may need to substitute
+       (create-ref (maybe-substitute-var var))] ; registers the reference
       [(def _ _ var) ; only at the top-level, makes no sense to copy
        (compiler-error "copying the definition of" (var-id var))]
-      [(set _ _ var) ; no need to copy var
-       (make-set #f '() var)]
+      [(set _ _ var) ; as above
+       (make-set #f '() (maybe-substitute-var var))]
       [(if* _ _)
        (make-if* #f '())]
       [(prc _ _ params rest? entry)
@@ -140,21 +146,21 @@
          (make-local-var (generate-temporary (var-id v)) new))
        (define new-params (map copy-var params))
        (set-prc-params! new new-params)
-       ;; param substitution below
        new]
       [(call _ _)
        (make-call #f '())]
       [(seq _ _)
        (make-seq #f '())]))
-  (set-node-children! new (map copy-node (node-children e)))
+  ;; If we're copying a lambda, we need to substitute the new one's params
+  ;; for the original's
+  (define new-substs
+    (if (prc? new)
+        (append (map cons (prc-params e) (prc-params new))
+                substs)
+        substs))
+  (set-node-children! new (for/list ([c (in-list (node-children e))])
+                            (copy-node c new-substs)))
   (fix-children-parent! new)
-  (when (prc? new) ; do the param substitution in body
-    (for ([o (prc-params e)]
-          [n (prc-params new)])
-      (substitute! (car (node-children new))
-                   (make-ref #f '() o)    ; fake reference, don't register
-                   ;; registration will happen when substitute! calls copy-node
-                   (make-ref #f '() n))))
   new)
 
 
