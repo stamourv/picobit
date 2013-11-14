@@ -2,7 +2,7 @@
 
 (provide parse-program)
 (require "utilities.rkt" "analysis.rkt" "env.rkt" "ast.rkt")
-(require syntax/parse racket/syntax unstable/syntax)
+(require syntax/parse racket/syntax)
 
 (define (parse-program lst env)
   (define exprs
@@ -162,7 +162,8 @@
                 body ...)
             env)]
     [(begin forms ...)
-     (let ([exprs (syntax-map (lambda (x) (parse 'value x env)) #'(forms ...))])
+     (let ([exprs (map (lambda (x) (parse 'value x env))
+                       (syntax->list #'(forms ...)))])
        (cond [(> (length exprs) 1)
               (define r (make-seq #f exprs))
               (fix-children-parent! r)
@@ -215,8 +216,8 @@
     [(op args ...) ; call
      (define exprs
        (cons (parse 'value #'op env #t) ; in operator position
-             (syntax-map (lambda (e) (parse 'value e env))
-                         #'(args ...))))
+             (map (lambda (e) (parse 'value e env))
+                  (syntax->list #'(args ...)))))
      (define r (make-call #f exprs))
      (fix-children-parent! r)
      r]

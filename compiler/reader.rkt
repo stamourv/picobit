@@ -1,7 +1,6 @@
 #lang racket
 
-(require (only-in unstable/port read-all-syntax)
-         racket/runtime-path unstable/syntax syntax/parse
+(require racket/runtime-path syntax/parse
          srfi/4)
 
 (provide read-program)
@@ -44,7 +43,7 @@
                      (list src line col pos span))])))
 
 (define (expand-includes exprs)
-  #`(#,@(syntax-map
+  #`(#,@(map
          (syntax-parser
            ;; This is a hack. Eventually, we should have the Racket expander
            ;; take care of includes.
@@ -54,9 +53,9 @@
                 #,@(expand-includes
                     (let ([in (open-input-file (syntax->datum #'file))])
                       (port-count-lines! in)
-                      (read-all-syntax read-syntax in))))]
+                      (port->list (lambda (p) (read-syntax 'here p)) in))))]
            [e #'e])
-         exprs)))
+         (if (syntax? exprs) (syntax->list exprs) exprs))))
 
 (define-runtime-path compiler-dir ".")
 
@@ -65,7 +64,7 @@
     (define (read-lib f)
       (define in (open-input-file (build-path compiler-dir f)))
       (port-count-lines! in)
-      (read-all-syntax read-syntax in))
+      (port->list (lambda (p) (read-syntax 'here p)) in))
     (define library
       #`(#,@(read-lib "library.scm")       ; architecture-independent
          #,@(read-lib "gen.library.scm"))) ; architecture-dependent
@@ -73,7 +72,7 @@
     (define prog
       (expand-includes
        #`(#,@library
-          #,@(read-all-syntax read-syntax port))))
+          #,@(port->list (lambda (p) (read-syntax 'here p)) port))))
     (datum->syntax
      #'here ; to get the Racket bindings for define and co, for syntax-parse
      (syntax->datum prog)
