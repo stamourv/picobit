@@ -79,7 +79,7 @@
                     (var-id var)))
   (set-var-refs! var (remq r refs)))
 (define (discard-set s)
-  (define var  (ref-var s))
+  (define var  (set-var s))
   (define sets (var-sets var))
   (unless (memq s sets)
     (compiler-error "discard-set: set is not in the variable's sets"
@@ -157,7 +157,9 @@
       [(def _ _ var) ; only at the top-level, makes no sense to copy
        (compiler-error "copying the definition of" (var-id var))]
       [(set _ _ var) ; as above
-       (make-set #f '() (maybe-substitute-var var))]
+       (define res (make-set #f '() (maybe-substitute-var var)))
+       (set-var-sets! var (cons res (var-sets var)))
+       res]
       [(if* _ _)
        (make-if* #f '())]
       [(prc _ _ params rest? entry)
