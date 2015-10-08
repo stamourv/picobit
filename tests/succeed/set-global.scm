@@ -9,4 +9,4 @@
 (define (picobit-crashes) (set! *x* 1))
 (picobit-crashes)
 
-*x*
+(display *x*)
